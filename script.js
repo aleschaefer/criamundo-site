@@ -4,20 +4,35 @@ const { siteConfig, featuredProject, projectGroups } = siteData;
 const contactItems = [
   {
     label: "E-mail",
-    value: siteConfig.contact.email,
+    value: formatContactDisplay("email", siteConfig.contact.email),
     href: `mailto:${siteConfig.contact.email}`
   },
   {
     label: "WhatsApp",
-    value: siteConfig.contact.whatsapp,
+    value: formatContactDisplay("whatsapp", siteConfig.contact.whatsapp),
     href: buildWhatsappLink(siteConfig.contact.whatsapp)
   },
   {
     label: "Instagram",
-    value: "Ver perfil",
+    value: formatContactDisplay("instagram", siteConfig.contact.instagram),
     href: siteConfig.contact.instagram
   }
 ];
+
+function formatContactDisplay(type, value) {
+  const text = String(value || "").trim();
+  if (!text) {
+    return "Atualize no painel";
+  }
+
+  if (type === "instagram") {
+    return text
+      .replace(/^https?:\/\/(www\.)?instagram\.com\//i, "@")
+      .replace(/\/+$/, "");
+  }
+
+  return text;
+}
 
 function buildWhatsappLink(
   number,
@@ -164,12 +179,26 @@ function getChallengePayload(formData) {
   };
 }
 
-async function submitToEndpoint(payload) {
-  const endpoint =
-    siteConfig.challengeForm.endpoint || "https://api.web3forms.com/submit";
+function getFormIntegrationConfig(form, formData) {
+  const htmlAccessKey = formData.get("access_key");
+  const htmlAction = form.getAttribute("action");
+
+  return {
+    endpoint:
+      siteConfig.challengeForm.endpoint ||
+      htmlAction ||
+      "https://api.web3forms.com/submit",
+    accessKey:
+      siteConfig.challengeForm.accessKey ||
+      (typeof htmlAccessKey === "string" ? htmlAccessKey.trim() : "")
+  };
+}
+
+async function submitToEndpoint(payload, integrationConfig) {
+  const { endpoint, accessKey } = integrationConfig;
 
   const requestBody = {
-    access_key: siteConfig.challengeForm.accessKey,
+    access_key: accessKey,
     subject:
       siteConfig.challengeForm.subject ||
       siteConfig.challengeForm.fallbackSubject ||
@@ -227,6 +256,7 @@ function bindForm() {
     event.preventDefault();
     const formData = new FormData(form);
     const payload = getChallengePayload(formData);
+    const integrationConfig = getFormIntegrationConfig(form, formData);
 
     if (!payload.name || !payload.keywords || !payload.format) {
       setFormStatus("Preencha todos os campos obrigatorios.", "error");
@@ -245,8 +275,8 @@ function bindForm() {
     }
 
     try {
-      if (siteConfig.challengeForm.accessKey) {
-        await submitToEndpoint(payload);
+      if (integrationConfig.accessKey) {
+        await submitToEndpoint(payload, integrationConfig);
       } else {
         openMailClient(payload);
       }
