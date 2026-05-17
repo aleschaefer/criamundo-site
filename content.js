@@ -7,8 +7,11 @@ const defaultSiteData = {
     },
     challengeForm: {
       endpoint: "",
+      accessKey: "",
       successMessage: "Seu desafio criativo chegou ao CRIAMUNDO.",
-      fallbackSubject: "Desafio criativo Rio2C"
+      fallbackSubject: "Desafio criativo Rio2C",
+      fromName: "CRIAMUNDO",
+      subject: "Novo desafio criativo recebido"
     }
   },
   featuredProject: {

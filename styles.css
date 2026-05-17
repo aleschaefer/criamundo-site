@@ -1054,14 +1054,14 @@ h3 {
   }
 
   .nav a {
-    font-size: 0.62rem;
+    font-size: 0.76rem;
     letter-spacing: 0.14em;
   }
 
   .nav {
-    gap: 10px 14px;
+    gap: 10px 16px;
     justify-content: center;
-    max-width: 320px;
+    max-width: 360px;
   }
 
   .section {
@@ -1187,6 +1187,18 @@ h3 {
     .contact-card {
     padding: 22px;
   }
+
+  .challenge .section-heading h2 {
+    max-width: 100%;
+    font-size: clamp(2.05rem, 10vw, 3.2rem);
+    line-height: 1;
+  }
+
+  .about-card p,
+  .about-note p {
+    text-align: justify;
+    text-justify: inter-word;
+  }
 }
 
 @media (max-width: 420px) {
@@ -1210,7 +1222,7 @@ h3 {
   }
 
   .nav a {
-    font-size: 0.58rem;
+    font-size: 0.7rem;
     letter-spacing: 0.1em;
   }
 
@@ -1256,6 +1268,10 @@ h3 {
   .hero-stage {
     min-height: 250px;
     border-radius: 24px;
+  }
+
+  .challenge .section-heading h2 {
+    font-size: clamp(1.8rem, 9vw, 2.5rem);
   }
 
   .spotlight-origin {

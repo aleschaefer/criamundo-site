@@ -38,8 +38,14 @@ function fillTopFields() {
     adminData.siteConfig.contact.instagram || "";
   form.elements["challenge.endpoint"].value =
     adminData.siteConfig.challengeForm.endpoint || "";
+  form.elements["challenge.accessKey"].value =
+    adminData.siteConfig.challengeForm.accessKey || "";
   form.elements["challenge.fallbackSubject"].value =
     adminData.siteConfig.challengeForm.fallbackSubject || "";
+  form.elements["challenge.subject"].value =
+    adminData.siteConfig.challengeForm.subject || "";
+  form.elements["challenge.fromName"].value =
+    adminData.siteConfig.challengeForm.fromName || "";
   form.elements["challenge.successMessage"].value =
     adminData.siteConfig.challengeForm.successMessage || "";
 
@@ -167,8 +173,14 @@ function syncTopFieldsToState() {
 
   adminData.siteConfig.challengeForm.endpoint =
     form.elements["challenge.endpoint"].value.trim();
+  adminData.siteConfig.challengeForm.accessKey =
+    form.elements["challenge.accessKey"].value.trim();
   adminData.siteConfig.challengeForm.fallbackSubject =
     form.elements["challenge.fallbackSubject"].value.trim();
+  adminData.siteConfig.challengeForm.subject =
+    form.elements["challenge.subject"].value.trim();
+  adminData.siteConfig.challengeForm.fromName =
+    form.elements["challenge.fromName"].value.trim();
   adminData.siteConfig.challengeForm.successMessage =
     form.elements["challenge.successMessage"].value.trim();
 

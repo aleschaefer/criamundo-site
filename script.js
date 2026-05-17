@@ -165,17 +165,43 @@ function getChallengePayload(formData) {
 }
 
 async function submitToEndpoint(payload) {
-  const response = await fetch(siteConfig.challengeForm.endpoint, {
+  const endpoint =
+    siteConfig.challengeForm.endpoint || "https://api.web3forms.com/submit";
+
+  const requestBody = {
+    access_key: siteConfig.challengeForm.accessKey,
+    subject:
+      siteConfig.challengeForm.subject ||
+      siteConfig.challengeForm.fallbackSubject ||
+      "Novo desafio criativo recebido",
+    from_name: siteConfig.challengeForm.fromName || "CRIAMUNDO",
+    name: payload.name,
+    contact: payload.contact || "Nao informado",
+    keywords: payload.keywords,
+    format: payload.format,
+    style: payload.style || "Nao informado",
+    message: [
+      `Nome: ${payload.name}`,
+      `Contato: ${payload.contact || "Nao informado"}`,
+      `Formato desejado: ${payload.format}`,
+      `Estilo: ${payload.style || "Nao informado"}`,
+      `Palavras-chave: ${payload.keywords}`
+    ].join("\n")
+  };
+
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json"
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(requestBody)
   });
 
-  if (!response.ok) {
-    throw new Error("Falha no envio do formulario.");
+  const result = await response.json();
+
+  if (!response.ok || result.success === false) {
+    throw new Error(result.message || "Falha no envio do formulario.");
   }
 }
 
@@ -219,7 +245,7 @@ function bindForm() {
     }
 
     try {
-      if (siteConfig.challengeForm.endpoint) {
+      if (siteConfig.challengeForm.accessKey) {
         await submitToEndpoint(payload);
       } else {
         openMailClient(payload);
