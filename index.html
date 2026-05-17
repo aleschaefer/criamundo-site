@@ -109,13 +109,14 @@
         </div>
 
         <div class="challenge-layout">
-          <form class="challenge-form" id="challenge-form" novalidate>
+          <form class="challenge-form" id="challenge-form" action="https://api.web3forms.com/submit" method="POST">            
             <p class="form-intro">Campos marcados com <span>*</span> sao obrigatorios.</p>
 
             <label>
               <span class="field-label">
                 Nome <span class="required-mark" aria-hidden="true">(*)</span>
               </span>
+              <input type="hidden" name="access_key" value="ba84a9f1-afc0-423d-8385-3ca0ea47c7c7">
               <input
                 type="text"
                 name="name"
