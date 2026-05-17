@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CRIAMUNDO | Roteiros &amp; Ideias</title>
+    <meta
+      name="description"
+      content="CRIAMUNDO: roteiros, ideias e projetos autorais para cinema, series e realities."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-glow"></div>
+    <div class="film-grain"></div>
+
+    <header class="topbar" id="topbar">
+      <div class="site-shell topbar-inner">
+        <a class="brand" href="#inicio" aria-label="CRIAMUNDO">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 76 76" focusable="false" aria-hidden="true">
+              <circle cx="38" cy="38" r="34"></circle>
+              <g class="clapper-body-group">
+                <path d="M18 34H58V56H18Z"></path>
+              </g>
+              <g class="clapper-top-group">
+                <path d="M16 22H54L60 34H22Z"></path>
+                <path d="M24 22L32 34"></path>
+                <path d="M36 22L44 34"></path>
+                <path d="M48 22L56 34"></path>
+              </g>
+            </svg>
+          </span>
+          <span>CRIAMUNDO</span>
+        </a>
+
+        <nav class="nav" aria-label="Principal">
+          <a href="#desafio">Desafio</a>
+          <a href="#projetos">Projetos</a>
+          <a href="#sobre">Sobre</a>
+          <a href="#contato">Contato</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="site-shell">
+      <section class="hero section" id="inicio">
+        <div class="hero-copy">
+          <div class="hero-emblem" aria-hidden="true">
+            <svg viewBox="0 0 76 76" focusable="false">
+              <circle cx="38" cy="38" r="34"></circle>
+              <g class="clapper-body-group">
+                <path d="M18 34H58V56H18Z"></path>
+              </g>
+              <g class="clapper-top-group">
+                <path d="M16 22H54L60 34H22Z"></path>
+                <path d="M24 22L32 34"></path>
+                <path d="M36 22L44 34"></path>
+                <path d="M48 22L56 34"></path>
+              </g>
+            </svg>
+          </div>
+          <h1 class="wordmark">CRIAMUNDO</h1>
+          <div class="hero-divider" aria-hidden="true"></div>
+          <p class="subtitle">Roteiros &amp; Ideias</p>
+          <p class="subheadline">Cinema - Series - Realities</p>
+
+          <p class="hero-links">
+            Desafie minha criatividade
+            <a href="#desafio">aqui</a>.
+            Conheca mais sobre os
+            <a href="#projetos">meus projetos</a>.
+          </p>
+        </div>
+
+        <aside class="hero-stage" aria-hidden="true">
+          <div class="hero-vignette"></div>
+          <div class="spotlight-origin"></div>
+          <div class="light-beam"></div>
+          <div class="smoke smoke-one"></div>
+          <div class="smoke smoke-two"></div>
+          <div class="floor-texture"></div>
+          <div class="director-chair">
+            <div class="chair-back"></div>
+            <div class="chair-seat"></div>
+            <div class="chair-arm chair-arm-left"></div>
+            <div class="chair-arm chair-arm-right"></div>
+            <div class="chair-leg chair-leg-left"></div>
+            <div class="chair-leg chair-leg-right"></div>
+            <div class="chair-support chair-support-left"></div>
+            <div class="chair-support chair-support-right"></div>
+          </div>
+          <div class="stage-floor"></div>
+        </aside>
+      </section>
+
+      <section class="section challenge" id="desafio">
+        <div class="section-heading">
+          <p class="eyebrow">Desafio Criativo</p>
+          <h2>ENVIE 3 A 5 PALAVRAS E EU TRANSFORMO EM UMA PREMISSA FILMÁVEL.</h2>          
+        </div>
+
+        <div class="challenge-layout">
+          <form class="challenge-form" id="challenge-form" novalidate>
+            <p class="form-intro">Campos marcados com <span>*</span> sao obrigatorios.</p>
+
+            <label>
+              <span class="field-label">
+                Nome <span class="required-mark" aria-hidden="true">(*)</span>
+              </span>
+              <input
+                type="text"
+                name="name"
+                required
+                maxlength="80"
+                placeholder="Como você gostaria de ser chamado?"
+              />
+            </label>
+
+            <label>
+              <span class="field-label">Contato</span>
+              <input
+                type="text"
+                name="contact"
+                maxlength="120"
+                placeholder="E-mail, Instagram ou WhatsApp"
+              />
+              <span class="helper-text">Deixe um contato para receber sua premissa filmável.</span>
+            </label>
+
+            <label>
+              <span class="field-label">
+                Palavras-chave <span class="required-mark" aria-hidden="true">(*)</span>
+              </span>
+              <textarea
+                name="keywords"
+                maxlength="100"
+                required
+                rows="3"
+                placeholder="Ex.: silêncio, algoritmo, elevador, despedida"
+              ></textarea>
+              <span class="helper-text">Algumas palavras já podem virar uma premissa filmável. <br/>(limite de 100 caracteres)</span>
+            </label>
+
+            <label>
+              <span class="field-label">
+                Formato desejado <span class="required-mark" aria-hidden="true">(*)</span>
+              </span>
+              <select name="format" required>
+                <option value="">Selecione</option>
+                <option value="Curta-metragem">Curta-metragem</option>
+                <option value="Longa-metragem">Longa-metragem</option>
+                <option value="Serie">Série</option>
+                <option value="Reality / formato">Reality / formato</option>
+                <option value="Livre (surpresa)">Livre (surpresa)</option>
+              </select>
+            </label>
+
+            <label>
+              <span class="field-label">Estilo</span>
+              <select name="style">
+                <option value="">Selecione</option>
+                <option value="Sensível">Sensivel</option>
+                <option value="Tenso">Tenso</option>
+                <option value="Melancólico">Melancolico</option>
+                <option value="Bem-humorado">Bem-humorado</option>
+                <option value="Inusitado">Inusitado</option>
+                <option value="Caótico">Caotico</option>
+                <option value="Poético">Poetico</option>
+                <option value="Sombrio">Sombrio</option>
+                <option value="Inspirador">Inspirador</option>
+                <option value="Desconfortável">Desconfortavel</option>
+                <option value="Livre (surpresa)">Livre (surpresa)</option>
+              </select>
+            </label>
+
+            <button class="button button-primary" type="submit">
+              Enviar desafio
+            </button>
+            <p class="form-status" id="form-status" aria-live="polite"></p>
+          </form>
+
+          <aside class="challenge-note">
+            <p class="eyebrow">Formato de envio</p>
+            <p>
+              O formulario pode ser conectado a endpoint proprio, FormSubmit,
+              Netlify Forms ou backend serverless. Mantive fallback por e-mail
+              para publicacao rapida.
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section projects" id="projetos">
+        <div class="section-heading">
+          <p class="eyebrow">Projetos</p>
+          <h2>Meus projetos</h2>
+        </div>
+
+        <article class="featured-project" id="featured-project"></article>
+        <div class="project-groups" id="project-groups"></div>
+      </section>
+
+      <section class="section about" id="sobre">
+        <div class="section-heading">
+          <p class="eyebrow">Sobre</p>
+        </div>
+
+        <div class="about-layout">
+          <article class="about-card">
+            <p>
+              Interesso-me por narrativas contemporaneas que unem entretenimento, bom humor e reflexao.
+              Desenvolvo ideias para diferentes formatos do audiovisual - do curta-metragem as series e
+              realities - guiado por um olhar sensivel sobre relacoes humanas e comportamento, influenciado
+              pela minha formacao em psicologia transpessoal.
+            </p>
+          </article>
+
+          <aside class="about-note">
+            <p class="eyebrow">Visao criativa</p>
+            <p>
+              Projetos autorais desenvolvidos para cinema, series e
+              formatos originais, combinando atmosfera contemporanea,
+              identidade visual e historias com forte potencial de conexao
+              com o publico.
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section contact" id="contato">
+        <div class="section-heading">
+          <p class="eyebrow">Contato</p>
+        </div>
+
+        <div class="contact-grid" id="contact-grid"></div>
+      </section>
+    </main>
+
+    <script src="content.js"></script>
+    <script src="data-manager.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel de Conteúdo | Portfólio Rio2C</title>
+    <meta
+      name="description"
+      content="Painel simples para editar o conteúdo do site Rio2C sem mexer no HTML."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <main class="admin-shell">
+      <header class="admin-header">
+        <div>
+          <p class="eyebrow">Manutenção de conteúdo</p>
+          <h1>Painel do Portfólio Rio2C</h1>
+          <p class="intro">
+            Edite contatos, projeto em destaque, categorias e ideias sem mexer
+            no HTML. Tudo é salvo no navegador deste computador.
+          </p>
+        </div>
+        <div class="header-actions">
+          <a class="button button-secondary" href="./index.html" target="_blank" rel="noreferrer">
+            Abrir site
+          </a>
+          <button class="button button-secondary" id="export-json" type="button">
+            Exportar JSON
+          </button>
+          <button class="button button-danger" id="reset-data" type="button">
+            Restaurar padrão
+          </button>
+        </div>
+      </header>
+
+      <form id="admin-form" class="admin-form">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Contato e envio</p>
+              <h2>Configurações gerais</h2>
+            </div>
+          </div>
+          <div class="grid grid-2">
+            <label>
+              E-mail
+              <input type="email" name="contact.email" />
+            </label>
+            <label>
+              WhatsApp
+              <input type="text" name="contact.whatsapp" />
+            </label>
+            <label>
+              Instagram
+              <input type="url" name="contact.instagram" />
+            </label>
+            <label>
+              Endpoint do formulário
+              <input type="url" name="challenge.endpoint" />
+            </label>
+            <label>
+              Assunto do fallback por e-mail
+              <input type="text" name="challenge.fallbackSubject" />
+            </label>
+          </div>
+          <label>
+            Mensagem de sucesso do formulário
+            <textarea name="challenge.successMessage" rows="3"></textarea>
+          </label>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Projeto em destaque</p>
+              <h2>Hero dos projetos</h2>
+            </div>
+          </div>
+          <div class="grid grid-2">
+            <label>
+              Título
+              <input type="text" name="featured.title" />
+            </label>
+            <label>
+              Formato
+              <input type="text" name="featured.format" />
+            </label>
+            <label>
+              Gênero
+              <input type="text" name="featured.genre" />
+            </label>
+            <label>
+              Status
+              <input type="text" name="featured.status" />
+            </label>
+            <label class="full-width">
+              Público-alvo
+              <input type="text" name="featured.audience" />
+            </label>
+          </div>
+          <label>
+            Logline
+            <textarea name="featured.logline" rows="5"></textarea>
+          </label>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Categorias e ideias</p>
+              <h2>Projetos do portfólio</h2>
+            </div>
+            <button class="button button-secondary" id="add-group" type="button">
+              Adicionar categoria
+            </button>
+          </div>
+          <div id="groups-editor" class="groups-editor"></div>
+        </section>
+
+        <footer class="sticky-actions">
+          <p class="save-status" id="save-status" aria-live="polite"></p>
+          <button class="button button-primary" type="submit">
+            Salvar alterações
+          </button>
+        </footer>
+      </form>
+    </main>
+
+    <script src="content.js"></script>
+    <script src="data-manager.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>
