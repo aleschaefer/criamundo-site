@@ -460,12 +460,14 @@ textarea {
 }
 
 .director-chair {
+  --chair-scale: 1;
   position: absolute;
   left: 50%;
   bottom: 44px;
   width: 246px;
   height: 328px;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(var(--chair-scale));
+  transform-origin: center bottom;
   filter:
     drop-shadow(0 22px 28px rgba(0, 0, 0, 0.82))
     drop-shadow(0 0 22px rgba(214, 161, 74, 0.09));
@@ -1125,7 +1127,7 @@ h3 {
   }
 
   .hero-stage {
-    min-height: 300px;
+    min-height: 340px;
     margin-top: 2px;
     border-radius: 30px;
   }
@@ -1150,9 +1152,8 @@ h3 {
   }
 
   .director-chair {
-    width: 170px;
-    height: 242px;
-    bottom: 16px;
+    --chair-scale: 0.68;
+    bottom: 20px;
   }
 
   .smoke-one {
@@ -1271,7 +1272,7 @@ h3 {
   }
 
   .hero-stage {
-    min-height: 250px;
+    min-height: 300px;
     border-radius: 24px;
   }
 
@@ -1293,9 +1294,8 @@ h3 {
   }
 
   .director-chair {
-    width: 144px;
-    height: 206px;
-    bottom: 8px;
+    --chair-scale: 0.56;
+    bottom: 16px;
   }
 
   .smoke-one {
