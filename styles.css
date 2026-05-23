@@ -639,6 +639,20 @@ textarea {
   margin-bottom: 28px;
 }
 
+.copyright-notice,
+.site-footer-note {
+  max-width: 46rem;
+  margin: 0;
+  color: rgba(244, 239, 230, 0.74);
+  line-height: 1.7;
+}
+
+.copyright-notice {
+  padding: 14px 18px;
+  border-left: 2px solid rgba(214, 161, 74, 0.46);
+  background: linear-gradient(90deg, rgba(214, 161, 74, 0.08), transparent 88%);
+}
+
 h2,
 h3 {
   margin: 0;
@@ -972,6 +986,18 @@ h3 {
   transform: translateY(-2px);
   border-color: rgba(214, 161, 74, 0.24);
   box-shadow: 0 0 18px rgba(214, 161, 74, 0.06);
+}
+
+.site-footer {
+  padding: 0 0 42px;
+}
+
+.site-footer-note {
+  padding-top: 18px;
+  border-top: 1px solid rgba(214, 161, 74, 0.16);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.74rem;
 }
 
 @media (min-width: 960px) {
