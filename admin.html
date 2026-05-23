@@ -16,8 +16,38 @@
     />
     <link rel="stylesheet" href="admin.css" />
   </head>
-  <body>
-    <main class="admin-shell">
+  <body class="admin-page is-locked">
+    <main class="auth-shell" id="auth-shell">
+      <section class="auth-card">
+        <p class="eyebrow">Acesso restrito</p>
+        <h1>Painel administrativo protegido</h1>
+        <p class="intro">
+          Digite a senha para liberar a edição local deste conteúdo. A sessão
+          permanece ativa apenas neste navegador até você sair.
+        </p>
+
+        <form id="login-form" class="auth-form">
+          <label>
+            Senha
+            <input
+              type="password"
+              id="admin-password"
+              name="password"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+
+          <p class="auth-status" id="auth-status" aria-live="polite"></p>
+
+          <button class="button button-primary" type="submit">
+            Entrar no painel
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <main class="admin-shell" id="admin-shell" hidden>
       <header class="admin-header">
         <div>
           <p class="eyebrow">Manutenção de conteúdo</p>
@@ -36,6 +66,9 @@
           </button>
           <button class="button button-danger" id="reset-data" type="button">
             Restaurar padrão
+          </button>
+          <button class="button button-secondary" id="logout-admin" type="button">
+            Sair
           </button>
         </div>
       </header>

@@ -1,5 +1,20 @@
-let adminData = loadSiteData();
+const ADMIN_PASSWORD_HASH =
+  "dc3d66e03f6b54589e1b4eec25a08049383d5a01c4c9a6fbeaf9b864016957c1";
+const ADMIN_SESSION_KEY = "rio2c-admin-session";
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_COOLDOWN_MS = 60 * 1000;
 
+let adminData = loadSiteData();
+let failedLoginAttempts = 0;
+let loginCooldownUntil = 0;
+
+const body = document.body;
+const authShell = document.querySelector("#auth-shell");
+const adminShell = document.querySelector("#admin-shell");
+const loginForm = document.querySelector("#login-form");
+const passwordField = document.querySelector("#admin-password");
+const authStatus = document.querySelector("#auth-status");
+const logoutButton = document.querySelector("#logout-admin");
 const form = document.querySelector("#admin-form");
 const groupsEditor = document.querySelector("#groups-editor");
 const saveStatus = document.querySelector("#save-status");
@@ -28,6 +43,68 @@ function createEmptyGroup() {
 function setSaveStatus(message, type = "") {
   saveStatus.textContent = message;
   saveStatus.className = `save-status${type ? ` is-${type}` : ""}`;
+}
+
+function setAuthStatus(message, type = "") {
+  authStatus.textContent = message;
+  authStatus.className = `auth-status${type ? ` is-${type}` : ""}`;
+}
+
+function updateAuthView(isAuthenticated) {
+  body.classList.toggle("is-locked", !isAuthenticated);
+  body.classList.toggle("is-unlocked", isAuthenticated);
+  adminShell.hidden = !isAuthenticated;
+  authShell.hidden = isAuthenticated;
+}
+
+function persistAuthenticatedSession() {
+  sessionStorage.setItem(ADMIN_SESSION_KEY, "authenticated");
+}
+
+function clearAuthenticatedSession() {
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+}
+
+function isAuthenticated() {
+  return sessionStorage.getItem(ADMIN_SESSION_KEY) === "authenticated";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+async function hashText(value) {
+  const bytes = new TextEncoder().encode(value);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function isValidPassword(password) {
+  const passwordHash = await hashText(password);
+  return passwordHash === ADMIN_PASSWORD_HASH;
+}
+
+function applyLoginCooldown() {
+  const remainingMs = loginCooldownUntil - Date.now();
+  if (remainingMs <= 0) {
+    passwordField.disabled = false;
+    return;
+  }
+
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  passwordField.disabled = true;
+  setAuthStatus(
+    `Muitas tentativas. Aguarde ${remainingSeconds}s para tentar novamente.`,
+    "error"
+  );
+
+  window.setTimeout(applyLoginCooldown, 1000);
 }
 
 function fillTopFields() {
@@ -68,7 +145,7 @@ function renderGroups() {
             <div>
               <p class="eyebrow">Categoria ${groupIndex + 1}</p>
               <h3>${group.category || "Nova categoria"}</h3>
-              <p class="group-count">${group.items.length} projetos nesta seção</p>
+              <p class="group-count">${group.items.length} projetos nesta secao</p>
             </div>
             <button class="button button-danger" type="button" data-action="remove-group" data-group-index="${groupIndex}">
               Remover categoria
@@ -101,7 +178,7 @@ function renderGroups() {
                       <div class="project-body">
                         <div class="grid grid-2">
                           <label>
-                            Título
+                            Titulo
                             <input type="text" data-field="title" data-group-index="${groupIndex}" data-project-index="${projectIndex}" value="${escapeHtml(
                               item.title || ""
                             )}" />
@@ -113,7 +190,7 @@ function renderGroups() {
                             )}" />
                           </label>
                           <label>
-                            Gênero
+                            Genero
                             <input type="text" data-field="genre" data-group-index="${groupIndex}" data-project-index="${projectIndex}" value="${escapeHtml(
                               item.genre || ""
                             )}" />
@@ -125,7 +202,7 @@ function renderGroups() {
                             )}" />
                           </label>
                           <label class="full-width">
-                            Público-alvo
+                            Publico-alvo
                             <input type="text" data-field="audience" data-group-index="${groupIndex}" data-project-index="${projectIndex}" value="${escapeHtml(
                               item.audience || ""
                             )}" />
@@ -154,14 +231,6 @@ function renderGroups() {
       `
     )
     .join("");
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
 
 function syncTopFieldsToState() {
@@ -205,6 +274,51 @@ function downloadJsonFile(filename, contents) {
   link.click();
   URL.revokeObjectURL(url);
 }
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (Date.now() < loginCooldownUntil) {
+    applyLoginCooldown();
+    return;
+  }
+
+  const password = passwordField.value;
+  const validPassword = await isValidPassword(password);
+
+  if (!validPassword) {
+    failedLoginAttempts += 1;
+    passwordField.value = "";
+
+    if (failedLoginAttempts >= MAX_LOGIN_ATTEMPTS) {
+      loginCooldownUntil = Date.now() + LOGIN_COOLDOWN_MS;
+      failedLoginAttempts = 0;
+      applyLoginCooldown();
+      return;
+    }
+
+    setAuthStatus("Senha incorreta. Tente novamente.", "error");
+    return;
+  }
+
+  failedLoginAttempts = 0;
+  loginCooldownUntil = 0;
+  passwordField.disabled = false;
+  persistAuthenticatedSession();
+  updateAuthView(true);
+  setAuthStatus("");
+  passwordField.value = "";
+  setSaveStatus("Painel liberado para edicao.", "success");
+});
+
+logoutButton.addEventListener("click", () => {
+  clearAuthenticatedSession();
+  updateAuthView(false);
+  passwordField.value = "";
+  passwordField.disabled = false;
+  setAuthStatus("Sessao encerrada.", "success");
+  setSaveStatus("");
+});
 
 groupsEditor.addEventListener("input", (event) => {
   const target = event.target;
@@ -273,7 +387,7 @@ resetButton.addEventListener("click", () => {
   adminData = resetSiteData();
   fillTopFields();
   renderGroups();
-  setSaveStatus("Conteúdo restaurado para o padrão inicial.", "success");
+  setSaveStatus("Conteudo restaurado para o padrao inicial.", "success");
 });
 
 form.addEventListener("submit", (event) => {
@@ -284,14 +398,19 @@ form.addEventListener("submit", (event) => {
     adminData = saveSiteData(adminData);
     renderGroups();
     setSaveStatus(
-      "Alterações salvas. Reabra o site principal para ver a versão atualizada.",
+      "Alteracoes salvas. Reabra o site principal para ver a versao atualizada.",
       "success"
     );
   } catch (error) {
     console.error(error);
-    setSaveStatus("Não foi possível salvar agora.", "error");
+    setSaveStatus("Nao foi possivel salvar agora.", "error");
   }
 });
 
 fillTopFields();
 renderGroups();
+updateAuthView(isAuthenticated());
+
+if (!isAuthenticated()) {
+  passwordField.focus();
+}

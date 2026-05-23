@@ -16,15 +16,23 @@ Mini-site one-page estático para apresentar o portfólio criativo de Alexandre 
 ## Como editar sem mexer no HTML
 
 1. Abra `admin.html`
-2. Edite contatos, destaque, categorias e projetos
-3. Clique em `Salvar alterações`
-4. Abra ou recarregue `index.html`
+2. Digite a senha do painel
+3. Edite contatos, destaque, categorias e projetos
+4. Clique em `Salvar alterações`
+5. Abra ou recarregue `index.html`
 
 ## Como funciona
 
 - O site lê os dados salvos no `localStorage` do navegador
 - Se não houver nada salvo, ele usa o conteúdo padrão de `content.js`
 - Isso significa que a edição fica vinculada a este navegador/dispositivo
+
+## Proteção da área admin
+
+- O painel agora exige senha antes de liberar a edição.
+- Senha inicial do projeto: `TroqueAgora!2026`
+- A validação é feita no navegador e protege contra acesso casual, especialmente em computador compartilhado.
+- Como este projeto é estático, isso não substitui autenticação real no servidor. Se `admin.html` for publicado na internet, o ideal é proteger a rota com senha no provedor de hospedagem ou não publicar esse arquivo.
 
 ## Ações disponíveis no painel
 
