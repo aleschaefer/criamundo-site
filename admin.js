@@ -40,6 +40,31 @@ function createEmptyGroup() {
   };
 }
 
+function moveItem(array, fromIndex, toIndex) {
+  if (
+    !Array.isArray(array) ||
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= array.length ||
+    toIndex >= array.length ||
+    fromIndex === toIndex
+  ) {
+    return;
+  }
+
+  const [item] = array.splice(fromIndex, 1);
+  array.splice(toIndex, 0, item);
+}
+
+function normalizePosition(value, listLength) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return 0;
+  }
+
+  return Math.min(Math.max(Math.floor(parsed) - 1, 0), Math.max(listLength - 1, 0));
+}
+
 function setSaveStatus(message, type = "") {
   saveStatus.textContent = message;
   saveStatus.className = `save-status${type ? ` is-${type}` : ""}`;
@@ -147,9 +172,29 @@ function renderGroups() {
               <h3>${group.category || "Nova categoria"}</h3>
               <p class="group-count">${group.items.length} projetos nesta secao</p>
             </div>
-            <button class="button button-danger" type="button" data-action="remove-group" data-group-index="${groupIndex}">
-              Remover categoria
-            </button>
+            <div class="order-actions">
+              <label class="order-label">
+                Posicao
+                <input
+                  class="order-input"
+                  type="number"
+                  min="1"
+                  max="${adminData.projectGroups.length}"
+                  value="${groupIndex + 1}"
+                  data-action="move-group-to"
+                  data-group-index="${groupIndex}"
+                />
+              </label>
+              <button class="button button-secondary" type="button" data-action="move-group-up" data-group-index="${groupIndex}">
+                Subir
+              </button>
+              <button class="button button-secondary" type="button" data-action="move-group-down" data-group-index="${groupIndex}">
+                Descer
+              </button>
+              <button class="button button-danger" type="button" data-action="remove-group" data-group-index="${groupIndex}">
+                Remover categoria
+              </button>
+            </div>
           </div>
 
           <div class="group-body">
@@ -170,9 +215,30 @@ function renderGroups() {
                           <p class="eyebrow">Projeto ${projectIndex + 1}</p>
                           <h3>${item.title || "Novo projeto"}</h3>
                         </div>
-                        <button class="button button-danger" type="button" data-action="remove-project" data-group-index="${groupIndex}" data-project-index="${projectIndex}">
-                          Remover projeto
-                        </button>
+                        <div class="order-actions">
+                          <label class="order-label">
+                            Posicao
+                            <input
+                              class="order-input"
+                              type="number"
+                              min="1"
+                              max="${group.items.length}"
+                              value="${projectIndex + 1}"
+                              data-action="move-project-to"
+                              data-group-index="${groupIndex}"
+                              data-project-index="${projectIndex}"
+                            />
+                          </label>
+                          <button class="button button-secondary" type="button" data-action="move-project-up" data-group-index="${groupIndex}" data-project-index="${projectIndex}">
+                            Subir
+                          </button>
+                          <button class="button button-secondary" type="button" data-action="move-project-down" data-group-index="${groupIndex}" data-project-index="${projectIndex}">
+                            Descer
+                          </button>
+                          <button class="button button-danger" type="button" data-action="remove-project" data-group-index="${groupIndex}" data-project-index="${projectIndex}">
+                            Remover projeto
+                          </button>
+                        </div>
                       </div>
 
                       <div class="project-body">
@@ -352,6 +418,30 @@ groupsEditor.addEventListener("click", (event) => {
     adminData.projectGroups[groupIndex].items.push(createEmptyProject());
   }
 
+  if (action === "move-group-up") {
+    moveItem(adminData.projectGroups, groupIndex, groupIndex - 1);
+  }
+
+  if (action === "move-group-down") {
+    moveItem(adminData.projectGroups, groupIndex, groupIndex + 1);
+  }
+
+  if (action === "move-project-up") {
+    moveItem(
+      adminData.projectGroups[groupIndex].items,
+      projectIndex,
+      projectIndex - 1
+    );
+  }
+
+  if (action === "move-project-down") {
+    moveItem(
+      adminData.projectGroups[groupIndex].items,
+      projectIndex,
+      projectIndex + 1
+    );
+  }
+
   if (action === "remove-project") {
     adminData.projectGroups[groupIndex].items.splice(projectIndex, 1);
     if (adminData.projectGroups[groupIndex].items.length === 0) {
@@ -367,6 +457,31 @@ groupsEditor.addEventListener("click", (event) => {
   }
 
   renderGroups();
+});
+
+groupsEditor.addEventListener("change", (event) => {
+  const target = event.target;
+  const action = target.dataset.action;
+
+  if (!action) {
+    return;
+  }
+
+  if (action === "move-group-to") {
+    const groupIndex = Number(target.dataset.groupIndex);
+    const nextIndex = normalizePosition(target.value, adminData.projectGroups.length);
+    moveItem(adminData.projectGroups, groupIndex, nextIndex);
+    renderGroups();
+  }
+
+  if (action === "move-project-to") {
+    const groupIndex = Number(target.dataset.groupIndex);
+    const projectIndex = Number(target.dataset.projectIndex);
+    const projects = adminData.projectGroups[groupIndex].items;
+    const nextIndex = normalizePosition(target.value, projects.length);
+    moveItem(projects, projectIndex, nextIndex);
+    renderGroups();
+  }
 });
 
 addGroupButton.addEventListener("click", () => {

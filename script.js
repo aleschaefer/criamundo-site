@@ -1,4 +1,4 @@
-const siteData = loadSiteData();
+const siteData = loadPublishedSiteData();
 const { siteConfig, featuredProject, projectGroups } = siteData;
 
 const contactItems = [

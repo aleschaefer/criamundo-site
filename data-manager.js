@@ -61,6 +61,10 @@ function loadSiteData() {
   }
 }
 
+function loadPublishedSiteData() {
+  return cloneSiteData(defaultSiteData);
+}
+
 function saveSiteData(data) {
   const normalized = normalizeSiteData(data);
   localStorage.setItem(SITE_STORAGE_KEY, JSON.stringify(normalized));

@@ -169,6 +169,25 @@ h3 {
   align-content: flex-start;
 }
 
+.order-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.order-label {
+  min-width: 96px;
+  gap: 6px;
+  font-size: 0.84rem;
+}
+
+.order-input {
+  min-width: 84px;
+  padding: 10px 12px;
+}
+
 .admin-form {
   display: grid;
   gap: 20px;
