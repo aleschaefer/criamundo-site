@@ -679,6 +679,24 @@ h3 {
   gap: 18px;
 }
 
+.challenge-layout {
+  grid-template-columns: minmax(0, 1.16fr) minmax(360px, 440px);
+  align-items: start;
+  gap: 28px;
+}
+
+.challenge-heading {
+  margin-bottom: 0;
+  align-self: start;
+  padding-top: 6px;
+}
+
+.challenge-heading h2 {
+  max-width: 8ch;
+  font-size: clamp(4rem, 8vw, 6.2rem);
+  line-height: 0.92;
+}
+
 .about-card,
 .about-note,
 .featured-project,
@@ -1006,6 +1024,11 @@ h3 {
     padding-top: 28px;
   }
 
+  .challenge-form {
+    position: sticky;
+    top: 108px;
+  }
+
   .hero-stage {
     min-height: 560px;
     margin-top: -120px;
@@ -1224,6 +1247,10 @@ h3 {
     max-width: 100%;
     font-size: clamp(2.05rem, 10vw, 3.2rem);
     line-height: 1;
+  }
+
+  .challenge-heading {
+    padding-top: 0;
   }
 
   .about-card p,
