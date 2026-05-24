@@ -1,10 +1,11 @@
 const ADMIN_PASSWORD_HASH =
   "dc3d66e03f6b54589e1b4eec25a08049383d5a01c4c9a6fbeaf9b864016957c1";
 const ADMIN_SESSION_KEY = "rio2c-admin-session";
+const ADMIN_PASSWORD_STORAGE_KEY = "rio2c-admin-password";
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_COOLDOWN_MS = 60 * 1000;
 
-let adminData = loadSiteData();
+let adminData = createEmptySiteData();
 let failedLoginAttempts = 0;
 let loginCooldownUntil = 0;
 
@@ -19,6 +20,10 @@ const form = document.querySelector("#admin-form");
 const groupsEditor = document.querySelector("#groups-editor");
 const saveStatus = document.querySelector("#save-status");
 const exportButton = document.querySelector("#export-json");
+const exportPublishedButton = document.querySelector("#export-published");
+const importJsonButton = document.querySelector("#import-json");
+const importJsonFile = document.querySelector("#import-json-file");
+const restoreBackupButton = document.querySelector("#restore-backup");
 const resetButton = document.querySelector("#reset-data");
 const addGroupButton = document.querySelector("#add-group");
 
@@ -86,12 +91,21 @@ function persistAuthenticatedSession() {
   sessionStorage.setItem(ADMIN_SESSION_KEY, "authenticated");
 }
 
+function persistAdminPassword(password) {
+  sessionStorage.setItem(ADMIN_PASSWORD_STORAGE_KEY, password);
+}
+
 function clearAuthenticatedSession() {
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_PASSWORD_STORAGE_KEY);
 }
 
 function isAuthenticated() {
   return sessionStorage.getItem(ADMIN_SESSION_KEY) === "authenticated";
+}
+
+function getStoredAdminPassword() {
+  return sessionStorage.getItem(ADMIN_PASSWORD_STORAGE_KEY) || "";
 }
 
 function escapeHtml(value) {
@@ -332,13 +346,22 @@ function syncTopFieldsToState() {
 }
 
 function downloadJsonFile(filename, contents) {
-  const blob = new Blob([contents], { type: "application/json" });
+  downloadTextFile(filename, contents, "application/json");
+}
+
+function downloadTextFile(filename, contents, type) {
+  const blob = new Blob([contents], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+async function importJsonFileContents(file) {
+  const text = await file.text();
+  return normalizeSiteData(JSON.parse(text));
 }
 
 loginForm.addEventListener("submit", async (event) => {
@@ -371,6 +394,7 @@ loginForm.addEventListener("submit", async (event) => {
   loginCooldownUntil = 0;
   passwordField.disabled = false;
   persistAuthenticatedSession();
+  persistAdminPassword(password);
   updateAuthView(true);
   setAuthStatus("");
   passwordField.value = "";
@@ -498,6 +522,56 @@ exportButton.addEventListener("click", () => {
   setSaveStatus("JSON exportado com sucesso.", "success");
 });
 
+exportPublishedButton.addEventListener("click", () => {
+  syncTopFieldsToState();
+  downloadTextFile(
+    "content.xml",
+    buildSiteXml(adminData),
+    "application/xml"
+  );
+  setSaveStatus(
+    "XML exportado com sucesso.",
+    "success"
+  );
+});
+
+importJsonButton.addEventListener("click", () => {
+  importJsonFile.click();
+});
+
+importJsonFile.addEventListener("change", async (event) => {
+  const [file] = event.target.files || [];
+  if (!file) {
+    return;
+  }
+
+  try {
+    adminData = await importJsonFileContents(file);
+    adminData = saveSiteData(adminData);
+    fillTopFields();
+    renderGroups();
+    setSaveStatus("JSON importado e salvo com sucesso.", "success");
+  } catch (error) {
+    console.error(error);
+    setSaveStatus("Nao foi possivel importar o JSON.", "error");
+  } finally {
+    importJsonFile.value = "";
+  }
+});
+
+restoreBackupButton.addEventListener("click", () => {
+  const backup = restoreLatestSiteBackup();
+  if (!backup) {
+    setSaveStatus("Nenhum backup local foi encontrado.", "error");
+    return;
+  }
+
+  adminData = cloneSiteData(backup.data);
+  fillTopFields();
+  renderGroups();
+  setSaveStatus("Ultimo backup restaurado com sucesso.", "success");
+});
+
 resetButton.addEventListener("click", () => {
   adminData = resetSiteData();
   fillTopFields();
@@ -507,25 +581,57 @@ resetButton.addEventListener("click", () => {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
+  publishAdminData().catch((error) => {
+    console.error(error);
+    setSaveStatus(error.message || "Nao foi possivel publicar agora.", "error");
+  });
+});
 
+async function publishAdminData() {
   try {
     syncTopFieldsToState();
+    const adminPassword = getStoredAdminPassword();
+    if (!adminPassword) {
+      throw new Error("Sua sessao expirou. Entre novamente para publicar.");
+    }
+
+    await savePublishedSiteData(adminData, adminPassword);
     adminData = saveSiteData(adminData);
     renderGroups();
     setSaveStatus(
-      "Alteracoes salvas. Reabra o site principal para ver a versao atualizada.",
+      "Alteracoes publicadas e backup local atualizado com sucesso.",
       "success"
     );
   } catch (error) {
-    console.error(error);
-    setSaveStatus("Nao foi possivel salvar agora.", "error");
+    throw error;
   }
-});
-
-fillTopFields();
-renderGroups();
-updateAuthView(isAuthenticated());
-
-if (!isAuthenticated()) {
-  passwordField.focus();
 }
+
+async function initializeAdmin() {
+  try {
+    adminData = await loadPublishedSiteData();
+  } catch (error) {
+    console.error(error);
+    adminData = loadSiteData();
+    setSaveStatus(
+      "Nao foi possivel carregar o XML publicado. Exibindo o ultimo backup local.",
+      "error"
+    );
+  }
+
+  fillTopFields();
+  renderGroups();
+  updateAuthView(isAuthenticated());
+
+  if (!isAuthenticated()) {
+    passwordField.focus();
+  }
+}
+
+initializeAdmin().catch((error) => {
+  console.error(error);
+  adminData = loadSiteData();
+  fillTopFields();
+  renderGroups();
+  updateAuthView(isAuthenticated());
+});

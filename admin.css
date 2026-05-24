@@ -153,6 +153,14 @@ h3 {
   line-height: 1.7;
 }
 
+.draft-note {
+  margin: 0;
+  max-width: 620px;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
 .header-actions,
 .panel-heading,
 .group-header,
@@ -320,11 +328,16 @@ textarea {
 .sticky-actions {
   position: sticky;
   bottom: 18px;
+  flex-wrap: wrap;
   padding: 16px 18px;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: rgba(10, 10, 10, 0.94);
   backdrop-filter: blur(14px);
+}
+
+.sticky-actions .draft-note {
+  flex-basis: 100%;
 }
 
 @media (max-width: 860px) {

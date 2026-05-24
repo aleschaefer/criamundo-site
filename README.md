@@ -1,65 +1,91 @@
-# Portfólio Rio2C
+# Portfolio Rio2C
 
-Mini-site one-page estático para apresentar o portfólio criativo de Alexandre Schaefer.
+Mini-site one-page para apresentar o portfolio criativo de Alexandre Schaefer.
+
+## Arquitetura atual
+
+- O site publico passa a ler o conteudo principal em XML UTF-8.
+- A persistencia principal deve ficar no Cloudflare D1, acessada por Pages Functions.
+- O `admin.html` publica esse XML pelo backend e o backend cria um backup automatico em tabela de historico antes de sobrescrever o conteudo principal.
+- O navegador continua mantendo rascunho e backups locais apenas como camada extra de seguranca.
 
 ## Arquivos principais
 
-- `index.html`: site público
-- `styles.css`: visual do site público
-- `script.js`: renderização do site público
-- `admin.html`: painel de manutenção do conteúdo
+- `index.html`: site publico
+- `styles.css`: visual do site publico
+- `script.js`: renderizacao do site publico
+- `admin.html`: painel de manutencao
 - `admin.css`: visual do painel
-- `admin.js`: lógica do painel
-- `content.js`: conteúdo padrão inicial
-- `data-manager.js`: leitura e gravação dos dados no navegador
+- `admin.js`: logica do painel
+- `data-manager.js`: utilitarios compartilhados de XML, API e backups locais
+- `content.js`: fallback legado usado apenas se nenhum XML publicado estiver disponivel
+- `functions/api/content.js`: leitura publica do XML
+- `functions/api/admin/content.js`: gravacao protegida do XML com backup automatico
+- `schema.sql`: schema inicial do banco D1
 
-## Como editar sem mexer no HTML
+## Fluxo de conteudo
 
 1. Abra `admin.html`
 2. Digite a senha do painel
 3. Edite contatos, destaque, categorias e projetos
-4. Clique em `Salvar alterações`
-5. Abra ou recarregue `index.html`
+4. Clique em `Salvar alteracoes`
+5. O painel envia o XML para o backend da Cloudflare
+6. O backend cria backup do XML atual no D1 e grava a nova versao publicada
 
-## Como funciona
+## Fluxo de seguranca extra
 
-- O site lê os dados salvos no `localStorage` do navegador
-- Se não houver nada salvo, ele usa o conteúdo padrão de `content.js`
-- Isso significa que a edição fica vinculada a este navegador/dispositivo
+- `Salvar alteracoes`: publica no backend e tambem salva backup local no navegador
+- `Exportar XML`: baixa uma copia manual do XML atual
+- `Exportar JSON`: baixa um snapshot em JSON
+- `Importar JSON`: restaura dados a partir de um arquivo JSON
+- `Restaurar backup`: recupera o backup local mais recente do navegador
 
-## Proteção da área admin
+## Cloudflare Pages
 
-- O painel agora exige senha antes de liberar a edição.
-- Senha inicial do projeto: `TroqueAgora!2026`
-- A validação é feita no navegador e protege contra acesso casual, especialmente em computador compartilhado.
-- Como este projeto é estático, isso não substitui autenticação real no servidor. Se `admin.html` for publicado na internet, o ideal é proteger a rota com senha no provedor de hospedagem ou não publicar esse arquivo.
+Voce precisa configurar estes itens no projeto do Cloudflare Pages:
 
-## Ações disponíveis no painel
+### 1. D1 Database
 
-- adicionar categoria
-- remover categoria
-- adicionar projeto
-- remover projeto
-- editar todos os campos dos projetos
-- exportar um JSON com os dados atuais
-- restaurar o conteúdo padrão
+Crie um banco D1, por exemplo:
 
-## Formulário
+- `criamundo-content`
 
-Há dois modos de envio:
+Depois execute o schema deste repositorio:
 
-1. Fallback por e-mail
-   Basta preencher `siteConfig.contact.email`.
+- arquivo: `schema.sql`
 
-2. Endpoint externo
-   Preencha `siteConfig.challengeForm.endpoint` com um endpoint próprio, FormSubmit, Netlify Forms, serverless function ou backend.
+### 2. Binding no Pages
 
-## Publicação
+No projeto Pages, adicione um binding D1:
 
-Pode ser hospedado em:
+- Binding name: `CONTENT_DB`
+- Database: o banco criado acima
 
-- Vercel
-- Netlify
-- Cloudflare Pages
-- WordPress como página estática
-- servidor próprio
+### 3. Variavel de ambiente
+
+Adicione uma variavel de ambiente no Pages:
+
+- `ADMIN_PASSWORD`
+
+Ela deve ser a senha em texto puro usada para publicar pelo `admin.html`.
+
+## Endpoints
+
+- `GET /api/content`: retorna o XML publicado
+- `POST /api/admin/content`: valida senha, cria backup e publica novo XML
+
+## XML
+
+O XML publicado usa UTF-8:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+```
+
+Isso garante compatibilidade com acentuacao em portugues BR.
+
+## Observacoes
+
+- Se o backend/D1 ainda nao estiver configurado, o site pode cair no fallback legado de `content.js`.
+- O `localStorage` nao e mais a fonte principal de publicacao.
+- O modo `?preview=local` continua servindo para revisar rascunhos locais no mesmo navegador.

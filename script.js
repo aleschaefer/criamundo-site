@@ -1,27 +1,9 @@
 const previewMode = new URLSearchParams(window.location.search).get("preview");
-const hasLocalDraft = hasSavedSiteData();
-const usePublishedData = previewMode === "published";
-const useLocalDraft = previewMode === "local" || (!usePublishedData && hasLocalDraft);
-const siteData = useLocalDraft ? loadSiteData() : loadPublishedSiteData();
-const { siteConfig, featuredProject, projectGroups } = siteData;
-
-const contactItems = [
-  {
-    label: "E-mail",
-    value: formatContactDisplay("email", siteConfig.contact.email),
-    href: `mailto:${siteConfig.contact.email}`
-  },
-  {
-    label: "WhatsApp",
-    value: formatContactDisplay("whatsapp", siteConfig.contact.whatsapp),
-    href: buildWhatsappLink(siteConfig.contact.whatsapp)
-  },
-  {
-    label: "Instagram",
-    value: formatContactDisplay("instagram", siteConfig.contact.instagram),
-    href: siteConfig.contact.instagram
-  }
-];
+const useLocalDraft = previewMode === "local";
+let siteData = createEmptySiteData();
+let siteConfig = siteData.siteConfig;
+let featuredProject = siteData.featuredProject;
+let projectGroups = siteData.projectGroups;
 
 function formatContactDisplay(type, value) {
   const text = String(value || "").trim();
@@ -148,6 +130,24 @@ function renderProjectGroups() {
 
 function renderContacts() {
   const container = document.querySelector("#contact-grid");
+  const contactItems = [
+    {
+      label: "E-mail",
+      value: formatContactDisplay("email", siteConfig.contact.email),
+      href: `mailto:${siteConfig.contact.email}`
+    },
+    {
+      label: "WhatsApp",
+      value: formatContactDisplay("whatsapp", siteConfig.contact.whatsapp),
+      href: buildWhatsappLink(siteConfig.contact.whatsapp)
+    },
+    {
+      label: "Instagram",
+      value: formatContactDisplay("instagram", siteConfig.contact.instagram),
+      href: siteConfig.contact.instagram
+    }
+  ];
+
   container.innerHTML = contactItems
     .map(
       (item) => `
@@ -324,9 +324,29 @@ function setupPreviewBanner() {
   }
 }
 
-setupPreviewBanner();
-renderFeaturedProject();
-renderProjectGroups();
-renderContacts();
-bindForm();
-bindTopbarScroll();
+async function initializeSite() {
+  siteData = useLocalDraft ? loadSiteData() : await loadPublishedSiteData();
+  siteConfig = siteData.siteConfig;
+  featuredProject = siteData.featuredProject;
+  projectGroups = siteData.projectGroups;
+
+  setupPreviewBanner();
+  renderFeaturedProject();
+  renderProjectGroups();
+  renderContacts();
+  bindForm();
+  bindTopbarScroll();
+}
+
+initializeSite().catch((error) => {
+  console.error(error);
+  siteData = normalizeSiteData(legacyDefaultSiteData);
+  siteConfig = siteData.siteConfig;
+  featuredProject = siteData.featuredProject;
+  projectGroups = siteData.projectGroups;
+  renderFeaturedProject();
+  renderProjectGroups();
+  renderContacts();
+  bindForm();
+  bindTopbarScroll();
+});

@@ -69,12 +69,22 @@
           <button class="button button-secondary" id="export-json" type="button">
             Exportar JSON
           </button>
+          <button class="button button-secondary" id="export-published" type="button">
+            Exportar XML
+          </button>
+          <button class="button button-secondary" id="import-json" type="button">
+            Importar JSON
+          </button>
+          <button class="button button-secondary" id="restore-backup" type="button">
+            Restaurar backup
+          </button>
           <button class="button button-danger" id="reset-data" type="button">
             Restaurar padrão
           </button>
           <button class="button button-secondary" id="logout-admin" type="button">
             Sair
           </button>
+          <input id="import-json-file" type="file" accept=".json,application/json" hidden />
         </div>
       </header>
 
@@ -175,6 +185,9 @@
         </section>
 
         <footer class="sticky-actions">
+          <p class="draft-note">
+            Salvar alteracoes publica o XML no backend da Cloudflare e cria backup local neste navegador. Use Exportar XML para baixar uma copia manual de seguranca.
+          </p>
           <p class="save-status" id="save-status" aria-live="polite"></p>
           <button class="button button-primary" type="submit">
             Salvar alterações
