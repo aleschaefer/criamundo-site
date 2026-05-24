@@ -1,4 +1,5 @@
-const siteData = loadPublishedSiteData();
+const previewMode = new URLSearchParams(window.location.search).get("preview");
+const siteData = previewMode === "local" ? loadSiteData() : loadPublishedSiteData();
 const { siteConfig, featuredProject, projectGroups } = siteData;
 
 const contactItems = [
@@ -308,6 +309,19 @@ function bindTopbarScroll() {
   window.addEventListener("scroll", updateTopbar, { passive: true });
 }
 
+function setupPreviewBanner() {
+  if (previewMode !== "local") {
+    return;
+  }
+
+  document.body.classList.add("is-preview");
+  const banner = document.querySelector("#preview-banner");
+  if (banner) {
+    banner.hidden = false;
+  }
+}
+
+setupPreviewBanner();
 renderFeaturedProject();
 renderProjectGroups();
 renderContacts();

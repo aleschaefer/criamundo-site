@@ -87,6 +87,37 @@ textarea {
   margin: 0 auto;
 }
 
+.preview-banner {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  border-bottom: 1px solid rgba(214, 161, 74, 0.28);
+  background: linear-gradient(90deg, rgba(214, 161, 74, 0.18), rgba(115, 79, 21, 0.18));
+  backdrop-filter: blur(12px);
+}
+
+.preview-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 0;
+  color: #f9efd8;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+}
+
+.preview-banner-inner strong {
+  color: var(--gold-strong);
+}
+
+body.is-preview .topbar {
+  top: 48px;
+}
+
 .topbar {
   position: sticky;
   top: 0;
@@ -1040,6 +1071,12 @@ h3 {
     width: min(calc(100% - 26px), var(--max-width));
   }
 
+  .preview-banner-inner {
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 0;
+  }
+
   .topbar-inner,
   .about-layout,
   .challenge-layout,
@@ -1083,6 +1120,10 @@ h3 {
 @media (max-width: 560px) {
   .site-shell {
     width: min(calc(100% - 20px), var(--max-width));
+  }
+
+  body.is-preview .topbar {
+    top: 64px;
   }
 
   .topbar {
