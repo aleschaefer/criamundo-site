@@ -1,0 +1,8 @@
+.git
+.git/**
+functions
+functions/**
+schema.sql
+README.md
+worker.js
+wrangler.jsonc

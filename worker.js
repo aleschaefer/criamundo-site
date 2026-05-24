@@ -8,25 +8,68 @@ function jsonResponse(payload, status = 200) {
   });
 }
 
+function xmlResponse(xmlText, status = 200) {
+  return new Response(xmlText, {
+    status,
+    headers: {
+      "Content-Type": "application/xml; charset=UTF-8",
+      "Cache-Control": "no-store, no-cache, must-revalidate"
+    }
+  });
+}
+
+function textResponse(message, status = 200) {
+  return new Response(message, {
+    status,
+    headers: {
+      "Content-Type": "text/plain; charset=UTF-8",
+      "Cache-Control": "no-store, no-cache, must-revalidate"
+    }
+  });
+}
+
 function isValidXmlPayload(xmlText) {
   return Boolean(xmlText.trim()) && xmlText.includes("<?xml") && xmlText.includes("<siteData>");
 }
 
-export async function onRequestPost(context) {
-  const database = context.env.CONTENT_DB;
-  const adminPassword = context.env.ADMIN_PASSWORD;
-  const providedPassword = context.request.headers.get("x-admin-password");
+async function handleGetContent(env) {
+  const database = env.CONTENT_DB;
+
+  if (!database) {
+    return textResponse("Binding CONTENT_DB nao configurado no Cloudflare Workers.", 503);
+  }
+
+  const result = await database
+    .prepare(
+      `SELECT xml_content
+       FROM site_content
+       WHERE id = 1
+       LIMIT 1`
+    )
+    .first();
+
+  if (!result || !result.xml_content) {
+    return textResponse("Content XML not found.", 404);
+  }
+
+  return xmlResponse(result.xml_content);
+}
+
+async function handlePostContent(request, env) {
+  const database = env.CONTENT_DB;
+  const adminPassword = env.ADMIN_PASSWORD;
+  const providedPassword = request.headers.get("x-admin-password");
 
   if (!database) {
     return jsonResponse(
-      { error: "Binding CONTENT_DB nao configurado no Cloudflare Pages." },
+      { error: "Binding CONTENT_DB nao configurado no Cloudflare Workers." },
       503
     );
   }
 
   if (!adminPassword) {
     return jsonResponse(
-      { error: "Variavel ADMIN_PASSWORD nao configurada no Cloudflare Pages." },
+      { error: "Variavel ADMIN_PASSWORD nao configurada no Cloudflare Workers." },
       503
     );
   }
@@ -35,7 +78,7 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: "Senha administrativa invalida." }, 401);
   }
 
-  const xmlText = await context.request.text();
+  const xmlText = await request.text();
   if (!isValidXmlPayload(xmlText)) {
     return jsonResponse({ error: "Formato de XML invalido." }, 400);
   }
@@ -83,3 +126,19 @@ export async function onRequestPost(context) {
     message: "XML publicado no D1 com backup automatico criado."
   });
 }
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/content" && request.method === "GET") {
+      return handleGetContent(env);
+    }
+
+    if (url.pathname === "/api/admin/content" && request.method === "POST") {
+      return handlePostContent(request, env);
+    }
+
+    return env.ASSETS.fetch(request);
+  }
+};

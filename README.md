@@ -5,7 +5,7 @@ Mini-site one-page para apresentar o portfolio criativo de Alexandre Schaefer.
 ## Arquitetura atual
 
 - O site publico passa a ler o conteudo principal em XML UTF-8.
-- A persistencia principal deve ficar no Cloudflare D1, acessada por Pages Functions.
+- A persistencia principal deve ficar no Cloudflare D1, acessada por um Worker com assets estaticos.
 - O `admin.html` publica esse XML pelo backend e o backend cria um backup automatico em tabela de historico antes de sobrescrever o conteudo principal.
 - O navegador continua mantendo rascunho e backups locais apenas como camada extra de seguranca.
 
@@ -19,8 +19,9 @@ Mini-site one-page para apresentar o portfolio criativo de Alexandre Schaefer.
 - `admin.js`: logica do painel
 - `data-manager.js`: utilitarios compartilhados de XML, API e backups locais
 - `content.js`: fallback legado usado apenas se nenhum XML publicado estiver disponivel
-- `functions/api/content.js`: leitura publica do XML
-- `functions/api/admin/content.js`: gravacao protegida do XML com backup automatico
+- `worker.js`: rotas da API e entrega dos assets estaticos
+- `wrangler.jsonc`: configuracao do Worker e dos assets
+- `.assetsignore`: arquivos que nao devem ser publicados como assets
 - `schema.sql`: schema inicial do banco D1
 
 ## Fluxo de conteudo
@@ -40,9 +41,9 @@ Mini-site one-page para apresentar o portfolio criativo de Alexandre Schaefer.
 - `Importar JSON`: restaura dados a partir de um arquivo JSON
 - `Restaurar backup`: recupera o backup local mais recente do navegador
 
-## Cloudflare Pages
+## Cloudflare Workers
 
-Voce precisa configurar estes itens no projeto do Cloudflare Pages:
+Voce precisa configurar estes itens no projeto `criamundo-site` no Cloudflare Workers:
 
 ### 1. D1 Database
 
@@ -56,14 +57,14 @@ Depois execute o schema deste repositorio:
 
 ### 2. Binding no Pages
 
-No projeto Pages, adicione um binding D1:
+No projeto Worker, adicione um binding D1:
 
 - Binding name: `CONTENT_DB`
 - Database: o banco criado acima
 
 ### 3. Variavel de ambiente
 
-Adicione uma variavel de ambiente no Pages:
+Adicione uma variavel de ambiente no Worker:
 
 - `ADMIN_PASSWORD`
 
@@ -86,6 +87,6 @@ Isso garante compatibilidade com acentuacao em portugues BR.
 
 ## Observacoes
 
-- Se o backend/D1 ainda nao estiver configurado, o site pode cair no fallback legado de `content.js`.
+- Se o Worker/D1 ainda nao estiver configurado, o site pode cair no fallback legado de `content.js`.
 - O `localStorage` nao e mais a fonte principal de publicacao.
 - O modo `?preview=local` continua servindo para revisar rascunhos locais no mesmo navegador.
