@@ -61,6 +61,15 @@ function loadSiteData() {
   }
 }
 
+function hasSavedSiteData() {
+  try {
+    return Boolean(localStorage.getItem(SITE_STORAGE_KEY));
+  } catch (error) {
+    console.error("Nao foi possivel verificar os dados salvos.", error);
+    return false;
+  }
+}
+
 function loadPublishedSiteData() {
   return cloneSiteData(defaultSiteData);
 }

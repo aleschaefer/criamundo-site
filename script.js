@@ -1,5 +1,8 @@
 const previewMode = new URLSearchParams(window.location.search).get("preview");
-const siteData = previewMode === "local" ? loadSiteData() : loadPublishedSiteData();
+const hasLocalDraft = hasSavedSiteData();
+const usePublishedData = previewMode === "published";
+const useLocalDraft = previewMode === "local" || (!usePublishedData && hasLocalDraft);
+const siteData = useLocalDraft ? loadSiteData() : loadPublishedSiteData();
 const { siteConfig, featuredProject, projectGroups } = siteData;
 
 const contactItems = [
@@ -310,7 +313,7 @@ function bindTopbarScroll() {
 }
 
 function setupPreviewBanner() {
-  if (previewMode !== "local") {
+  if (!useLocalDraft) {
     return;
   }
 
