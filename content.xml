@@ -1,144 +1,144 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <siteData>
-  <siteConfig>
-    <contact>
-      <email>alexandre@seuemail.com</email>
-      <whatsapp>+55 21 99999-9999</whatsapp>
-      <instagram>https://www.instagram.com/seu.perfil</instagram>
-    </contact>
-    <challengeForm>
-      <endpoint></endpoint>
-      <accessKey></accessKey>
-      <successMessage>Seu desafio criativo chegou ao CRIAMUNDO.</successMessage>
-      <fallbackSubject>Desafio criativo Rio2C</fallbackSubject>
-      <fromName>CRIAMUNDO</fromName>
-      <subject>Novo desafio criativo recebido</subject>
-    </challengeForm>
-  </siteConfig>
-  <featuredProject>
-    <title>Invisível</title>
-    <format>Curta-metragem, com potencial de expansão para longa</format>
-    <genre>Tragicomédia contemporânea</genre>
-    <logline>Invisível acompanha um jovem adulto que vive à margem do mundo real e virtual. Quando aceita um ritual para finalmente ser visto, ele descobre que o excesso de olhares também pode ser uma prisão. Uma tragicomédia sobre presença, validação e reconexão consigo mesmo.</logline>
-    <status>Em desenvolvimento</status>
-    <audience>Jovens adultos e público conectado</audience>
-  </featuredProject>
-  <projectGroups>
-    <group>
-      <category>Ideias para curta-metragem</category>
-      <items>
-        <item>
-          <title>Apartamento 909</title>
-          <format>Curta-metragem</format>
-          <genre>Drama psicológico</genre>
-          <logline>Após ouvir todas as noites a mesma discussão no apartamento ao lado, um homem solitário decide intervir e descobre que talvez esteja tentando salvar uma versão de si mesmo.</logline>
-          <status>Pronto para desenvolvimento</status>
-          <audience>Festivais e público adulto</audience>
-        </item>
-        <item>
-          <title>Modo Avião</title>
-          <format>Curta-metragem</format>
-          <genre>Comédia dramática</genre>
-          <logline>Uma influenciadora perde o sinal no interior justo no fim de um relacionamento público e precisa reaprender a existir sem plateia.</logline>
-          <status>Pronto para pitch</status>
-          <audience>Jovens adultos e streaming</audience>
-        </item>
-        <item>
-          <title>Silêncio de Elevador</title>
-          <format>Curta-metragem</format>
-          <genre>Suspense social</genre>
-          <logline>Presos por duas horas num elevador corporativo, cinco desconhecidos começam a revelar camadas de violência cordial que preferiam manter invisíveis.</logline>
-          <status>Em desenvolvimento</status>
-          <audience>Festivais e público urbano</audience>
-        </item>
-        <item>
-          <title>Domingo Sem Notificação</title>
-          <format>Curta-metragem</format>
-          <genre>Tragicomédia</genre>
-          <logline>No único dia em que seu celular para de tocar, uma mãe divorciada percebe que construiu a vida inteira respondendo aos outros.</logline>
-          <status>Pronto para parceria</status>
-          <audience>Público adulto contemporâneo</audience>
-        </item>
-        <item>
-          <title>Corredor</title>
-          <format>Curta-metragem</format>
-          <genre>Drama intimista</genre>
-          <logline>Durante a vigília do pai, dois irmãos que mal se falam atravessam um corredor de hospital onde memórias e ressentimentos finalmente encontram voz.</logline>
-          <status>Em lapidação</status>
-          <audience>Festivais e canais culturais</audience>
-        </item>
-      </items>
-    </group>
-    <group>
-      <category>Ideias para longa-metragem</category>
-      <items>
-        <item>
-          <title>Permanência</title>
-          <format>Longa-metragem</format>
-          <genre>Drama contemporâneo</genre>
-          <logline>Quando uma terapeuta holística começa a perder a própria capacidade de presença, ela embarca numa jornada afetiva que expõe as fissuras entre discurso, desejo e verdade.</logline>
-          <status>Em desenvolvimento</status>
-          <audience>Público adulto e festivais</audience>
-        </item>
-        <item>
-          <title>A Cidade Que Olha</title>
-          <format>Longa-metragem</format>
-          <genre>Drama com realismo fantástico</genre>
-          <logline>Num bairro monitorado por câmeras comunitárias, um jovem desaparece socialmente antes de desaparecer fisicamente, obrigando os vizinhos a encarar o preço de vigiar sem ver.</logline>
-          <status>Pronto para coprodução</status>
-          <audience>Mercado autoral e streaming</audience>
-        </item>
-        <item>
-          <title>Quarto de Fundo</title>
-          <format>Longa-metragem</format>
-          <genre>Tragicomédia familiar</genre>
-          <logline>Ao voltar para vender a casa da infância, um homem encontra no antigo quarto de empregada as peças de um passado que sua família sempre tratou como detalhe.</logline>
-          <status>Pronto para conversa</status>
-          <audience>Público adulto e curadoria</audience>
-        </item>
-      </items>
-    </group>
-    <group>
-      <category>Ideias para série</category>
-      <items>
-        <item>
-          <title>Ruído Branco</title>
-          <format>Série</format>
-          <genre>Drama coral</genre>
-          <logline>Profissionais de um hub de bem-estar lidam com o esgotamento alheio enquanto escondem o próprio colapso emocional em uma cidade obcecada por performance.</logline>
-          <status>Bíblia em construção</status>
-          <audience>Streaming e público 25+</audience>
-        </item>
-        <item>
-          <title>Presença Online</title>
-          <format>Série</format>
-          <genre>Dramédia</genre>
-          <logline>Depois de viralizar por acidente, um professor discreto se torna conselheiro involuntário de uma geração ansiosa e passa a negociar fama, ética e pertencimento.</logline>
-          <status>Conceito validado</status>
-          <audience>Jovens adultos e plataformas digitais</audience>
-        </item>
-        <item>
-          <title>Entre Andares</title>
-          <format>Série</format>
-          <genre>Drama urbano</genre>
-          <logline>Moradores de um prédio em transformação revelam suas intimidades por trás das paredes finas enquanto a especulação imobiliária ameaça apagar suas histórias.</logline>
-          <status>Pronta para desenvolvimento</status>
-          <audience>Público urbano e players premium</audience>
-        </item>
-      </items>
-    </group>
-    <group>
-      <category>Ideia para reality show</category>
-      <items>
-        <item>
-          <title>Pitch de Dentro</title>
-          <format>Reality show</format>
-          <genre>Reality criativo</genre>
-          <logline>Criadores de diferentes áreas recebem provocações emocionais e desafios narrativos para transformar vivências reais em ideias audiovisuais apresentáveis em tempo recorde.</logline>
-          <status>Conceito aberto a parceria</status>
-          <audience>Mercado criativo, branded content e streaming</audience>
-        </item>
-      </items>
-    </group>
-  </projectGroups>
+   <siteConfig>
+      <contact>
+         <email>aleschaefer@gmail.com</email>
+         <whatsapp>+55 48 99151-5598</whatsapp>
+         <instagram>https://www.instagram.com/aleschaefer</instagram>
+      </contact>
+      <challengeForm>
+         <endpoint />
+         <accessKey />
+         <successMessage>Seu desafio criativo chegou ao CRIAMUNDO.</successMessage>
+         <fallbackSubject>Desafio criativo Rio2C</fallbackSubject>
+         <fromName>CRIAMUNDO</fromName>
+         <subject>Novo desafio criativo recebido</subject>
+      </challengeForm>
+   </siteConfig>
+   <featuredProject>
+      <title>Invisível</title>
+      <format>Curta-metragem, com potencial de expansão para longa</format>
+      <genre>Tragicomédia contemporânea</genre>
+      <logline>Invisível acompanha um jovem adulto que vive à margem do mundo real e virtual. Quando aceita um ritual para finalmente ser visto, ele descobre que o excesso de olhares também pode ser uma prisão. Uma tragicomédia sobre presença, validação e reconexão consigo mesmo.</logline>
+      <status>Em desenvolvimento</status>
+      <audience>Jovens adultos e público conectado</audience>
+   </featuredProject>
+   <projectGroups>
+      <group>
+         <category>Ideias para curta-metragem</category>
+         <items>
+            <item>
+               <title>Apartamento 909</title>
+               <format>Curta-metragem</format>
+               <genre>Drama psicológico</genre>
+               <logline>Após ouvir todas as noites a mesma discussão no apartamento ao lado, um homem solitário decide intervir e descobre que talvez esteja tentando salvar uma versão de si mesmo.</logline>
+               <status>Pronto para desenvolvimento</status>
+               <audience>Festivais e público adulto</audience>
+            </item>
+            <item>
+               <title>Modo Avião</title>
+               <format>Curta-metragem</format>
+               <genre>Comédia dramática</genre>
+               <logline>Uma influenciadora perde o sinal no interior justo no fim de um relacionamento público e precisa reaprender a existir sem plateia.</logline>
+               <status>Pronto para pitch</status>
+               <audience>Jovens adultos e streaming</audience>
+            </item>
+            <item>
+               <title>Silêncio de Elevador</title>
+               <format>Curta-metragem</format>
+               <genre>Suspense social</genre>
+               <logline>Presos por duas horas num elevador corporativo, cinco desconhecidos começam a revelar camadas de violência cordial que preferiam manter invisíveis.</logline>
+               <status>Em desenvolvimento</status>
+               <audience>Festivais e público urbano</audience>
+            </item>
+            <item>
+               <title>Domingo Sem Notificação</title>
+               <format>Curta-metragem</format>
+               <genre>Tragicomédia</genre>
+               <logline>No único dia em que seu celular para de tocar, uma mãe divorciada percebe que construiu a vida inteira respondendo aos outros.</logline>
+               <status>Pronto para parceria</status>
+               <audience>Público adulto contemporâneo</audience>
+            </item>
+            <item>
+               <title>Corredor</title>
+               <format>Curta-metragem</format>
+               <genre>Drama intimista</genre>
+               <logline>Durante a vigília do pai, dois irmãos que mal se falam atravessam um corredor de hospital onde memórias e ressentimentos finalmente encontram voz.</logline>
+               <status>Em lapidação</status>
+               <audience>Festivais e canais culturais</audience>
+            </item>
+         </items>
+      </group>
+      <group>
+         <category>Ideias para longa-metragem</category>
+         <items>
+            <item>
+               <title>Permanência</title>
+               <format>Longa-metragem</format>
+               <genre>Drama contemporâneo</genre>
+               <logline>Quando uma terapeuta holística começa a perder a própria capacidade de presença, ela embarca numa jornada afetiva que expõe as fissuras entre discurso, desejo e verdade.</logline>
+               <status>Em desenvolvimento</status>
+               <audience>Público adulto e festivais</audience>
+            </item>
+            <item>
+               <title>A Cidade Que Olha</title>
+               <format>Longa-metragem</format>
+               <genre>Drama com realismo fantástico</genre>
+               <logline>Num bairro monitorado por câmeras comunitárias, um jovem desaparece socialmente antes de desaparecer fisicamente, obrigando os vizinhos a encarar o preço de vigiar sem ver.</logline>
+               <status>Pronto para coprodução</status>
+               <audience>Mercado autoral e streaming</audience>
+            </item>
+            <item>
+               <title>Quarto de Fundo</title>
+               <format>Longa-metragem</format>
+               <genre>Tragicomédia familiar</genre>
+               <logline>Ao voltar para vender a casa da infância, um homem encontra no antigo quarto de empregada as peças de um passado que sua família sempre tratou como detalhe.</logline>
+               <status>Pronto para conversa</status>
+               <audience>Público adulto e curadoria</audience>
+            </item>
+         </items>
+      </group>
+      <group>
+         <category>Ideias para série</category>
+         <items>
+            <item>
+               <title>Ruído Branco</title>
+               <format>Série</format>
+               <genre>Drama coral</genre>
+               <logline>Profissionais de um hub de bem-estar lidam com o esgotamento alheio enquanto escondem o próprio colapso emocional em uma cidade obcecada por performance.</logline>
+               <status>Bíblia em construção</status>
+               <audience>Streaming e público 25+</audience>
+            </item>
+            <item>
+               <title>Presença Online</title>
+               <format>Série</format>
+               <genre>Dramédia</genre>
+               <logline>Depois de viralizar por acidente, um professor discreto se torna conselheiro involuntário de uma geração ansiosa e passa a negociar fama, ética e pertencimento.</logline>
+               <status>Conceito validado</status>
+               <audience>Jovens adultos e plataformas digitais</audience>
+            </item>
+            <item>
+               <title>Entre Andares</title>
+               <format>Série</format>
+               <genre>Drama urbano</genre>
+               <logline>Moradores de um prédio em transformação revelam suas intimidades por trás das paredes finas enquanto a especulação imobiliária ameaça apagar suas histórias.</logline>
+               <status>Pronta para desenvolvimento</status>
+               <audience>Público urbano e players premium</audience>
+            </item>
+         </items>
+      </group>
+      <group>
+         <category>Ideia para reality show</category>
+         <items>
+            <item>
+               <title>Pitch de Dentro</title>
+               <format>Reality show</format>
+               <genre>Reality criativo</genre>
+               <logline>Criadores de diferentes áreas recebem provocações emocionais e desafios narrativos para transformar vivências reais em ideias audiovisuais apresentáveis em tempo recorde.</logline>
+               <status>Conceito aberto a parceria</status>
+               <audience>Mercado criativo, branded content e streaming</audience>
+            </item>
+         </items>
+      </group>
+   </projectGroups>
 </siteData>

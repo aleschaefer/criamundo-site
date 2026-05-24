@@ -3,6 +3,7 @@ const SITE_BACKUP_STORAGE_KEY = "rio2c-site-data-backups";
 const MAX_SITE_BACKUPS = 20;
 const CONTENT_API_PATH = "/api/content";
 const ADMIN_CONTENT_API_PATH = "/api/admin/content";
+const ADMIN_LATEST_BACKUP_API_PATH = "/api/admin/latest-backup";
 const STATIC_CONTENT_XML_PATH = "./content.xml";
 
 function createEmptySiteData() {
@@ -230,6 +231,42 @@ async function fetchTextOrThrow(url) {
   return response.text();
 }
 
+async function loadPublishedSiteXml() {
+  return fetchTextOrThrow(CONTENT_API_PATH);
+}
+
+async function loadLatestPublishedBackupSiteData(adminPassword) {
+  const response = await fetch(ADMIN_LATEST_BACKUP_API_PATH, {
+    method: "GET",
+    headers: {
+      Accept: "application/xml, text/xml, text/plain, application/json",
+      "x-admin-password": adminPassword
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let message = "Nao foi possivel carregar o backup publicado.";
+
+    if (errorText) {
+      try {
+        const errorPayload = JSON.parse(errorText);
+        if (errorPayload && errorPayload.error) {
+          message = errorPayload.error;
+        }
+      } catch (error) {
+        message = errorText;
+      }
+    }
+
+    throw new Error(message);
+  }
+
+  const xmlText = await response.text();
+  return parseSiteXml(xmlText);
+}
+
 async function loadPublishedSiteData() {
   try {
     const xmlText = await fetchTextOrThrow(CONTENT_API_PATH);
@@ -241,6 +278,16 @@ async function loadPublishedSiteData() {
     } catch (xmlError) {
       return normalizeSiteData(legacyDefaultSiteData);
     }
+  }
+}
+
+async function loadStaticSiteData() {
+  try {
+    const xmlText = await fetchTextOrThrow(STATIC_CONTENT_XML_PATH);
+    return parseSiteXml(xmlText);
+  } catch (error) {
+    console.error("Nao foi possivel carregar o XML base estatico.", error);
+    return normalizeSiteData(legacyDefaultSiteData);
   }
 }
 
@@ -307,9 +354,11 @@ function saveSiteData(data) {
   return normalized;
 }
 
-function resetSiteData() {
+async function resetSiteData() {
   localStorage.removeItem(SITE_STORAGE_KEY);
-  return normalizeSiteData(legacyDefaultSiteData);
+  const staticData = await loadStaticSiteData();
+  localStorage.setItem(SITE_STORAGE_KEY, JSON.stringify(staticData));
+  return staticData;
 }
 
 function restoreLatestSiteBackup() {

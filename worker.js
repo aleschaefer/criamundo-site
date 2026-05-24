@@ -127,6 +127,45 @@ async function handlePostContent(request, env) {
   });
 }
 
+async function handleGetLatestBackup(request, env) {
+  const database = env.CONTENT_DB;
+  const adminPassword = env.ADMIN_PASSWORD;
+  const providedPassword = request.headers.get("x-admin-password");
+
+  if (!database) {
+    return jsonResponse(
+      { error: "Binding CONTENT_DB nao configurado no Cloudflare Workers." },
+      503
+    );
+  }
+
+  if (!adminPassword) {
+    return jsonResponse(
+      { error: "Variavel ADMIN_PASSWORD nao configurada no Cloudflare Workers." },
+      503
+    );
+  }
+
+  if (!providedPassword || providedPassword !== adminPassword) {
+    return jsonResponse({ error: "Senha administrativa invalida." }, 401);
+  }
+
+  const latestBackup = await database
+    .prepare(
+      `SELECT id, content_id, xml_content, created_at
+       FROM site_content_backups
+       ORDER BY created_at DESC
+       LIMIT 1`
+    )
+    .first();
+
+  if (!latestBackup || !latestBackup.xml_content) {
+    return jsonResponse({ error: "Nenhum backup publicado foi encontrado." }, 404);
+  }
+
+  return xmlResponse(latestBackup.xml_content);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -137,6 +176,10 @@ export default {
 
     if (url.pathname === "/api/admin/content" && request.method === "POST") {
       return handlePostContent(request, env);
+    }
+
+    if (url.pathname === "/api/admin/latest-backup" && request.method === "GET") {
+      return handleGetLatestBackup(request, env);
     }
 
     return env.ASSETS.fetch(request);

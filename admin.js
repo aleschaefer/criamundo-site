@@ -21,6 +21,7 @@ const groupsEditor = document.querySelector("#groups-editor");
 const saveStatus = document.querySelector("#save-status");
 const exportButton = document.querySelector("#export-json");
 const exportPublishedButton = document.querySelector("#export-published");
+const downloadLiveXmlButton = document.querySelector("#download-live-xml");
 const importJsonButton = document.querySelector("#import-json");
 const importJsonFile = document.querySelector("#import-json-file");
 const restoreBackupButton = document.querySelector("#restore-backup");
@@ -535,6 +536,17 @@ exportPublishedButton.addEventListener("click", () => {
   );
 });
 
+downloadLiveXmlButton.addEventListener("click", async () => {
+  try {
+    const xmlText = await loadPublishedSiteXml();
+    downloadTextFile("content.xml", xmlText, "application/xml");
+    setSaveStatus("XML publicado baixado com sucesso.", "success");
+  } catch (error) {
+    console.error(error);
+    setSaveStatus("Nao foi possivel baixar o XML publicado.", "error");
+  }
+});
+
 importJsonButton.addEventListener("click", () => {
   importJsonFile.click();
 });
@@ -559,24 +571,37 @@ importJsonFile.addEventListener("change", async (event) => {
   }
 });
 
-restoreBackupButton.addEventListener("click", () => {
-  const backup = restoreLatestSiteBackup();
-  if (!backup) {
-    setSaveStatus("Nenhum backup local foi encontrado.", "error");
-    return;
-  }
+restoreBackupButton.addEventListener("click", async () => {
+  try {
+    const adminPassword = getStoredAdminPassword();
+    if (!adminPassword) {
+      throw new Error("Sua sessao expirou. Entre novamente para restaurar.");
+    }
 
-  adminData = cloneSiteData(backup.data);
-  fillTopFields();
-  renderGroups();
-  setSaveStatus("Ultimo backup restaurado com sucesso.", "success");
+    adminData = await loadLatestPublishedBackupSiteData(adminPassword);
+    adminData = saveSiteData(adminData);
+    fillTopFields();
+    renderGroups();
+    setSaveStatus("Ultimo backup publicado restaurado com sucesso.", "success");
+  } catch (error) {
+    console.error(error);
+    setSaveStatus(
+      error.message || "Nao foi possivel restaurar o backup publicado.",
+      "error"
+    );
+  }
 });
 
-resetButton.addEventListener("click", () => {
-  adminData = resetSiteData();
-  fillTopFields();
-  renderGroups();
-  setSaveStatus("Conteudo restaurado para o padrao inicial.", "success");
+resetButton.addEventListener("click", async () => {
+  try {
+    adminData = await resetSiteData();
+    fillTopFields();
+    renderGroups();
+    setSaveStatus("Conteudo restaurado a partir do content.xml base.", "success");
+  } catch (error) {
+    console.error(error);
+    setSaveStatus("Nao foi possivel restaurar o content.xml base.", "error");
+  }
 });
 
 form.addEventListener("submit", (event) => {
