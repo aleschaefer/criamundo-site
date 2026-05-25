@@ -166,6 +166,24 @@ async function handleGetLatestBackup(request, env) {
   return xmlResponse(latestBackup.xml_content);
 }
 
+async function handleAdminAuth(request, env) {
+  const adminPassword = env.ADMIN_PASSWORD;
+  const providedPassword = request.headers.get("x-admin-password");
+
+  if (!adminPassword) {
+    return jsonResponse(
+      { error: "Variavel ADMIN_PASSWORD nao configurada no Cloudflare Workers." },
+      503
+    );
+  }
+
+  if (!providedPassword || providedPassword !== adminPassword) {
+    return jsonResponse({ error: "Senha administrativa invalida." }, 401);
+  }
+
+  return jsonResponse({ ok: true, message: "Autenticacao validada." });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -180,6 +198,10 @@ export default {
 
     if (url.pathname === "/api/admin/latest-backup" && request.method === "GET") {
       return handleGetLatestBackup(request, env);
+    }
+
+    if (url.pathname === "/api/admin/auth" && request.method === "POST") {
+      return handleAdminAuth(request, env);
     }
 
     return env.ASSETS.fetch(request);

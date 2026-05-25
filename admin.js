@@ -1,9 +1,8 @@
-const ADMIN_PASSWORD_HASH =
-  "dc3d66e03f6b54589e1b4eec25a08049383d5a01c4c9a6fbeaf9b864016957c1";
 const ADMIN_SESSION_KEY = "rio2c-admin-session";
 const ADMIN_PASSWORD_STORAGE_KEY = "rio2c-admin-password";
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_COOLDOWN_MS = 60 * 1000;
+const ADMIN_AUTH_API_PATH = "/api/admin/auth";
 
 let adminData = createEmptySiteData();
 let failedLoginAttempts = 0;
@@ -117,17 +116,39 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
-async function hashText(value) {
-  const bytes = new TextEncoder().encode(value);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
+async function validateAdminPassword(password) {
+  const response = await fetch(ADMIN_AUTH_API_PATH, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "x-admin-password": password
+    },
+    cache: "no-store"
+  });
 
-async function isValidPassword(password) {
-  const passwordHash = await hashText(password);
-  return passwordHash === ADMIN_PASSWORD_HASH;
+  if (response.ok) {
+    return true;
+  }
+
+  if (response.status === 401) {
+    return false;
+  }
+
+  const errorText = await response.text();
+  let message = "Nao foi possivel validar a senha do painel.";
+
+  if (errorText) {
+    try {
+      const errorPayload = JSON.parse(errorText);
+      if (errorPayload && errorPayload.error) {
+        message = errorPayload.error;
+      }
+    } catch (error) {
+      message = errorText;
+    }
+  }
+
+  throw new Error(message);
 }
 
 function applyLoginCooldown() {
@@ -373,33 +394,41 @@ loginForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const password = passwordField.value;
-  const validPassword = await isValidPassword(password);
+  try {
+    const password = passwordField.value;
+    const validPassword = await validateAdminPassword(password);
 
-  if (!validPassword) {
-    failedLoginAttempts += 1;
-    passwordField.value = "";
+    if (!validPassword) {
+      failedLoginAttempts += 1;
+      passwordField.value = "";
 
-    if (failedLoginAttempts >= MAX_LOGIN_ATTEMPTS) {
-      loginCooldownUntil = Date.now() + LOGIN_COOLDOWN_MS;
-      failedLoginAttempts = 0;
-      applyLoginCooldown();
+      if (failedLoginAttempts >= MAX_LOGIN_ATTEMPTS) {
+        loginCooldownUntil = Date.now() + LOGIN_COOLDOWN_MS;
+        failedLoginAttempts = 0;
+        applyLoginCooldown();
+        return;
+      }
+
+      setAuthStatus("Senha incorreta. Tente novamente.", "error");
       return;
     }
 
-    setAuthStatus("Senha incorreta. Tente novamente.", "error");
-    return;
+    failedLoginAttempts = 0;
+    loginCooldownUntil = 0;
+    passwordField.disabled = false;
+    persistAuthenticatedSession();
+    persistAdminPassword(password);
+    updateAuthView(true);
+    setAuthStatus("");
+    passwordField.value = "";
+    setSaveStatus("Painel liberado para edicao.", "success");
+  } catch (error) {
+    console.error(error);
+    setAuthStatus(
+      error.message || "Nao foi possivel validar o acesso do painel.",
+      "error"
+    );
   }
-
-  failedLoginAttempts = 0;
-  loginCooldownUntil = 0;
-  passwordField.disabled = false;
-  persistAuthenticatedSession();
-  persistAdminPassword(password);
-  updateAuthView(true);
-  setAuthStatus("");
-  passwordField.value = "";
-  setSaveStatus("Painel liberado para edicao.", "success");
 });
 
 logoutButton.addEventListener("click", () => {
