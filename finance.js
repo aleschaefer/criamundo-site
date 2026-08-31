@@ -30,7 +30,7 @@ import { assetAllocation } from './finance-allocation.mjs';
       for (const input of form.elements) input.disabled = busy || !data;
     });
     marketFields();
-    transactionForm.querySelector('button').disabled = busy || !data?.assets.length;
+    transactionControls();
     $('#finance-refresh').disabled = busy;
     section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], #finance-filter-clear').forEach(button => { button.disabled = busy; });
   }
@@ -125,14 +125,10 @@ import { assetAllocation } from './finance-allocation.mjs';
     $('#finance-history-empty').hidden = transactions.length > 0;
     $('#finance-assets').replaceChildren();
     $('#finance-history').replaceChildren();
-    const selection = transactionForm.elements.assetId.value;
-    transactionForm.elements.assetId.replaceChildren(new Option(data.assets.length ? 'Selecione um ativo' : 'Cadastre um ativo primeiro', ''));
     data.assets.forEach(asset => {
       if (selectedAssetType === null || asset.assetType === selectedAssetType) row($('#finance-assets'), [asset.name, types[asset.assetType], quantity(asset.quantity), money(asset.averagePrice), [1, 2].includes(asset.assetType) ? money(asset.currentPrice) : '—', [1, 2].includes(asset.assetType) ? incomeMoney(asset.currentIncome) : '—', [1, 2].includes(asset.assetType) ? yieldPercent(asset.currentDy) : '—', [1, 2].includes(asset.assetType) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
-      transactionForm.elements.assetId.add(new Option(`${asset.name} · ${types[asset.assetType]}`, asset.id));
     });
-    transactionForm.elements.assetId.value = selection;
-    updateType();
+    updateTransactionAssets();
     [...transactions].reverse().forEach(item => row($('#finance-history'), [formatTransactionDate(item.transactionDate), new Date(item.createdAt).toLocaleString('pt-BR'), item.name, types[item.assetType], quantity(item.quantity), money(item.value)], 'transaction', item));
   }
   async function request(action) {
@@ -187,7 +183,7 @@ import { assetAllocation } from './finance-allocation.mjs';
     } else {
       editingTransaction = null; transactionForm.reset(); transactionForm.elements.transactionDate.value = todayInSaoPaulo(); transactionRequestId = crypto.randomUUID();
       $('#finance-transaction-title').textContent = 'Incluir transações'; $('#finance-transaction-cancel').hidden = true;
-      transactionForm.querySelector('[type="submit"]').textContent = 'Salvar transação'; updateType();
+      transactionForm.querySelector('[type="submit"]').textContent = 'Salvar transação'; updateTransactionAssets();
     }
   }
   function editRecord(kind, record) {
@@ -207,12 +203,12 @@ import { assetAllocation } from './finance-allocation.mjs';
     } else {
       clearEdit(kind); editingTransaction = { ...record };
       const fields = transactionForm.elements;
-      fields.assetId.value = record.assetId; fields.quantity.value = record.quantity;
+      fields.assetType.value = record.assetType; updateTransactionAssets(record.assetId); fields.quantity.value = record.quantity;
       fields.transactionDate.value = record.transactionDate || '';
       fields.unitPrice.value = (record.value / record.quantity).toFixed(2);
       $('#finance-transaction-title').textContent = 'Editar transação'; $('#finance-transaction-cancel').hidden = false;
       transactionForm.querySelector('[type="submit"]').textContent = 'Salvar alterações';
-      updateType(); total(transactionForm, 'unitPrice', 'value'); view('transaction'); fields.quantity.focus();
+      total(transactionForm, 'unitPrice', 'value'); view('transaction'); fields.quantity.focus();
       if (Math.round(Number(fields.unitPrice.value) * 100) * record.quantity !== Math.round(record.value * 100)) {
         message('O valor unitário deste registro antigo foi arredondado para duas casas. Confira o novo total antes de salvar.');
       }
@@ -260,14 +256,31 @@ import { assetAllocation } from './finance-allocation.mjs';
     const value = Number(form.elements.quantity.value) * Math.round(Number(form.elements[price].value) * 100) / 100;
     form.elements[output].value = Number.isFinite(value) ? money(value) : 'Valor inválido';
   }
-  function updateType() {
-    const asset = data?.assets.find(item => item.id === transactionForm.elements.assetId.value);
-    transactionForm.elements.assetTypeLabel.value = asset ? types[asset.assetType] : '';
+  function transactionControls() {
+    const fields = transactionForm.elements;
+    const type = Number(fields.assetType.value);
+    const choices = data?.assets.filter(asset => asset.assetType === type) || [];
+    fields.assetId.disabled = busy || !data || choices.length === 0;
+    transactionForm.querySelector('[type="submit"]').disabled = busy || !data || !choices.some(asset => asset.id === fields.assetId.value);
+  }
+  function updateTransactionAssets(selection = transactionForm.elements.assetId.value) {
+    const fields = transactionForm.elements;
+    const type = Number(fields.assetType.value);
+    const choices = data?.assets.filter(asset => asset.assetType === type) || [];
+    const placeholder = !type ? 'Selecione primeiro o tipo' : choices.length ? 'Selecione um ativo' : 'Nenhum ativo deste tipo';
+    fields.assetId.replaceChildren(new Option(placeholder, ''));
+    choices.forEach(asset => fields.assetId.add(new Option(asset.name, asset.id)));
+    fields.assetId.value = choices.some(asset => asset.id === selection) ? selection : '';
+    $('#finance-transaction-asset-hint').textContent = !type ? 'Selecione primeiro o tipo de ativo.'
+      : choices.length ? `Exibindo apenas ativos do tipo ${types[type]}.`
+      : `Nenhum ativo do tipo ${types[type]} cadastrado. Cadastre um ativo ou escolha outro tipo.`;
+    transactionControls();
   }
   assetForm.addEventListener('input', () => { assetRequestId = crypto.randomUUID(); if (editingAsset?.transactionCount) assetForm.elements.total.value = money(editingAsset.total); else total(assetForm, 'averagePrice'); marketFields(); });
   assetForm.elements.assetType.addEventListener('change', marketFields);
-  transactionForm.addEventListener('input', () => { transactionRequestId = crypto.randomUUID(); updateType(); total(transactionForm, 'unitPrice', 'value'); });
-  transactionForm.elements.assetId.addEventListener('change', updateType);
+  transactionForm.addEventListener('input', () => { transactionRequestId = crypto.randomUUID(); transactionControls(); total(transactionForm, 'unitPrice', 'value'); });
+  transactionForm.elements.assetType.addEventListener('change', () => { transactionRequestId = crypto.randomUUID(); updateTransactionAssets(''); });
+  transactionForm.elements.assetId.addEventListener('change', transactionControls);
   assetForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!data || busy) return;
@@ -294,5 +307,6 @@ import { assetAllocation } from './finance-allocation.mjs';
     renderAllocation(); message(''); controls(); area(false); view('overview');
   });
   transactionForm.elements.transactionDate.value = todayInSaoPaulo();
+  updateTransactionAssets();
   controls();
 })();

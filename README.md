@@ -200,7 +200,9 @@ no mesmo tipo ou o botão **Mostrar todos** remove o filtro. Selecionar outro ti
 troca o filtro; a legenda selecionada fica destacada e os botões funcionam por teclado.
 
 O gráfico e os totais da carteira não mudam com o filtro, somente as duas listas.
-O formulário de transações continua oferecendo todos os ativos cadastrados. O filtro
+O formulário de transações tem um seletor próprio de Tipo, independente do filtro da
+legenda: ele oferece somente os ativos cadastrados do tipo escolhido. Trocar o tipo
+limpa a seleção anterior de ativo; tipos sem ativos mostram um aviso e impedem salvar. O filtro
 permanece ao atualizar/salvar registros durante a sessão e é limpo ao sair do admin.
 Esta alteração não exige migração de banco.
 

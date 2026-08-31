@@ -124,10 +124,10 @@
         </form>
         <form id="finance-transaction" class="finance-form" hidden>
           <h3 id="finance-transaction-title">Incluir transações</h3>
-          <p class="draft-note">Informe a quantidade e o valor unitário da compra. O total é calculado automaticamente. A quantidade e o valor são somados ao ativo; o preço médio é recalculado automaticamente. Nome e tipo são herdados do ativo selecionado.</p>
+          <p class="draft-note">Informe a quantidade e o valor unitário da compra. O total é calculado automaticamente. A quantidade e o valor são somados ao ativo; o preço médio é recalculado automaticamente. Escolha primeiro o tipo e depois um dos ativos cadastrados nessa categoria.</p>
           <div class="grid grid-2">
-            <label>Nome do ativo<select name="assetId" required></select></label>
-            <label>Tipo<input name="assetTypeLabel" readonly placeholder="Selecione um ativo" /></label>
+            <label>Tipo<select name="assetType" required><option value="">Selecione um tipo</option><option value="1">Ação</option><option value="2">FII</option><option value="3">Renda Fixa</option><option value="4">BDR</option><option value="5">Outro</option></select></label>
+            <label>Nome do ativo<select name="assetId" required aria-describedby="finance-transaction-asset-hint"></select><small id="finance-transaction-asset-hint" role="status">Selecione primeiro o tipo de ativo.</small></label>
             <label>Data da transação<input name="transactionDate" type="date" min="0001-01-01" max="9999-12-31" required /><small>Selecione no calendário a data em que a transação ocorreu.</small></label>
             <label>Quantidade<input name="quantity" type="number" min="1" max="2147483647" step="1" required inputmode="decimal" /></label>
             <label>Valor unitário (R$)<input name="unitPrice" type="number" min="0" max="999999.99" step="0.01" required inputmode="decimal" /></label>
