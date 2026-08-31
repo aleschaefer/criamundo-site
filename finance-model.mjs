@@ -20,9 +20,11 @@ export function validateAction(action) {
     const blank = value => value === undefined || value === null || value === '';
     const currentPrice = marketFields && !blank(action.currentPrice)
       ? moneyCents(action.currentPrice, 999999.99, 'Valor atual') / 100 : null;
-    const currentDy = marketFields && !blank(action.currentDy)
-      ? moneyCents(action.currentDy, 999999.99, 'DY atual') / 100 : 0;
-    return { ...action, name, currentPrice, currentDy, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
+    const currentIncome = marketFields && !blank(action.currentIncome) ? action.currentIncome : 0;
+    if (typeof currentIncome !== 'number' || !Number.isFinite(currentIncome) || currentIncome < 0 || currentIncome > 99.99999 || Math.abs(currentIncome * 100000 - Math.round(currentIncome * 100000)) > 0.000001) {
+      throw new Error('Rendimento atual: informe um valor entre 0 e 99,99999, com até 5 casas decimais.');
+    }
+    return { ...action, name, currentPrice, currentIncome: Math.round(currentIncome * 100000) / 100000, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
   }
   if (typeof action.assetId !== 'string' || !action.assetId) throw new Error('Selecione um ativo.');
   return { ...action, value: moneyCents(action.value, 99999999.99, 'Valor') / 100 };

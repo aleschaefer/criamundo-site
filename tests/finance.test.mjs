@@ -4,14 +4,17 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { validateAction } from '../finance-model.mjs';
 import { handleFinance } from '../finance-api.mjs';
+import { calculateYields } from '../finance-yield.mjs';
 import { assetAllocation } from '../finance-allocation.mjs';
 const migration = readFileSync(new URL('../migrations/0001_finance.sql', import.meta.url), 'utf8');
 const marketMigration = readFileSync(new URL('../migrations/0002_asset_market_fields.sql', import.meta.url), 'utf8');
+const incomeMigration = readFileSync(new URL('../migrations/0003_asset_income.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
   sql.exec(migration);
   sql.exec(marketMigration);
+  sql.exec(incomeMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -105,38 +108,37 @@ test('script único pode ser reaplicado sem alterar saldos e histórico', () => 
   assert.equal(asset.value, 40);
   assert.equal(sql.prepare("SELECT count(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'finance_state'").get().count, 0);
 });
-test('valor atual e DY opcionais, explícitos e restritos a Ação/FII', async () => {
+test('rendimento com cinco casas, DY calculados e restrição a Ação/FII', async () => {
   for (const assetType of [1, 2]) {
     const env = envFor();
     const omitted = asset({ assetType });
-    let response = await handleFinance(request(omitted), env);
-    let data = await response.json();
-    assert.equal(data.assets[0].currentPrice, 20);
+    let data = await (await handleFinance(request(omitted), env)).json();
+    assert.equal(data.assets[0].currentIncome, 0);
     assert.equal(data.assets[0].currentDy, 0);
-    // O padrão acompanha a média recalculada.
-    data = await (await handleFinance(request(transaction(omitted.id)), env)).json();
-    assert.equal(data.assets[0].currentPrice, 25);
-    const explicit = asset({ name: 'Cotação', assetType, currentPrice: 45.67, currentDy: 8.91 });
-    await handleFinance(request(explicit), env);
+    assert.equal(data.assets[0].averageDy, 0);
+    const explicit = asset({ name: 'Cotação', assetType, currentPrice: 25, currentIncome: 0.12345, currentDy: 999, averageDy: 999 });
+    data = await (await handleFinance(request(explicit), env)).json();
+    let saved = data.assets.find(item => item.id === explicit.id);
+    assert.equal(saved.currentIncome, 0.12345);
+    assert.equal(saved.currentDy, 0.12345 / 25 * 100);
+    assert.equal(saved.averageDy, 0.12345 / 20 * 100);
     data = await (await handleFinance(request(transaction(explicit.id)), env)).json();
-    const saved = data.assets.find(item => item.id === explicit.id);
-    assert.equal(saved.currentPrice, 45.67);
-    assert.equal(saved.currentDy, 8.91);
+    saved = data.assets.find(item => item.id === explicit.id);
     assert.equal(saved.averagePrice, 25);
-    const zero = validateAction(asset({ assetType, currentPrice: 0, currentDy: 0 }));
-    assert.equal(zero.currentPrice, 0);
-    assert.equal(zero.currentDy, 0);
-    const blank = validateAction(asset({ assetType, currentPrice: '', currentDy: '' }));
-    assert.equal(blank.currentPrice, null);
-    assert.equal(blank.currentDy, 0);
-    for (const values of [{ currentPrice: -1 }, { currentPrice: 1.001 }, { currentPrice: 1000000 }, { currentDy: -1 }, { currentDy: NaN }, { currentDy: 1.001 }]) {
+    assert.equal(saved.averageDy, saved.currentDy);
+    assert.equal(saved.currentIncome, 0.12345);
+    const zero = validateAction(asset({ assetType, currentPrice: 0, currentIncome: 0 }));
+    assert.equal(zero.currentPrice, 0); assert.equal(zero.currentIncome, 0);
+    const blank = validateAction(asset({ assetType, currentPrice: '', currentIncome: '' }));
+    assert.equal(blank.currentPrice, null); assert.equal(blank.currentIncome, 0);
+    for (const values of [{ currentPrice: -1 }, { currentPrice: 1.001 }, { currentPrice: 1000000 }, { currentIncome: -1 }, { currentIncome: NaN }, { currentIncome: 0.123456 }, { currentIncome: 100 }]) {
       assert.throws(() => validateAction(asset({ assetType, ...values })));
     }
+    assert.equal(validateAction(asset({ assetType, currentIncome: 99.99999 })).currentIncome, 99.99999);
   }
   for (const assetType of [3, 4, 5]) {
-    const value = validateAction(asset({ assetType, currentPrice: 100, currentDy: 10 }));
-    assert.equal(value.currentPrice, null);
-    assert.equal(value.currentDy, 0);
+    const value = validateAction(asset({ assetType, currentPrice: 100, currentIncome: 10 }));
+    assert.equal(value.currentPrice, null); assert.equal(value.currentIncome, 0);
   }
 });
 test('migração preserva registros e aplica os padrões aos ativos existentes', () => {
@@ -169,4 +171,33 @@ test('pizza agrupa custos em centavos para os cinco tipos sem usar a cotação',
   assert.deepEqual(allocation.map(item => item.percent), [25, 25, 50, 0, 0]);
   assert.ok(assetAllocation([]).every(item => item.percent === 0));
   assert.equal(assetAllocation([{ assetType: 2, total: 10 }])[1].percent, 100);
+});
+test('DY: fórmulas sem anualização, preços zero e fallback após transação', async () => {
+  assert.deepEqual(calculateYields(1, 25, 20), { currentDy: 4, averageDy: 5 });
+  assert.deepEqual(calculateYields(1, 0, 0), { currentDy: null, averageDy: null });
+  assert.deepEqual(calculateYields(0, 10, 10), { currentDy: 0, averageDy: 0 });
+  const env = envFor();
+  const a = asset({ assetType: 1, currentIncome: 1 });
+  let saved = (await (await handleFinance(request(a), env)).json()).assets[0];
+  assert.equal(saved.currentPrice, 20); assert.equal(saved.currentDy, 5);
+  saved = (await (await handleFinance(request(transaction(a.id)), env)).json()).assets[0];
+  assert.equal(saved.currentPrice, 25); assert.equal(saved.currentDy, 4); assert.equal(saved.averageDy, 4);
+  const empty = asset({ name: 'Sem saldo', assetType: 1, quantity: 0, averagePrice: 0, currentPrice: 0, currentIncome: 1 });
+  const rows = (await (await handleFinance(request(empty), env)).json()).assets;
+  saved = rows.find(item => item.id === empty.id);
+  assert.equal(saved.currentDy, null); assert.equal(saved.averageDy, null);
+});
+test('migração 0003 preserva saldos e DY legado e valida cinco casas no banco', () => {
+  const sql = new DatabaseSync(':memory:');
+  sql.exec(migration); sql.exec(marketMigration);
+  sql.exec("INSERT INTO finance_assets (id,name,type,quantity,average_price,value,current_dy) VALUES ('a','ABC',1,1,10,10,5)");
+  sql.exec(incomeMigration);
+  let value = sql.prepare("SELECT * FROM finance_assets WHERE id='a'").get();
+  assert.equal(value.current_dy, 5); assert.equal(value.current_income, 0);
+  assert.equal(value.quantity, 1); assert.equal(value.value, 10);
+  sql.exec("UPDATE finance_assets SET current_income=0.12345 WHERE id='a'");
+  assert.equal(sql.prepare("SELECT current_income FROM finance_assets WHERE id='a'").get().current_income, .12345);
+  assert.throws(() => sql.exec("UPDATE finance_assets SET current_income=0.123456 WHERE id='a'"));
+  assert.throws(() => sql.exec("UPDATE finance_assets SET current_income=100 WHERE id='a'"));
+  assert.throws(() => sql.exec("UPDATE finance_assets SET current_income=-1 WHERE id='a'"));
 });

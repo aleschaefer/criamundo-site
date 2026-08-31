@@ -101,7 +101,8 @@ Nesta versão as transações são entradas (compras); vendas não fazem parte d
 
 - `finance_assets`: `id`, `name CHAR(30)`, `type SMALLINT`, `quantity INTEGER`,
   `average_price DECIMAL(8,2)`, `value DECIMAL(10,2)`,
-  `current_price DECIMAL(8,2)` e `current_dy DECIMAL(8,2)`.
+  `current_price DECIMAL(8,2)` e `current_income DECIMAL(7,5)`.
+  A coluna antiga `current_dy` é preservada apenas como legado, sem uso na aplicação.
 - `finance_transactions`: `id`, `asset_id`, `name CHAR(30)`, `type SMALLINT`,
   `quantity INTEGER`, `value DECIMAL(10,2)` e `created_at` automático.
 - Enum: **1 = Ação, 2 = FII, 3 = Renda Fixa, 4 = BDR, 5 = Outro**.
@@ -134,36 +135,42 @@ Tipo é o primeiro campo do formulário. Somente Ação e FII exibem os campos o
 - **Valor atual:** preço por unidade em reais, com duas casas. Se não informado,
   `current_price` é NULL e a API retorna o preço médio usando COALESCE. Assim o padrão
   acompanha eventuais mudanças na média. Um zero explícito é mantido como zero.
-- **DY atual:** percentual informado manualmente (ex.: `8,50` significa 8,50%),
-  com duas casas e padrão zero. Não há busca automática de cotações ou dividendos.
+- **Rendimento atual (R$):** rendimento por unidade, com até duas casas inteiras e
+  cinco decimais (`DECIMAL(7,5)`, intervalo 0 a 99,99999). `DECIMAL(2,5)` foi
+  interpretado como duas casas inteiras e cinco decimais, pois precisão total 2
+  não comporta escala 5. Em branco, assume zero.
+- **DY atual (%):** `rendimento atual / valor atual × 100`.
+- **DY médio (%):** `rendimento atual / preço médio × 100`.
 
-Ambos aceitam valores entre 0 e 999.999,99. Em outros tipos os campos ficam ocultos e
-desabilitados; a API ignora valores de mercado enviados para esses tipos. A tabela
-exibe esses campos apenas nos registros de Ação/FII (travessão para os demais).
+Os DY são somente leitura, calculados no formulário e pela API a cada consulta.
+Valores de DY enviados pelo cliente não são utilizados. A exibição usa até cinco
+casas decimais; não há anualização implícita ou consulta de dividendos. O rendimento
+deve corresponder ao período desejado. Preço zero gera `null` na API e “—” na tela.
+
+Esses campos continuam exclusivos para Ação e FII. Em outros tipos ficam ocultos e
+desabilitados; a API ignora os valores enviados para eles. Na tabela, aparecem na
+ordem valor atual, rendimento atual, DY atual e DY médio, com travessão para outros tipos.
 
 ### Aplicação no site existente
 
-Se já aplicou `0001_finance.sql`, aplique **apenas a nova migração 0002**, uma única vez:
+Se já aplicou as migrações **0001 e 0002**, aplique **apenas 0003**, uma única vez:
 
 ```sh
-npx wrangler d1 execute criamundo-content --remote --file=migrations/0002_asset_market_fields.sql
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0003_asset_income.sql
 npx wrangler deploy
 ```
 
-Ela adiciona os campos sem apagar ativos nem transações existentes. Reaplicar 0001
-não adiciona colunas em tabelas já criadas, por isso esta atualização tem um script
-separado. Não execute 0002 novamente após seu sucesso (as colunas já existirão).
+A nova migração adiciona rendimento atual sem apagar ativos nem transações. Ativos
+existentes recebem rendimento zero. O DY manual antigo fica preservado no banco,
+mas deixa de ser exibido ou utilizado; não inferimos rendimento a partir dele.
 
-Se o banco ainda não tem as tabelas financeiras, aplique 0001 e depois 0002:
+Se ainda não tem todas as tabelas e colunas, aplique apenas os scripts pendentes,
+em ordem: `0001_finance.sql`, `0002_asset_market_fields.sql`, `0003_asset_income.sql`.
+Não reaplique 0002 ou 0003 após sucesso, pois adicionam colunas. Reaplicar 0001
+não adiciona campos em tabelas que já existem.
 
-```sh
-npx wrangler d1 execute criamundo-content --remote --file=migrations/0001_finance.sql
-npx wrangler d1 execute criamundo-content --remote --file=migrations/0002_asset_market_fields.sql
-```
-
-Alternativamente, **para um banco totalmente novo**, `schema.sql` já contém todas as
-tabelas de conteúdo e de Finanças, incluindo os novos campos; neste caso não aplique
-0002 depois. O script 0001 não utiliza a antiga estrutura JSON.
+Para um banco totalmente novo, `schema.sql` já contém todas as tabelas de conteúdo
+e Finanças com os novos campos; neste caso, não aplique as migrações depois.
 
 Para testar localmente, use `--local` no lugar de `--remote`, configure `ADMIN_PASSWORD`
 em `.dev.vars` e execute `npx wrangler dev`. Nunca publique credenciais como assets.

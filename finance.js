@@ -1,3 +1,4 @@
+import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
 
 (() => {
@@ -7,6 +8,8 @@ import { assetAllocation } from './finance-allocation.mjs';
   const transactionForm = $('#finance-transaction');
   const status = $('#finance-status');
   const money = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  const yieldPercent = value => Number.isFinite(value) ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 }).format(value) + '%' : '—';
+  const incomeMoney = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 5, maximumFractionDigits: 5 }).format(value);
   const quantity = (value) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(value);
   const types = { 1: 'Ação', 2: 'FII', 3: 'Renda Fixa', 4: 'BDR', 5: 'Outro' };
   let assetRequestId = crypto.randomUUID();
@@ -45,6 +48,14 @@ import { assetAllocation } from './finance-allocation.mjs';
     });
     assetForm.elements.currentPrice.placeholder = assetForm.elements.averagePrice.value
       ? money(Number(assetForm.elements.averagePrice.value)) : 'Usar preço médio';
+    const fields = assetForm.elements;
+    const average = fields.quantity.value !== '' && Number(fields.quantity.value) === 0
+      ? 0 : fields.averagePrice.value === '' ? NaN : Number(fields.averagePrice.value);
+    const current = fields.currentPrice.value === '' ? average : Number(fields.currentPrice.value);
+    const income = fields.currentIncome.value === '' ? 0 : Number(fields.currentIncome.value);
+    const yields = calculateYields(income, current, average);
+    fields.currentDy.value = yieldPercent(yields.currentDy);
+    fields.averageDy.value = yieldPercent(yields.averageDy);
   }
   function renderAllocation() {
     const allocation = assetAllocation(data?.assets || []);
@@ -87,7 +98,7 @@ import { assetAllocation } from './finance-allocation.mjs';
     const selection = transactionForm.elements.assetId.value;
     transactionForm.elements.assetId.replaceChildren(new Option(data.assets.length ? 'Selecione um ativo' : 'Cadastre um ativo primeiro', ''));
     data.assets.forEach(asset => {
-      row($('#finance-assets'), [asset.name, types[asset.assetType], quantity(asset.quantity), money(asset.averagePrice), [1, 2].includes(asset.assetType) ? money(asset.currentPrice) : '—', [1, 2].includes(asset.assetType) ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(asset.currentDy) + '%' : '—', money(asset.total)]);
+      row($('#finance-assets'), [asset.name, types[asset.assetType], quantity(asset.quantity), money(asset.averagePrice), [1, 2].includes(asset.assetType) ? money(asset.currentPrice) : '—', [1, 2].includes(asset.assetType) ? incomeMoney(asset.currentIncome) : '—', [1, 2].includes(asset.assetType) ? yieldPercent(asset.currentDy) : '—', [1, 2].includes(asset.assetType) ? yieldPercent(asset.averageDy) : '—', money(asset.total)]);
       transactionForm.elements.assetId.add(new Option(`${asset.name} · ${types[asset.assetType]}`, asset.id));
     });
     transactionForm.elements.assetId.value = selection;
@@ -140,7 +151,7 @@ import { assetAllocation } from './finance-allocation.mjs';
   assetForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!data || busy) return;
-    if (await request({ type: 'asset', id: assetRequestId, assetType: Number(assetForm.elements.assetType.value), name: assetForm.elements.name.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentDy: assetForm.elements.currentDy.value === '' ? null : Number(assetForm.elements.currentDy.value) })) {
+    if (await request({ type: 'asset', id: assetRequestId, assetType: Number(assetForm.elements.assetType.value), name: assetForm.elements.name.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value) })) {
       assetForm.reset(); marketFields(); assetRequestId = crypto.randomUUID(); view('overview');
     }
   });

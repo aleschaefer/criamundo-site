@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS finance_assets (
   average_price DECIMAL(8,2) NOT NULL CHECK (average_price BETWEEN 0 AND 999999.99 AND average_price = round(average_price, 2)),
   value DECIMAL(10,2) NOT NULL CHECK (value BETWEEN 0 AND 99999999.99 AND value = round(value, 2)),
   current_price DECIMAL(8,2) CHECK (current_price IS NULL OR (type IN (1, 2) AND current_price BETWEEN 0 AND 999999.99 AND current_price = round(current_price, 2))),
+  -- Campo legado preservado; a API calcula os DY usando current_income.
   current_dy DECIMAL(8,2) NOT NULL DEFAULT 0 CHECK (current_dy BETWEEN 0 AND 999999.99 AND current_dy = round(current_dy, 2) AND (type IN (1, 2) OR current_dy = 0)),
+  current_income DECIMAL(7,5) NOT NULL DEFAULT 0 CHECK (current_income BETWEEN 0 AND 99.99999 AND current_income = round(current_income, 5) AND (type IN (1, 2) OR current_income = 0)),
   CHECK ((quantity = 0 AND value = 0 AND average_price = 0) OR
     (quantity > 0 AND average_price = round(value * 1.0 / quantity, 2))),
   UNIQUE (name, type),
