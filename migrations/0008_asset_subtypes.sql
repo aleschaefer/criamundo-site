@@ -1,25 +1,16 @@
-CREATE TABLE IF NOT EXISTS site_content (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  xml_content TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS site_content_backups (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  content_id INTEGER NOT NULL,
-  xml_content TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (content_id) REFERENCES site_content(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_site_content_backups_created_at
-ON site_content_backups(created_at DESC);
-
--- Finanças: aplicar antes de publicar o código novo.
--- Tipos: 1=Renda Variável, 2=Renda Fixa, 3=Outro.
--- Subtipos: 1=Ações, 2=FII, 3=BDR, 4=CBD, 5=LCA, 6=LCI, 7=Outro.
--- SQLite/D1 não impõe CHAR/DECIMAL: os CHECKs abaixo validam os limites.
-CREATE TABLE IF NOT EXISTS finance_assets (
+-- Aplicar uma única vez após 0007. Preserva IDs, saldos, datas, revisões e histórico.
+-- Renda Fixa existente recebe subtipo Outro, pois sua modalidade não era informada.
+DROP TRIGGER IF EXISTS finance_transaction_apply;
+DROP TRIGGER IF EXISTS finance_transaction_edit;
+DROP TRIGGER IF EXISTS finance_transaction_delete;
+DROP TRIGGER IF EXISTS finance_transaction_metadata;
+DROP TRIGGER IF EXISTS finance_asset_created;
+DROP TRIGGER IF EXISTS finance_asset_updated;
+DROP TRIGGER IF EXISTS finance_transaction_created;
+DROP TRIGGER IF EXISTS finance_transaction_updated;
+DROP TRIGGER IF EXISTS finance_transaction_date_required;
+DROP TRIGGER IF EXISTS finance_transaction_date_not_cleared;
+CREATE TABLE finance_assets_new (
   id TEXT PRIMARY KEY NOT NULL,
   name CHAR(30) NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 30 AND name = trim(name)),
   type SMALLINT NOT NULL CHECK (typeof(type) = 'integer' AND type BETWEEN 1 AND 3),
@@ -42,7 +33,7 @@ CREATE TABLE IF NOT EXISTS finance_assets (
   UNIQUE (name, type, subtype),
   UNIQUE (id, name, type, subtype)
 );
-CREATE TABLE IF NOT EXISTS finance_transactions (
+CREATE TABLE finance_transactions_new (
   id TEXT PRIMARY KEY NOT NULL,
   asset_id TEXT NOT NULL,
   transaction_date TEXT CHECK (transaction_date IS NULL OR (
@@ -62,8 +53,16 @@ CREATE TABLE IF NOT EXISTS finance_transactions (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at TEXT,
   revision INTEGER NOT NULL DEFAULT 0,
-  FOREIGN KEY (asset_id, name, type, subtype) REFERENCES finance_assets(id, name, type, subtype) ON UPDATE CASCADE ON DELETE RESTRICT
+  FOREIGN KEY (asset_id, name, type, subtype) REFERENCES finance_assets_new(id, name, type, subtype) ON UPDATE CASCADE ON DELETE RESTRICT
 );
+INSERT INTO finance_assets_new (id, name, type, subtype, quantity, average_price, value, current_price, current_dy, revision, created_at, updated_at, current_income)
+SELECT id, name, CASE type WHEN 3 THEN 2 WHEN 5 THEN 3 ELSE 1 END, CASE type WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 4 THEN 3 ELSE 7 END, quantity, average_price, value, current_price, current_dy, revision, created_at, updated_at, current_income FROM finance_assets ORDER BY rowid;
+INSERT INTO finance_transactions_new (id, asset_id, name, type, subtype, quantity, value, created_at, updated_at, transaction_date, revision)
+SELECT id, asset_id, name, CASE type WHEN 3 THEN 2 WHEN 5 THEN 3 ELSE 1 END, CASE type WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 4 THEN 3 ELSE 7 END, quantity, value, created_at, updated_at, transaction_date, revision FROM finance_transactions ORDER BY rowid;
+DROP TABLE finance_transactions;
+DROP TABLE finance_assets;
+ALTER TABLE finance_assets_new RENAME TO finance_assets;
+ALTER TABLE finance_transactions_new RENAME TO finance_transactions;
 CREATE INDEX IF NOT EXISTS idx_finance_transactions_asset ON finance_transactions(asset_id);
 CREATE TRIGGER IF NOT EXISTS finance_transaction_apply AFTER INSERT ON finance_transactions
 BEGIN

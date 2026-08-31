@@ -103,15 +103,19 @@ Nesta versão as transações são entradas (compras); vendas não fazem parte d
 
 ### Modelo relacional
 
-- `finance_assets`: `id`, `name CHAR(30)`, `type SMALLINT`, `quantity INTEGER`,
+- `finance_assets`: `id`, `name CHAR(30)`, `type SMALLINT`, `subtype SMALLINT`, `quantity INTEGER`,
   `average_price DECIMAL(8,2)`, `value DECIMAL(10,2)`,
   `current_price DECIMAL(8,2)` e `current_income DECIMAL(7,5)`.
   A coluna antiga `current_dy` é preservada apenas como legado, sem uso na aplicação.
-- `finance_transactions`: `id`, `asset_id`, `name CHAR(30)`, `type SMALLINT`,
+- `finance_transactions`: `id`, `asset_id`, `name CHAR(30)`, `type SMALLINT`, `subtype SMALLINT`,
   `quantity INTEGER`, `value DECIMAL(10,2)`, `transaction_date` e `created_at` automático.
-- Enum: **1 = Ação, 2 = FII, 3 = Renda Fixa, 4 = BDR, 5 = Outro**.
-- Nome e tipo da transação são herdados do ativo. A chave estrangeira composta
-  impede associar uma transação a um ativo com nome ou tipo diferente.
+- Tipo: **1 = Renda Variável, 2 = Renda Fixa, 3 = Outro**.
+- Subtipo: **1 = Ações, 2 = FII, 3 = BDR, 4 = CBD, 5 = LCA, 6 = LCI, 7 = Outro**.
+- Renda Variável aceita subtipos 1/2/3; Renda Fixa aceita 4/5/6/7; Outro usa 7.
+  A grafia CBD foi mantida conforme solicitada. O subtipo é selecionável no cadastro;
+  para tipo Outro o campo fica oculto e seu valor é Outro automaticamente.
+- Nome, tipo e subtipo da transação são herdados do ativo. A chave estrangeira
+  composta impede associar uma transação a um ativo com classificação diferente.
 - SQLite/D1 não aplica a precisão declarada em CHAR/DECIMAL. Por isso o script usa
   CHECKs para comprimento, enum, quantidades inteiras, limites e duas casas decimais.
 - Quantidades: 0 a 2.147.483.647 no ativo e 1 a 2.147.483.647 na transação.
@@ -131,11 +135,12 @@ Os dados não entram no XML público, nas exportações ou nos backups do portf�
 ### Distribuição e campos de mercado
 
 A visão geral inclui um gráfico de pizza com o montante acumulado por tipo de ativo,
-acompanhado de legenda com valores e percentuais. Usa o custo de aquisição (`value`),
+acompanhado de legenda com valores e percentuais para Renda Variável, Renda Fixa e Outro. Usa o custo de aquisição (`value`),
 não a cotação atual. O gráfico é atualizado ao salvar ativos e transações, e exibe
 uma mensagem quando não há valores positivos. A legenda também oferece os dados em texto.
 
-Tipo é o primeiro campo do formulário. Somente Ação e FII exibem os campos opcionais:
+Tipo é o primeiro campo do formulário, seguido por Subtipo. Ações e FII exibem todos os campos abaixo;
+Renda Fixa exibe somente Valor atual, sem rendimento ou DY.
 
 - **Valor atual:** preço por unidade em reais, com duas casas. Se não informado,
   `current_price` é NULL e a API retorna o preço médio usando COALESCE. Assim o padrão
@@ -152,9 +157,15 @@ Valores de DY enviados pelo cliente não são utilizados. A exibição usa até 
 casas decimais; não há anualização implícita ou consulta de dividendos. O rendimento
 deve corresponder ao período desejado. Preço zero gera `null` na API e “—” na tela.
 
-Esses campos continuam exclusivos para Ação e FII. Em outros tipos ficam ocultos e
-desabilitados; a API ignora os valores enviados para eles. Na tabela, aparecem na
+Rendimento e DY continuam exclusivos para Ação e FII. Valor atual também aparece
+para Renda Fixa. Em BDR/Outro todos esses campos ficam ocultos e desabilitados;
+a API ignora os valores enviados para campos não aplicáveis. Na tabela, aparecem na
 ordem valor atual, rendimento atual, DY atual e DY médio, com travessão para outros tipos.
+
+Para **Renda Fixa**, o rótulo do formulário muda de “Preço médio (R$)” para
+**“Valor de Compra (R$)”**, sem alterar a coluna ou as regras de cálculo existentes.
+O campo **Valor atual (R$ por unidade)** é opcional e, em branco, acompanha esse
+valor de compra. Ao selecionar outro tipo, o rótulo volta a “Preço médio (R$)”.
 
 ### Editar e excluir
 
@@ -165,7 +176,7 @@ Excluir pede confirmação. As tabelas, os DY, o total e a pizza são atualizado
 - Ativos sem transações permitem corrigir quantidade e preço médio diretamente.
 - Ativos com transações permitem editar nome, tipo e campos de mercado. Quantidade e
   preço médio ficam somente leitura; suas correções devem ocorrer pelo histórico.
-  Alterar nome/tipo também atualiza as transações vinculadas.
+  Alterar nome/tipo/subtipo também atualiza as transações vinculadas.
 - Um ativo com transações não pode ser excluído até que elas sejam excluídas. Não há
   exclusão automática do histórico ao clicar em Excluir ativo.
 - Editar uma transação remove seu efeito anterior e aplica os novos quantidade/valor.
@@ -186,7 +197,7 @@ persistida do registro. Não se utiliza a hora do navegador para gravar esses da
 - `created_at` guarda a inclusão e não é alterado nas edições.
 - `updated_at` guarda a inclusão ou a edição mais recente, gerada em UTC pelo banco.
 - Inclusão, edição e exclusão de transações também atualizam a data dos ativos cujo
-  saldo foi recalculado. Alterações de nome/tipo propagadas atualizam a transação.
+  saldo foi recalculado. Alterações de nome/tipo/subtipo propagadas atualizam a transação.
 - Consultas, gravações rejeitadas e reenvios de criação não mudam essas datas.
 - Registros antigos sem data conhecida não recebem uma data fictícia. A migração
   aproveita a inclusão das transações com revisão zero; nas demais situações, a
@@ -223,18 +234,20 @@ editar um desses registros, é necessário selecionar sua data antes de salvar.
 
 ### Aplicação no site existente
 
-Se já aplicou **0001 a 0005**, aplique **apenas 0006**, uma única vez:
+Se já aplicou **0001 a 0007**, aplique **apenas 0008**, uma única vez:
 
 ```sh
-npx wrangler d1 execute criamundo-content --remote --file=migrations/0006_transaction_date.sql
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0008_asset_subtypes.sql
 npx wrangler deploy
 ```
 
-A migração adiciona a data da transação e sua validação, sem apagar registros nem
-alterar as datas de auditoria existentes. Mudar a data da transação depois de aplicada
-a migração registra normalmente uma nova última atualização.
+A migração converte as classificações antigas: Ação/FII/BDR viram Renda Variável com
+seus respectivos subtipos; Renda Fixa vira Renda Fixa/Outro, pois sua modalidade não
+era informada; Outro continua Outro. IDs, saldos, valores de mercado, datas, revisões
+e histórico são preservados. As tabelas financeiras são reconstruídas com as novas
+validações, incluindo a chave estrangeira composta por ativo, nome, tipo e subtipo.
 
-Se faltam migrações, aplique apenas as pendentes na ordem 0001 → 0002 → 0003 → 0004 → 0005 → 0006.
+Se faltam migrações, aplique apenas as pendentes na ordem 0001 → 0002 → 0003 → 0004 → 0005 → 0006 → 0007 → 0008.
 **Não reaplique as migrações antigas após atualizar**, pois elas podem recriar triggers
 obsoletos. Para um banco totalmente novo, `schema.sql` já contém o modelo atual completo;
 nesse caso não aplique as migrações depois.

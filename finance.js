@@ -1,3 +1,4 @@
+import { ASSET_TYPES as types, ASSET_SUBTYPES as subtypes, SUBTYPES_BY_TYPE, hasIncome, hasCurrentPrice } from './finance-types.mjs';
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
@@ -12,7 +13,6 @@ import { assetAllocation } from './finance-allocation.mjs';
   const yieldPercent = value => Number.isFinite(value) ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 }).format(value) + '%' : '—';
   const incomeMoney = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 5, maximumFractionDigits: 5 }).format(value);
   const quantity = (value) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(value);
-  const types = { 1: 'Ação', 2: 'FII', 3: 'Renda Fixa', 4: 'BDR', 5: 'Outro' };
   let assetRequestId = crypto.randomUUID();
   let transactionRequestId = crypto.randomUUID();
   let selectedAssetType = null;
@@ -30,6 +30,7 @@ import { assetAllocation } from './finance-allocation.mjs';
       for (const input of form.elements) input.disabled = busy || !data;
     });
     marketFields();
+    assetForm.elements.subType.disabled = busy || !data || assetForm.elements.assetType.value === '3';
     transactionControls();
     $('#finance-refresh').disabled = busy;
     section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], #finance-filter-clear').forEach(button => { button.disabled = busy; });
@@ -56,14 +57,32 @@ import { assetAllocation } from './finance-allocation.mjs';
     });
     actions.append(buttons); tr.append(actions); target.append(tr);
   }
+  function updateSubtypes(selection = assetForm.elements.subType.value) {
+    const type = Number(assetForm.elements.assetType.value);
+    const choices = SUBTYPES_BY_TYPE[type] || [];
+    assetForm.elements.subType.replaceChildren(...choices.map(value => new Option(subtypes[value], value)));
+    if (choices.includes(Number(selection))) assetForm.elements.subType.value = selection;
+    $('#finance-subtype-field').hidden = type === 3;
+    assetForm.elements.subType.disabled = busy || !data || type === 3;
+    marketFields();
+  }
   function marketFields() {
-    const visible = ['1', '2'].includes(assetForm.elements.assetType.value);
+    const type = assetForm.elements.assetType.value;
+    const classification = { assetType: Number(type), subType: Number(assetForm.elements.subType.value) };
+    const visible = hasIncome(classification);
+    const currentVisible = hasCurrentPrice(classification);
+    const fixedIncome = type === '2';
+    $('#finance-average-price-label').textContent = fixedIncome ? 'Valor de Compra (R$)' : 'Preço médio (R$)';
+    $('#finance-current-price-hint').textContent = fixedIncome ? 'Opcional. Em branco, acompanha o valor de compra.' : 'Opcional. Em branco, acompanha o preço médio.';
+    $('#finance-asset-total-hint').textContent = fixedIncome ? 'Calculado automaticamente: quantidade × valor de compra.' : 'Calculado automaticamente: quantidade × preço médio.';
+    assetForm.querySelector('[data-current-price-field]').hidden = !currentVisible;
+    assetForm.elements.currentPrice.disabled = !currentVisible || busy || !data;
     assetForm.querySelectorAll('[data-market-field]').forEach(label => {
       label.hidden = !visible;
       label.querySelector('input').disabled = !visible || busy || !data;
     });
     assetForm.elements.currentPrice.placeholder = assetForm.elements.averagePrice.value
-      ? money(Number(assetForm.elements.averagePrice.value)) : 'Usar preço médio';
+      ? money(Number(assetForm.elements.averagePrice.value)) : fixedIncome ? 'Usar valor de compra' : 'Usar preço médio';
     const fields = assetForm.elements;
     const average = fields.quantity.value !== '' && Number(fields.quantity.value) === 0
       ? 0 : fields.averagePrice.value === '' ? NaN : Number(fields.averagePrice.value);
@@ -75,7 +94,7 @@ import { assetAllocation } from './finance-allocation.mjs';
   }
   function renderAllocation() {
     const allocation = assetAllocation(data?.assets || []);
-    const colors = ['#c89b5b', '#71b6aa', '#879dd8', '#bf8cc9', '#d98772'];
+    const colors = ['#c89b5b', '#71b6aa', '#879dd8'];
     const hasValue = allocation.some(item => item.amount > 0);
     $('#finance-pie-content').hidden = !hasValue;
     $('#finance-pie-empty').hidden = hasValue;
@@ -126,10 +145,10 @@ import { assetAllocation } from './finance-allocation.mjs';
     $('#finance-assets').replaceChildren();
     $('#finance-history').replaceChildren();
     data.assets.forEach(asset => {
-      if (selectedAssetType === null || asset.assetType === selectedAssetType) row($('#finance-assets'), [asset.name, types[asset.assetType], quantity(asset.quantity), money(asset.averagePrice), [1, 2].includes(asset.assetType) ? money(asset.currentPrice) : '—', [1, 2].includes(asset.assetType) ? incomeMoney(asset.currentIncome) : '—', [1, 2].includes(asset.assetType) ? yieldPercent(asset.currentDy) : '—', [1, 2].includes(asset.assetType) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
+      if (selectedAssetType === null || asset.assetType === selectedAssetType) row($('#finance-assets'), [asset.name, types[asset.assetType], subtypes[asset.subType], quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
     });
     updateTransactionAssets();
-    [...transactions].reverse().forEach(item => row($('#finance-history'), [formatTransactionDate(item.transactionDate), new Date(item.createdAt).toLocaleString('pt-BR'), item.name, types[item.assetType], quantity(item.quantity), money(item.value)], 'transaction', item));
+    [...transactions].reverse().forEach(item => row($('#finance-history'), [formatTransactionDate(item.transactionDate), new Date(item.createdAt).toLocaleString('pt-BR'), item.name, types[item.assetType], subtypes[item.subType], quantity(item.quantity), money(item.value)], 'transaction', item));
   }
   async function request(action) {
     if (busy) return false;
@@ -179,7 +198,7 @@ import { assetAllocation } from './finance-allocation.mjs';
       assetForm.elements.quantity.readOnly = false; assetForm.elements.averagePrice.readOnly = false;
       $('#finance-asset-title').textContent = 'Incluir ativo';
       $('#finance-asset-edit-note').hidden = true; $('#finance-asset-cancel').hidden = true;
-      assetForm.querySelector('[type="submit"]').textContent = 'Salvar ativo'; marketFields();
+      assetForm.querySelector('[type="submit"]').textContent = 'Salvar ativo'; updateSubtypes();
     } else {
       editingTransaction = null; transactionForm.reset(); transactionForm.elements.transactionDate.value = todayInSaoPaulo(); transactionRequestId = crypto.randomUUID();
       $('#finance-transaction-title').textContent = 'Incluir transações'; $('#finance-transaction-cancel').hidden = true;
@@ -191,7 +210,7 @@ import { assetAllocation } from './finance-allocation.mjs';
     if (kind === 'asset') {
       clearEdit(kind); editingAsset = { ...record };
       const fields = assetForm.elements;
-      fields.name.value = record.name; fields.assetType.value = record.assetType;
+      fields.name.value = record.name; fields.assetType.value = record.assetType; updateSubtypes(record.subType);
       fields.quantity.value = record.quantity; fields.averagePrice.value = record.averagePrice;
       fields.currentPrice.value = record.priceIsDefault ? '' : record.currentPrice;
       fields.currentIncome.value = record.currentIncome;
@@ -269,7 +288,7 @@ import { assetAllocation } from './finance-allocation.mjs';
     const choices = data?.assets.filter(asset => asset.assetType === type) || [];
     const placeholder = !type ? 'Selecione primeiro o tipo' : choices.length ? 'Selecione um ativo' : 'Nenhum ativo deste tipo';
     fields.assetId.replaceChildren(new Option(placeholder, ''));
-    choices.forEach(asset => fields.assetId.add(new Option(asset.name, asset.id)));
+    choices.forEach(asset => fields.assetId.add(new Option(`${asset.name} · ${subtypes[asset.subType]}`, asset.id)));
     fields.assetId.value = choices.some(asset => asset.id === selection) ? selection : '';
     $('#finance-transaction-asset-hint').textContent = !type ? 'Selecione primeiro o tipo de ativo.'
       : choices.length ? `Exibindo apenas ativos do tipo ${types[type]}.`
@@ -277,14 +296,15 @@ import { assetAllocation } from './finance-allocation.mjs';
     transactionControls();
   }
   assetForm.addEventListener('input', () => { assetRequestId = crypto.randomUUID(); if (editingAsset?.transactionCount) assetForm.elements.total.value = money(editingAsset.total); else total(assetForm, 'averagePrice'); marketFields(); });
-  assetForm.elements.assetType.addEventListener('change', marketFields);
+  assetForm.elements.assetType.addEventListener('change', () => updateSubtypes(''));
+  assetForm.elements.subType.addEventListener('change', marketFields);
   transactionForm.addEventListener('input', () => { transactionRequestId = crypto.randomUUID(); transactionControls(); total(transactionForm, 'unitPrice', 'value'); });
   transactionForm.elements.assetType.addEventListener('change', () => { transactionRequestId = crypto.randomUUID(); updateTransactionAssets(''); });
   transactionForm.elements.assetId.addEventListener('change', transactionControls);
   assetForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!data || busy) return;
-    if (await request({ type: 'asset', operation: editingAsset ? 'update' : 'create', id: editingAsset?.id || assetRequestId, revision: editingAsset?.revision, assetType: Number(assetForm.elements.assetType.value), name: assetForm.elements.name.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value) })) {
+    if (await request({ type: 'asset', operation: editingAsset ? 'update' : 'create', id: editingAsset?.id || assetRequestId, revision: editingAsset?.revision, assetType: Number(assetForm.elements.assetType.value), subType: Number(assetForm.elements.subType.value), name: assetForm.elements.name.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value) })) {
       clearEdit('asset'); view('overview');
     }
   });
@@ -307,6 +327,7 @@ import { assetAllocation } from './finance-allocation.mjs';
     renderAllocation(); message(''); controls(); area(false); view('overview');
   });
   transactionForm.elements.transactionDate.value = todayInSaoPaulo();
+  updateSubtypes();
   updateTransactionAssets();
   controls();
 })();

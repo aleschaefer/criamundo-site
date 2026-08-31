@@ -1,5 +1,5 @@
 import { validTransactionDate } from './finance-date.mjs';
-export const ASSET_TYPES = Object.freeze({ 1: 'Ação', 2: 'FII', 3: 'Renda Fixa', 4: 'BDR', 5: 'Outro' });
+import { ASSET_TYPES, SUBTYPES_BY_TYPE, hasIncome, hasCurrentPrice } from './finance-types.mjs';
 export function moneyCents(value, max, label) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > max || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001) {
     throw new Error(`${label}: informe um valor entre 0 e ${max}, com até 2 casas decimais.`);
@@ -21,12 +21,13 @@ export function validateAction(action) {
     const name = typeof action.name === 'string' ? action.name.trim() : '';
     if (!name || [...name].length > 30) throw new Error('Nome deve ter até 30 caracteres.');
     if (!Number.isInteger(action.assetType) || !ASSET_TYPES[action.assetType]) throw new Error('Tipo de ativo inválido.');
-    const cents = moneyCents(action.averagePrice, 999999.99, 'Preço médio');
+    if (!Number.isInteger(action.subType) || !SUBTYPES_BY_TYPE[action.assetType].includes(action.subType)) throw new Error('Selecione um subtipo válido para o tipo de ativo.');
+    const cents = moneyCents(action.averagePrice, 999999.99, action.assetType === 2 ? 'Valor de Compra' : 'Preço médio');
     const valueCents = cents * action.quantity;
     if (!Number.isSafeInteger(valueCents) || valueCents > 9999999999) throw new Error('Valor do ativo excede 99.999.999,99.');
-    const marketFields = [1, 2].includes(action.assetType);
+    const marketFields = hasIncome(action);
     const blank = value => value === undefined || value === null || value === '';
-    const currentPrice = marketFields && !blank(action.currentPrice)
+    const currentPrice = hasCurrentPrice(action) && !blank(action.currentPrice)
       ? moneyCents(action.currentPrice, 999999.99, 'Valor atual') / 100 : null;
     const currentIncome = marketFields && !blank(action.currentIncome) ? action.currentIncome : 0;
     if (typeof currentIncome !== 'number' || !Number.isFinite(currentIncome) || currentIncome < 0 || currentIncome > 99.99999 || Math.abs(currentIncome * 100000 - Math.round(currentIncome * 100000)) > 0.000001) {

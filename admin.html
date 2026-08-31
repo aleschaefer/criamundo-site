@@ -109,15 +109,16 @@
           <h3 id="finance-asset-title">Incluir ativo</h3>
           <p id="finance-asset-edit-note" class="draft-note" hidden>Quantidade e preço médio vêm das transações. Para corrigi-los, edite o histórico.</p>
           <div class="grid grid-2">
-            <label>Tipo<select name="assetType" required><option value="1">Ação</option><option value="2">FII</option><option value="3">Renda Fixa</option><option value="4">BDR</option><option value="5">Outro</option></select></label>
+            <label>Tipo<select name="assetType" required><option value="1">Renda Variável</option><option value="2">Renda Fixa</option><option value="3">Outro</option></select></label>
+            <label id="finance-subtype-field">Subtipo<select name="subType" required></select></label>
             <label class="full-width">Nome<input name="name" required maxlength="30" placeholder="Ex.: Reserva de emergência" /></label>
             <label>Quantidade<input name="quantity" type="number" min="0" max="2147483647" step="1" required inputmode="decimal" /></label>
             <label data-market-field>Rendimento atual (R$)<input name="currentIncome" type="number" min="0" max="99.99999" step="0.00001" inputmode="decimal" placeholder="0,00000" /><small>Rendimento por unidade no período informado, sem anualização. Em branco, será zero.</small></label>
-            <label data-market-field>Valor atual (R$ por unidade)<input name="currentPrice" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" placeholder="Usar preço médio" /><small>Opcional. Em branco, acompanha o preço médio.</small></label>
-            <label>Preço médio (R$)<input name="averagePrice" type="number" min="0" max="999999.99" step="0.01" required inputmode="decimal" /></label>
+            <label data-current-price-field>Valor atual (R$ por unidade)<input name="currentPrice" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" placeholder="Usar preço médio" /><small id="finance-current-price-hint">Opcional. Em branco, acompanha o preço médio.</small></label>
+            <label><span id="finance-average-price-label">Preço médio (R$)</span><input name="averagePrice" type="number" min="0" max="999999.99" step="0.01" required inputmode="decimal" /></label>
             <label data-market-field>DY atual (%)<input name="currentDy" readonly value="—" aria-live="polite" /><small>Rendimento atual ÷ valor atual × 100.</small></label>
             <label data-market-field>DY médio (%)<input name="averageDy" readonly value="—" aria-live="polite" /><small>Rendimento atual ÷ preço médio × 100. Preço zero: não calculável.</small></label>
-            <label>Valor total<input name="total" readonly value="R$ 0,00" aria-live="polite" /><small>Calculado automaticamente: quantidade × preço médio.</small></label>
+            <label>Valor total<input name="total" readonly value="R$ 0,00" aria-live="polite" /><small id="finance-asset-total-hint">Calculado automaticamente: quantidade × preço médio.</small></label>
           </div>
           <div class="finance-actions"><button class="button button-primary" type="submit">Salvar ativo</button><button class="button button-secondary" type="button" id="finance-asset-cancel" hidden>Cancelar edição</button></div>
           <footer class="finance-record-footer" aria-live="polite">Última atualização: <span id="finance-asset-updated">Ainda não salvo</span><small>Horário de Brasília</small></footer>
@@ -126,7 +127,7 @@
           <h3 id="finance-transaction-title">Incluir transações</h3>
           <p class="draft-note">Informe a quantidade e o valor unitário da compra. O total é calculado automaticamente. A quantidade e o valor são somados ao ativo; o preço médio é recalculado automaticamente. Escolha primeiro o tipo e depois um dos ativos cadastrados nessa categoria.</p>
           <div class="grid grid-2">
-            <label>Tipo<select name="assetType" required><option value="">Selecione um tipo</option><option value="1">Ação</option><option value="2">FII</option><option value="3">Renda Fixa</option><option value="4">BDR</option><option value="5">Outro</option></select></label>
+            <label>Tipo<select name="assetType" required><option value="">Selecione um tipo</option><option value="1">Renda Variável</option><option value="2">Renda Fixa</option><option value="3">Outro</option></select></label>
             <label>Nome do ativo<select name="assetId" required aria-describedby="finance-transaction-asset-hint"></select><small id="finance-transaction-asset-hint" role="status">Selecione primeiro o tipo de ativo.</small></label>
             <label>Data da transação<input name="transactionDate" type="date" min="0001-01-01" max="9999-12-31" required /><small>Selecione no calendário a data em que a transação ocorreu.</small></label>
             <label>Quantidade<input name="quantity" type="number" min="1" max="2147483647" step="1" required inputmode="decimal" /></label>
@@ -155,9 +156,9 @@
             <button id="finance-filter-clear" type="button" class="button button-secondary" hidden>Mostrar todos</button>
           </div>
           <h3>Ativos</h3><p id="finance-empty" class="intro">Carregue os dados para consultar seus ativos.</p>
-          <div class="finance-table-wrap"><table><caption class="sr-only">Ativos cadastrados</caption><thead><tr><th>Nome</th><th>Tipo</th><th>Quantidade</th><th>Preço médio</th><th>Valor atual</th><th>Rendimento atual (R$)</th><th>DY atual (%)</th><th>DY médio (%)</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-assets"></tbody></table></div>
+          <div class="finance-table-wrap"><table><caption class="sr-only">Ativos cadastrados</caption><thead><tr><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Preço médio</th><th>Valor atual</th><th>Rendimento atual (R$)</th><th>DY atual (%)</th><th>DY médio (%)</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-assets"></tbody></table></div>
           <h3>Histórico de transações</h3><p id="finance-history-empty" class="intro">Nenhuma transação registrada.</p>
-          <div class="finance-table-wrap"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Data da transação</th><th>Registro</th><th>Nome</th><th>Tipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
+          <div class="finance-table-wrap"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Data da transação</th><th>Registro</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
         </div>
       </section>
 
