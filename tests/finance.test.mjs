@@ -4,12 +4,15 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { validateAction } from '../finance-model.mjs';
 import { handleFinance } from '../finance-api.mjs';
+import { todayInSaoPaulo, validTransactionDate, formatTransactionDate } from '../finance-date.mjs';
 import { calculateYields } from '../finance-yield.mjs';
 import { assetAllocation } from '../finance-allocation.mjs';
 const migration = readFileSync(new URL('../migrations/0001_finance.sql', import.meta.url), 'utf8');
 const marketMigration = readFileSync(new URL('../migrations/0002_asset_market_fields.sql', import.meta.url), 'utf8');
 const incomeMigration = readFileSync(new URL('../migrations/0003_asset_income.sql', import.meta.url), 'utf8');
 const editMigration = readFileSync(new URL('../migrations/0004_finance_edit_delete.sql', import.meta.url), 'utf8');
+const timestampMigration = readFileSync(new URL('../migrations/0005_finance_timestamps.sql', import.meta.url), 'utf8');
+const dateMigration = readFileSync(new URL('../migrations/0006_transaction_date.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
@@ -17,6 +20,8 @@ function database() {
   sql.exec(marketMigration);
   sql.exec(incomeMigration);
   sql.exec(editMigration);
+  sql.exec(timestampMigration);
+  sql.exec(dateMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -33,7 +38,7 @@ function database() {
   } };
 }
 const asset = (values = {}) => ({ type: 'asset', id: crypto.randomUUID(), name: 'Reserva', assetType: 3, quantity: 10, averagePrice: 20, ...values });
-const transaction = (assetId, values = {}) => ({ type: 'transaction', id: crypto.randomUUID(), assetId, quantity: 10, unitPrice: 30, ...values });
+const transaction = (assetId, values = {}) => ({ type: 'transaction', id: crypto.randomUUID(), assetId, transactionDate: '2026-08-31', quantity: 10, unitPrice: 30, ...values });
 const request = (body, password = 'test-password') => new Request('https://example.test/api/admin/finance', { method: body ? 'POST' : 'GET', headers: { 'x-admin-password': password }, ...(body ? { body: JSON.stringify(body) } : {}) });
 const envFor = () => ({ ADMIN_PASSWORD: 'test-password', CONTENT_DB: database() });
 test('valida nomes, enum, quantidades inteiras e precisão decimal', () => {
@@ -84,7 +89,7 @@ test('limite excedido reverte também o INSERT de transação', async () => {
 test('banco rejeita campos inválidos e relacionamento incorreto e recalcula edição/exclusão', () => {
   const { sql } = database();
   sql.exec("INSERT INTO finance_assets (id, name, type, quantity, average_price, value) VALUES ('a','ABC',1,1,10,10)");
-  const insert = sql.prepare('INSERT INTO finance_transactions (id, asset_id, name, type, quantity, value) VALUES (?, ?, ?, ?, ?, ?)');
+  const insert = sql.prepare("INSERT INTO finance_transactions (id, asset_id, name, type, quantity, value, transaction_date) VALUES (?, ?, ?, ?, ?, ?, '2026-08-31')");
   for (const args of [['t','a','ABC',1,1.5,10], ['t','a','ABC',1,1,1.001], ['t','a','ABC',6,1,10], ['t','missing','ABC',1,1,10], ['t','a','Wrong',1,1,10]]) assert.throws(() => insert.run(...args));
   insert.run('t','a','ABC',1,1,10);
   sql.exec("UPDATE finance_transactions SET value = 100 WHERE id = 't'");
@@ -103,7 +108,7 @@ test('autorização, ativo inexistente e duplicidade', async () => {
 test('script único pode ser reaplicado sem alterar saldos e histórico', () => {
   const { sql } = database();
   sql.exec("INSERT INTO finance_assets (id, name, type, quantity, average_price, value) VALUES ('a','ABC',1,1,10,10)");
-  sql.exec("INSERT INTO finance_transactions (id, asset_id, name, type, quantity, value) VALUES ('t','a','ABC',1,2,30)");
+  sql.exec("INSERT INTO finance_transactions (id, asset_id, name, type, quantity, value, transaction_date) VALUES ('t','a','ABC',1,2,30,'2026-08-31')");
   sql.exec(migration);
   assert.equal(sql.prepare('SELECT count(*) AS count FROM finance_transactions').get().count, 1);
   const asset = sql.prepare("SELECT quantity, average_price, value FROM finance_assets WHERE id = 'a'").get();
@@ -295,4 +300,101 @@ test('migração 0004 preserva registros, histórico e chaves estrangeiras', () 
   assert.equal(sql.prepare('PRAGMA foreign_key_check').all().length, 0);
   sql.exec("DELETE FROM finance_transactions WHERE id='t'");
   assert.equal(sql.prepare('SELECT value FROM finance_assets').get().value, 10);
+});
+test('data de inclusão é preservada e última atualização vem do banco, não do cliente', async () => {
+  const env = envFor();
+  let now = '2026-08-31T12:00:00.000Z';
+  env.CONTENT_DB.sql.function('strftime', { varargs: true }, () => now);
+  const a = asset({ createdAt: '2000-01-01T00:00:00Z', updatedAt: '2000-01-01T00:00:00Z' });
+  await handleFinance(request(a), env);
+  let data = await snapshot(env);
+  assert.equal(data.assets[0].createdAt, now); assert.equal(data.assets[0].updatedAt, now);
+  const createdAt = now;
+  now = '2026-08-31T13:00:00.000Z';
+  await handleFinance(request(mutate(data.assets[0], 'asset', 'update', { name: 'Renomeado', updatedAt: createdAt })), env);
+  data = await snapshot(env);
+  assert.equal(data.assets[0].createdAt, createdAt); assert.equal(data.assets[0].updatedAt, now);
+  // Leituras e reenvios de criação não substituem a data persistida.
+  now = '2026-08-31T14:00:00.000Z';
+  await handleFinance(request(a), env);
+  data = await snapshot(env); assert.equal(data.assets[0].updatedAt, '2026-08-31T13:00:00.000Z');
+});
+test('transação registra inclusão/edição e atualiza a data do ativo inclusive ao excluir', async () => {
+  const env = envFor();
+  let now = '2026-08-31T12:00:00.000Z';
+  env.CONTENT_DB.sql.function('strftime', { varargs: true }, () => now);
+  const a = asset(); await handleFinance(request(a), env);
+  now = '2026-08-31T13:00:00.000Z';
+  await handleFinance(request(transaction(a.id)), env);
+  let data = await snapshot(env); const txCreated = now;
+  assert.equal(data.transactions[0].createdAt, now); assert.equal(data.transactions[0].updatedAt, now);
+  assert.equal(data.assets[0].updatedAt, now);
+  now = '2026-08-31T14:00:00.000Z';
+  await handleFinance(request(mutate(data.transactions[0], 'transaction', 'update', { quantity: 5, unitPrice: 10 })), env);
+  data = await snapshot(env);
+  assert.equal(data.transactions[0].createdAt, txCreated); assert.equal(data.transactions[0].updatedAt, now);
+  assert.equal(data.assets[0].updatedAt, now);
+  now = '2026-08-31T15:00:00.000Z';
+  await handleFinance(request(mutate(data.transactions[0], 'transaction', 'delete')), env);
+  data = await snapshot(env);
+  assert.equal(data.assets[0].updatedAt, now); assert.equal(data.assets[0].createdAt, '2026-08-31T12:00:00.000Z');
+});
+test('migração 0005 preserva datas conhecidas e não inventa datas para registros antigos', () => {
+  const sql = new DatabaseSync(':memory:'); sql.exec('PRAGMA foreign_keys=ON');
+  sql.exec(migration); sql.exec(marketMigration); sql.exec(incomeMigration); sql.exec(editMigration);
+  sql.exec("INSERT INTO finance_assets (id,name,type,quantity,average_price,value) VALUES ('a','ABC',1,1,10,10)");
+  sql.exec("INSERT INTO finance_transactions (id,asset_id,name,type,quantity,value,created_at) VALUES ('t','a','ABC',1,2,30,'2026-08-01T12:00:00.000Z')");
+  sql.exec("INSERT INTO finance_transactions (id,asset_id,name,type,quantity,value,created_at,revision) VALUES ('edited','a','ABC',1,1,10,'2026-08-01T12:00:00.000Z',1)");
+  sql.exec(timestampMigration);
+  assert.equal(sql.prepare('SELECT created_at FROM finance_assets').get().created_at, null);
+  assert.equal(sql.prepare('SELECT updated_at FROM finance_assets').get().updated_at, null);
+  assert.equal(sql.prepare("SELECT updated_at FROM finance_transactions WHERE id='t'").get().updated_at, '2026-08-01T12:00:00.000Z');
+  assert.equal(sql.prepare("SELECT updated_at FROM finance_transactions WHERE id='edited'").get().updated_at, null);
+  assert.equal(sql.prepare('SELECT value FROM finance_assets').get().value, 50);
+});
+test('data de negócio válida, calendário e data atual no horário de Brasília', () => {
+  assert.equal(todayInSaoPaulo(new Date('2026-09-01T02:59:59Z')), '2026-08-31');
+  assert.equal(todayInSaoPaulo(new Date('2026-09-01T03:00:00Z')), '2026-09-01');
+  assert.equal(formatTransactionDate('2026-08-31'), '31/08/2026');
+  assert.equal(formatTransactionDate(null), 'Não informada');
+  assert.equal(validTransactionDate('2024-02-29'), true);
+  for (const date of [null, '', undefined, '2026-02-29', '2026-02-30', '2026-04-31', '2026-13-01', '2026-00-10', '0000-01-01', '31/08/2026', '2026-08-31T00:00:00Z']) {
+    assert.equal(validTransactionDate(date), false);
+    assert.throws(() => validateAction(transaction('a', { transactionDate: date })));
+  }
+});
+test('incluir e editar data da transação preserva data de criação e atualiza auditoria', async () => {
+  const env = envFor(); let now = '2026-08-31T12:00:00.000Z';
+  env.CONTENT_DB.sql.function('strftime', { varargs: true }, () => now);
+  const a = asset(); await handleFinance(request(a), env);
+  const tx = transaction(a.id, { transactionDate: '2026-07-05' });
+  let response = await handleFinance(request(tx), env);
+  assert.equal(response.status, 200);
+  let data = await response.json();
+  assert.equal(data.transactions[0].transactionDate, '2026-07-05');
+  assert.equal(data.transactions[0].createdAt, now);
+  const initialTotal = data.total;
+  now = '2026-09-01T12:00:00.000Z';
+  response = await handleFinance(request(mutate(data.transactions[0], 'transaction', 'update', { unitPrice: 30, transactionDate: '2026-07-06' })), env);
+  assert.equal(response.status, 200); data = await response.json();
+  assert.equal(data.transactions[0].transactionDate, '2026-07-06');
+  assert.equal(data.transactions[0].createdAt, '2026-08-31T12:00:00.000Z');
+  assert.equal(data.transactions[0].updatedAt, now);
+  assert.equal(data.total, initialTotal);
+});
+test('migração 0006 preserva transações antigas sem inventar a data de negócio', () => {
+  const sql = new DatabaseSync(':memory:'); sql.exec('PRAGMA foreign_keys=ON');
+  sql.exec(migration); sql.exec(marketMigration); sql.exec(incomeMigration); sql.exec(editMigration); sql.exec(timestampMigration);
+  sql.exec("INSERT INTO finance_assets (id,name,type,quantity,average_price,value) VALUES ('a','ABC',1,1,10,10)");
+  sql.exec("INSERT INTO finance_transactions (id,asset_id,name,type,quantity,value) VALUES ('t','a','ABC',1,2,30)");
+  const before = sql.prepare("SELECT created_at, updated_at FROM finance_transactions WHERE id='t'").get();
+  sql.exec(dateMigration);
+  assert.equal(sql.prepare("SELECT transaction_date FROM finance_transactions WHERE id='t'").get().transaction_date, null);
+  assert.deepEqual(sql.prepare("SELECT created_at, updated_at FROM finance_transactions WHERE id='t'").get(), before);
+  assert.equal(sql.prepare('SELECT value FROM finance_assets').get().value, 40);
+  for (const date of ['2026-02-30', '2026-04-31', '2026-13-01', '2026-00-10', '0000-01-01', null]) {
+    assert.throws(() => sql.prepare("UPDATE finance_transactions SET transaction_date=? WHERE id='t'").run(date));
+  }
+  sql.exec("UPDATE finance_transactions SET transaction_date='2024-02-29' WHERE id='t'");
+  assert.equal(sql.prepare('SELECT transaction_date FROM finance_transactions').get().transaction_date, '2024-02-29');
 });

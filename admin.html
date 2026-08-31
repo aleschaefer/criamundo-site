@@ -120,6 +120,7 @@
             <label>Valor total<input name="total" readonly value="R$ 0,00" aria-live="polite" /><small>Calculado automaticamente: quantidade × preço médio.</small></label>
           </div>
           <div class="finance-actions"><button class="button button-primary" type="submit">Salvar ativo</button><button class="button button-secondary" type="button" id="finance-asset-cancel" hidden>Cancelar edição</button></div>
+          <footer class="finance-record-footer" aria-live="polite">Última atualização: <span id="finance-asset-updated">Ainda não salvo</span><small>Horário de Brasília</small></footer>
         </form>
         <form id="finance-transaction" class="finance-form" hidden>
           <h3 id="finance-transaction-title">Incluir transações</h3>
@@ -127,11 +128,13 @@
           <div class="grid grid-2">
             <label>Nome do ativo<select name="assetId" required></select></label>
             <label>Tipo<input name="assetTypeLabel" readonly placeholder="Selecione um ativo" /></label>
+            <label>Data da transação<input name="transactionDate" type="date" min="0001-01-01" max="9999-12-31" required /><small>Selecione no calendário a data em que a transação ocorreu.</small></label>
             <label>Quantidade<input name="quantity" type="number" min="1" max="2147483647" step="1" required inputmode="decimal" /></label>
             <label>Valor unitário (R$)<input name="unitPrice" type="number" min="0" max="999999.99" step="0.01" required inputmode="decimal" /></label>
             <label>Valor total da transação (R$)<input name="value" readonly value="R$ 0,00" aria-live="polite" /><small>Calculado automaticamente: quantidade × valor unitário.</small></label>
           </div>
           <div class="finance-actions"><button class="button button-primary" type="submit">Salvar transação</button><button class="button button-secondary" type="button" id="finance-transaction-cancel" hidden>Cancelar edição</button></div>
+          <footer class="finance-record-footer" aria-live="polite">Última atualização: <span id="finance-transaction-updated">Ainda não salvo</span><small>Horário de Brasília</small></footer>
         </form>
         <div id="finance-overview">
           <div class="grid grid-2 finance-summary">
@@ -140,17 +143,21 @@
           </div>
           <section class="finance-allocation group-shell" aria-labelledby="finance-allocation-title">
             <h3 id="finance-allocation-title">Distribuição por tipo de ativo</h3>
-            <p class="draft-note">Montante acumulado pelo custo de aquisição, sem usar a cotação atual.</p>
+            <p class="draft-note">Montante acumulado pelo custo de aquisição, sem usar a cotação atual. Clique na legenda para filtrar as listas; clique novamente para mostrar todos.</p>
             <p id="finance-pie-empty" class="intro">Inclua ativos com valor positivo para visualizar a distribuição.</p>
             <div id="finance-pie-content" class="finance-pie-content" hidden>
               <div id="finance-pie" class="finance-pie" role="img" aria-label="Distribuição por tipo de ativo"></div>
               <ul id="finance-pie-legend" class="finance-pie-legend" aria-label="Montantes e percentuais por tipo"></ul>
             </div>
           </section>
+          <div class="finance-list-filter">
+            <p id="finance-filter-status" class="draft-note" role="status" aria-live="polite">Exibindo todos os tipos de ativos.</p>
+            <button id="finance-filter-clear" type="button" class="button button-secondary" hidden>Mostrar todos</button>
+          </div>
           <h3>Ativos</h3><p id="finance-empty" class="intro">Carregue os dados para consultar seus ativos.</p>
           <div class="finance-table-wrap"><table><caption class="sr-only">Ativos cadastrados</caption><thead><tr><th>Nome</th><th>Tipo</th><th>Quantidade</th><th>Preço médio</th><th>Valor atual</th><th>Rendimento atual (R$)</th><th>DY atual (%)</th><th>DY médio (%)</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-assets"></tbody></table></div>
           <h3>Histórico de transações</h3><p id="finance-history-empty" class="intro">Nenhuma transação registrada.</p>
-          <div class="finance-table-wrap"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Registro</th><th>Nome</th><th>Tipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
+          <div class="finance-table-wrap"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Data da transação</th><th>Registro</th><th>Nome</th><th>Tipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
         </div>
       </section>
 

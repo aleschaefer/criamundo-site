@@ -108,7 +108,7 @@ Nesta versão as transações são entradas (compras); vendas não fazem parte d
   `current_price DECIMAL(8,2)` e `current_income DECIMAL(7,5)`.
   A coluna antiga `current_dy` é preservada apenas como legado, sem uso na aplicação.
 - `finance_transactions`: `id`, `asset_id`, `name CHAR(30)`, `type SMALLINT`,
-  `quantity INTEGER`, `value DECIMAL(10,2)` e `created_at` automático.
+  `quantity INTEGER`, `value DECIMAL(10,2)`, `transaction_date` e `created_at` automático.
 - Enum: **1 = Ação, 2 = FII, 3 = Renda Fixa, 4 = BDR, 5 = Outro**.
 - Nome e tipo da transação são herdados do ativo. A chave estrangeira composta
   impede associar uma transação a um ativo com nome ou tipo diferente.
@@ -176,20 +176,63 @@ Excluir pede confirmação. As tabelas, os DY, o total e a pizza são atualizado
 - Transações antigas cujo total não corresponde a um preço unitário com duas casas
   exibem um aviso de arredondamento ao editar. Confira o total antes de salvar.
 
+### Última atualização
+
+Os rodapés dos formulários de ativos e transações exibem **Última atualização**, com
+data e hora até os segundos no fuso `America/Sao_Paulo` (horário de Brasília).
+Antes da inclusão, aparece “Ainda não salvo”; ao abrir a edição, aparece a data
+persistida do registro. Não se utiliza a hora do navegador para gravar esses dados.
+
+- `created_at` guarda a inclusão e não é alterado nas edições.
+- `updated_at` guarda a inclusão ou a edição mais recente, gerada em UTC pelo banco.
+- Inclusão, edição e exclusão de transações também atualizam a data dos ativos cujo
+  saldo foi recalculado. Alterações de nome/tipo propagadas atualizam a transação.
+- Consultas, gravações rejeitadas e reenvios de criação não mudam essas datas.
+- Registros antigos sem data conhecida não recebem uma data fictícia. A migração
+  aproveita a inclusão das transações com revisão zero; nas demais situações, a
+  última atualização fica indisponível até a próxima alteração.
+
+### Filtro pela legenda
+
+Clique no ícone ou em qualquer parte da legenda de um tipo de ativo para filtrar
+simultaneamente as listas de Ativos e Histórico de Transações. Um segundo clique
+no mesmo tipo ou o botão **Mostrar todos** remove o filtro. Selecionar outro tipo
+troca o filtro; a legenda selecionada fica destacada e os botões funcionam por teclado.
+
+O gráfico e os totais da carteira não mudam com o filtro, somente as duas listas.
+O formulário de transações continua oferecendo todos os ativos cadastrados. O filtro
+permanece ao atualizar/salvar registros durante a sessão e é limpo ao sair do admin.
+Esta alteração não exige migração de banco.
+
+### Data da transação
+
+O formulário de transações tem **Data da transação**, obrigatória, com o calendário
+nativo do navegador. Ao iniciar uma inclusão, assume a data atual no horário de
+Brasília; o usuário pode escolher outra data. Na edição, é carregada a data persistida.
+
+O campo `transaction_date` guarda apenas `AAAA-MM-DD`, separado da data/hora de criação
+(`created_at`) e de última atualização (`updated_at`). O histórico exibe `DD/MM/AAAA`,
+sem conversão de fuso, e ordena primeiro pela data da transação, da mais recente para a
+mais antiga, usando data de cadastro como desempate. Datas passadas e futuras são aceitas.
+
+A API e o banco rejeitam datas inexistentes. Registros anteriores à migração ficam
+com data da transação não informada, sem inventar uma data a partir do cadastro. Ao
+editar um desses registros, é necessário selecionar sua data antes de salvar.
+
 ### Aplicação no site existente
 
-Se já aplicou as migrações **0001, 0002 e 0003**, aplique **apenas 0004**, uma única vez:
+Se já aplicou **0001 a 0005**, aplique **apenas 0006**, uma única vez:
 
 ```sh
-npx wrangler d1 execute criamundo-content --remote --file=migrations/0004_finance_edit_delete.sql
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0006_transaction_date.sql
 npx wrangler deploy
 ```
 
-A migração preserva os registros, adiciona controle de revisão e substitui os triggers
-que impediam edição/exclusão pelos recálculos automáticos. A tabela de transações é
-recriada preservando IDs, valores e datas, com atualização de nome/tipo em cascata.
+A migração adiciona a data da transação e sua validação, sem apagar registros nem
+alterar as datas de auditoria existentes. Mudar a data da transação depois de aplicada
+a migração registra normalmente uma nova última atualização.
 
-Se faltam migrações, aplique apenas as pendentes na ordem 0001 → 0002 → 0003 → 0004.
+Se faltam migrações, aplique apenas as pendentes na ordem 0001 → 0002 → 0003 → 0004 → 0005 → 0006.
 **Não reaplique as migrações antigas após atualizar**, pois elas podem recriar triggers
 obsoletos. Para um banco totalmente novo, `schema.sql` já contém o modelo atual completo;
 nesse caso não aplique as migrações depois.

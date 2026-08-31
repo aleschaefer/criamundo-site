@@ -1,3 +1,4 @@
+import { validTransactionDate } from './finance-date.mjs';
 export const ASSET_TYPES = Object.freeze({ 1: 'Ação', 2: 'FII', 3: 'Renda Fixa', 4: 'BDR', 5: 'Outro' });
 export function moneyCents(value, max, label) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > max || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001) {
@@ -33,6 +34,7 @@ export function validateAction(action) {
     }
     return { ...action, name, currentPrice, currentIncome: Math.round(currentIncome * 100000) / 100000, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
   }
+  if (!validTransactionDate(action.transactionDate)) throw new Error('Informe uma data da transação válida.');
   if (typeof action.assetId !== 'string' || !action.assetId) throw new Error('Selecione um ativo.');
   const unitCents = moneyCents(action.unitPrice, 999999.99, 'Valor unitário');
   const totalCents = action.quantity * unitCents;
