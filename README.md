@@ -94,7 +94,11 @@ Isso garante compatibilidade com acentuacao em portugues BR.
 ## Finanças no admin
 
 Acesse **Finanças** para incluir ativos, registrar transações de compra e consultar
-os saldos e o histórico. A transação informa o valor total, não o preço unitário.
+os saldos e o histórico. A transação informa quantidade e valor unitário; o total
+é calculado automaticamente no formulário e novamente no servidor, em centavos.
+O total é somente leitura e permanece gravado na coluna `value`. Esta mudança não
+exige migração do banco. O valor unitário aceita até duas casas decimais, limitado
+a R$ 999.999,99; o total continua limitado a R$ 99.999.999,99.
 Nesta versão as transações são entradas (compras); vendas não fazem parte deste modelo.
 
 ### Modelo relacional
@@ -118,7 +122,8 @@ o trigger soma quantidade e valor, e calcula `average_price = round(value / quan
 O valor acumulado mantém todos os centavos; multiplicar a média arredondada pela
 quantidade pode diferir ligeiramente desse valor. Não há cotação de mercado.
 Uma falha no recálculo reverte também a inclusão da transação. O identificador
-mantido no formulário permite repetir um envio sem duplicá-lo. O histórico é imutável.
+mantido no formulário permite repetir um envio sem duplicá-lo. Edições e exclusões
+recalculam os saldos por triggers no banco, na mesma operação.
 
 Todas as leituras e escritas em `GET/POST /api/admin/finance` exigem a senha do admin.
 Os dados não entram no XML público, nas exportações ou nos backups do portfólio.
@@ -151,26 +156,43 @@ Esses campos continuam exclusivos para Ação e FII. Em outros tipos ficam ocult
 desabilitados; a API ignora os valores enviados para eles. Na tabela, aparecem na
 ordem valor atual, rendimento atual, DY atual e DY médio, com travessão para outros tipos.
 
+### Editar e excluir
+
+As listas de Ativos e Histórico de Transações têm botões **Editar** e **Excluir**.
+Editar preenche o formulário existente; Cancelar edição volta à visão geral sem salvar.
+Excluir pede confirmação. As tabelas, os DY, o total e a pizza são atualizados após salvar.
+
+- Ativos sem transações permitem corrigir quantidade e preço médio diretamente.
+- Ativos com transações permitem editar nome, tipo e campos de mercado. Quantidade e
+  preço médio ficam somente leitura; suas correções devem ocorrer pelo histórico.
+  Alterar nome/tipo também atualiza as transações vinculadas.
+- Um ativo com transações não pode ser excluído até que elas sejam excluídas. Não há
+  exclusão automática do histórico ao clicar em Excluir ativo.
+- Editar uma transação remove seu efeito anterior e aplica os novos quantidade/valor.
+  Também é possível selecionar outro ativo; ambos os saldos são recalculados.
+- Excluir uma transação remove seu efeito e preserva o saldo de abertura do ativo.
+- Cada registro tem uma revisão. Se os dados mudaram desde a abertura do formulário,
+  a gravação é recusada para evitar sobrescrever alterações; atualize os dados e reabra a edição.
+- Transações antigas cujo total não corresponde a um preço unitário com duas casas
+  exibem um aviso de arredondamento ao editar. Confira o total antes de salvar.
+
 ### Aplicação no site existente
 
-Se já aplicou as migrações **0001 e 0002**, aplique **apenas 0003**, uma única vez:
+Se já aplicou as migrações **0001, 0002 e 0003**, aplique **apenas 0004**, uma única vez:
 
 ```sh
-npx wrangler d1 execute criamundo-content --remote --file=migrations/0003_asset_income.sql
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0004_finance_edit_delete.sql
 npx wrangler deploy
 ```
 
-A nova migração adiciona rendimento atual sem apagar ativos nem transações. Ativos
-existentes recebem rendimento zero. O DY manual antigo fica preservado no banco,
-mas deixa de ser exibido ou utilizado; não inferimos rendimento a partir dele.
+A migração preserva os registros, adiciona controle de revisão e substitui os triggers
+que impediam edição/exclusão pelos recálculos automáticos. A tabela de transações é
+recriada preservando IDs, valores e datas, com atualização de nome/tipo em cascata.
 
-Se ainda não tem todas as tabelas e colunas, aplique apenas os scripts pendentes,
-em ordem: `0001_finance.sql`, `0002_asset_market_fields.sql`, `0003_asset_income.sql`.
-Não reaplique 0002 ou 0003 após sucesso, pois adicionam colunas. Reaplicar 0001
-não adiciona campos em tabelas que já existem.
-
-Para um banco totalmente novo, `schema.sql` já contém todas as tabelas de conteúdo
-e Finanças com os novos campos; neste caso, não aplique as migrações depois.
+Se faltam migrações, aplique apenas as pendentes na ordem 0001 → 0002 → 0003 → 0004.
+**Não reaplique as migrações antigas após atualizar**, pois elas podem recriar triggers
+obsoletos. Para um banco totalmente novo, `schema.sql` já contém o modelo atual completo;
+nesse caso não aplique as migrações depois.
 
 Para testar localmente, use `--local` no lugar de `--remote`, configure `ADMIN_PASSWORD`
 em `.dev.vars` e execute `npx wrangler dev`. Nunca publique credenciais como assets.

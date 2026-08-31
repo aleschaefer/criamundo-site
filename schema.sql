@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS finance_assets (
   current_price DECIMAL(8,2) CHECK (current_price IS NULL OR (type IN (1, 2) AND current_price BETWEEN 0 AND 999999.99 AND current_price = round(current_price, 2))),
   -- Campo legado preservado; a API calcula os DY usando current_income.
   current_dy DECIMAL(8,2) NOT NULL DEFAULT 0 CHECK (current_dy BETWEEN 0 AND 999999.99 AND current_dy = round(current_dy, 2) AND (type IN (1, 2) OR current_dy = 0)),
+  revision INTEGER NOT NULL DEFAULT 0,
   current_income DECIMAL(7,5) NOT NULL DEFAULT 0 CHECK (current_income BETWEEN 0 AND 99.99999 AND current_income = round(current_income, 5) AND (type IN (1, 2) OR current_income = 0)),
   CHECK ((quantity = 0 AND value = 0 AND average_price = 0) OR
     (quantity > 0 AND average_price = round(value * 1.0 / quantity, 2))),
@@ -42,20 +43,41 @@ CREATE TABLE IF NOT EXISTS finance_transactions (
   quantity INTEGER NOT NULL CHECK (typeof(quantity) = 'integer' AND quantity BETWEEN 1 AND 2147483647),
   value DECIMAL(10,2) NOT NULL CHECK (value BETWEEN 0 AND 99999999.99 AND value = round(value, 2)),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  FOREIGN KEY (asset_id, name, type) REFERENCES finance_assets(id, name, type)
+  revision INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY (asset_id, name, type) REFERENCES finance_assets(id, name, type) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_finance_transactions_asset ON finance_transactions(asset_id);
-CREATE TRIGGER IF NOT EXISTS finance_transaction_apply
-AFTER INSERT ON finance_transactions
+CREATE TRIGGER IF NOT EXISTS finance_transaction_apply AFTER INSERT ON finance_transactions
 BEGIN
-  UPDATE finance_assets
-  SET quantity = quantity + NEW.quantity,
-      value = round(value + NEW.value, 2),
-      average_price = round(round(value + NEW.value, 2) * 1.0 / (quantity + NEW.quantity), 2)
+  UPDATE finance_assets SET
+    quantity = quantity + NEW.quantity,
+    value = round(value + NEW.value, 2),
+    average_price = round(round(value + NEW.value, 2) * 1.0 / (quantity + NEW.quantity), 2),
+    revision = revision + 1
   WHERE id = NEW.asset_id;
 END;
--- Histórico imutável: impede alterações que deixariam o saldo desatualizado.
-CREATE TRIGGER IF NOT EXISTS finance_transaction_no_update
-BEFORE UPDATE ON finance_transactions BEGIN SELECT RAISE(ABORT, 'Transações não podem ser editadas.'); END;
-CREATE TRIGGER IF NOT EXISTS finance_transaction_no_delete
-BEFORE DELETE ON finance_transactions BEGIN SELECT RAISE(ABORT, 'Transações não podem ser excluídas.'); END;
+CREATE TRIGGER IF NOT EXISTS finance_transaction_edit AFTER UPDATE OF asset_id, quantity, value ON finance_transactions
+BEGIN
+  UPDATE finance_assets SET
+    quantity = quantity - CASE WHEN id = OLD.asset_id THEN OLD.quantity ELSE 0 END + CASE WHEN id = NEW.asset_id THEN NEW.quantity ELSE 0 END,
+    value = round(value - CASE WHEN id = OLD.asset_id THEN OLD.value ELSE 0 END + CASE WHEN id = NEW.asset_id THEN NEW.value ELSE 0 END, 2),
+    average_price = CASE WHEN quantity - CASE WHEN id = OLD.asset_id THEN OLD.quantity ELSE 0 END + CASE WHEN id = NEW.asset_id THEN NEW.quantity ELSE 0 END = 0 THEN 0 ELSE
+      round(round(value - CASE WHEN id = OLD.asset_id THEN OLD.value ELSE 0 END + CASE WHEN id = NEW.asset_id THEN NEW.value ELSE 0 END, 2) * 1.0 /
+      (quantity - CASE WHEN id = OLD.asset_id THEN OLD.quantity ELSE 0 END + CASE WHEN id = NEW.asset_id THEN NEW.quantity ELSE 0 END), 2) END,
+    revision = revision + 1
+  WHERE id IN (OLD.asset_id, NEW.asset_id);
+END;
+CREATE TRIGGER IF NOT EXISTS finance_transaction_delete AFTER DELETE ON finance_transactions
+BEGIN
+  UPDATE finance_assets SET
+    quantity = quantity - OLD.quantity,
+    value = round(value - OLD.value, 2),
+    average_price = CASE WHEN quantity = OLD.quantity THEN 0 ELSE round(round(value - OLD.value, 2) * 1.0 / (quantity - OLD.quantity), 2) END,
+    revision = revision + 1
+  WHERE id = OLD.asset_id;
+END;
+CREATE TRIGGER IF NOT EXISTS finance_transaction_metadata AFTER UPDATE OF name, type ON finance_transactions
+WHEN NEW.name != OLD.name OR NEW.type != OLD.type
+BEGIN
+  UPDATE finance_transactions SET revision = revision + 1 WHERE id = NEW.id;
+END;

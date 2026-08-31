@@ -7,6 +7,13 @@ export function moneyCents(value, max, label) {
 }
 export function validateAction(action) {
   if (!action || !['asset', 'transaction'].includes(action.type)) throw new Error('Ação inválida.');
+  const operation = action.operation || 'create';
+  if (!['create', 'update', 'delete'].includes(operation)) throw new Error('Operação inválida.');
+  if (operation !== 'create' && (!Number.isSafeInteger(action.revision) || action.revision < 0)) throw new Error('Versão inválida. Atualize os dados.');
+  if (operation === 'delete') {
+    if (typeof action.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(action.id)) throw new Error('Identificador inválido.');
+    return action;
+  }
   if (!Number.isInteger(action.quantity) || action.quantity < (action.type === 'asset' ? 0 : 1) || action.quantity > 2147483647) throw new Error('Quantidade deve ser um número inteiro dentro do limite permitido.');
   if (typeof action.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(action.id)) throw new Error('Identificador inválido.');
   if (action.type === 'asset') {
@@ -27,5 +34,9 @@ export function validateAction(action) {
     return { ...action, name, currentPrice, currentIncome: Math.round(currentIncome * 100000) / 100000, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
   }
   if (typeof action.assetId !== 'string' || !action.assetId) throw new Error('Selecione um ativo.');
-  return { ...action, value: moneyCents(action.value, 99999999.99, 'Valor') / 100 };
+  const unitCents = moneyCents(action.unitPrice, 999999.99, 'Valor unitário');
+  const totalCents = action.quantity * unitCents;
+  if (!Number.isSafeInteger(totalCents) || totalCents > 9999999999) throw new Error('Valor total da transação excede 99.999.999,99.');
+  // O total enviado pelo cliente nunca é usado como fonte de verdade.
+  return { ...action, unitPrice: unitCents / 100, value: totalCents / 100 };
 }

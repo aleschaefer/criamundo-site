@@ -9,12 +9,14 @@ import { assetAllocation } from '../finance-allocation.mjs';
 const migration = readFileSync(new URL('../migrations/0001_finance.sql', import.meta.url), 'utf8');
 const marketMigration = readFileSync(new URL('../migrations/0002_asset_market_fields.sql', import.meta.url), 'utf8');
 const incomeMigration = readFileSync(new URL('../migrations/0003_asset_income.sql', import.meta.url), 'utf8');
+const editMigration = readFileSync(new URL('../migrations/0004_finance_edit_delete.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
   sql.exec(migration);
   sql.exec(marketMigration);
   sql.exec(incomeMigration);
+  sql.exec(editMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -31,13 +33,13 @@ function database() {
   } };
 }
 const asset = (values = {}) => ({ type: 'asset', id: crypto.randomUUID(), name: 'Reserva', assetType: 3, quantity: 10, averagePrice: 20, ...values });
-const transaction = (assetId, values = {}) => ({ type: 'transaction', id: crypto.randomUUID(), assetId, quantity: 10, value: 300, ...values });
+const transaction = (assetId, values = {}) => ({ type: 'transaction', id: crypto.randomUUID(), assetId, quantity: 10, unitPrice: 30, ...values });
 const request = (body, password = 'test-password') => new Request('https://example.test/api/admin/finance', { method: body ? 'POST' : 'GET', headers: { 'x-admin-password': password }, ...(body ? { body: JSON.stringify(body) } : {}) });
 const envFor = () => ({ ADMIN_PASSWORD: 'test-password', CONTENT_DB: database() });
 test('valida nomes, enum, quantidades inteiras e precisão decimal', () => {
   assert.equal(validateAction(asset({ averagePrice: 12.34 })).value, 123.4);
   for (const values of [{ name: 'a'.repeat(31) }, { name: ' ' }, { assetType: 0 }, { assetType: '1' }, { quantity: 1.5 }, { quantity: -1 }, { averagePrice: 1.001 }, { averagePrice: 1000000 }, { quantity: 1000, averagePrice: 999999.99 }]) assert.throws(() => validateAction(asset(values)));
-  for (const values of [{ quantity: 0 }, { quantity: 1.1 }, { value: 1.001 }, { value: -1 }, { value: Infinity }, { value: 100000000 }]) assert.throws(() => validateAction(transaction('id', values)));
+  for (const values of [{ quantity: 0 }, { quantity: 1.1 }, { unitPrice: 1.001 }, { unitPrice: -1 }, { unitPrice: Infinity }, { unitPrice: 1000000 }, { unitPrice: undefined }, { quantity: 1000, unitPrice: 999999.99 }]) assert.throws(() => validateAction(transaction('id', values)));
 });
 test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', async () => {
   const env = envFor(); const a = asset();
@@ -60,33 +62,35 @@ test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', 
 test('média arredondada não perde centavos no custo acumulado', async () => {
   const env = envFor(); const a = asset({ quantity: 0, averagePrice: 0 });
   await handleFinance(request(a), env);
-  let response = await handleFinance(request(transaction(a.id, { quantity: 3, value: 10 })), env);
+  let response = await handleFinance(request(transaction(a.id, { quantity: 3, unitPrice: 3.33 })), env);
   let data = await response.json();
   assert.equal(data.assets[0].averagePrice, 3.33);
-  assert.equal(data.total, 10);
-  response = await handleFinance(request(transaction(a.id, { quantity: 1, value: 1 })), env);
+  assert.equal(data.total, 9.99);
+  response = await handleFinance(request(transaction(a.id, { quantity: 1, unitPrice: 1 })), env);
   data = await response.json();
   assert.equal(data.assets[0].averagePrice, 2.75);
-  assert.equal(data.total, 11);
+  assert.equal(data.total, 10.99);
 });
 test('limite excedido reverte também o INSERT de transação', async () => {
   const env = envFor(); const a = asset({ quantity: 100, averagePrice: 999999.99 });
   await handleFinance(request(a), env);
-  const response = await handleFinance(request(transaction(a.id, { value: 1, quantity: 1 })), env);
+  const response = await handleFinance(request(transaction(a.id, { unitPrice: 1, quantity: 1 })), env);
   assert.equal(response.status, 400);
   const data = await (await handleFinance(request(), env)).json();
   assert.equal(data.transactions.length, 0);
   assert.equal(data.assets[0].quantity, 100);
   assert.equal(data.total, 99999999);
 });
-test('banco rejeita campos inválidos, relacionamento incorreto e edição de histórico', () => {
+test('banco rejeita campos inválidos e relacionamento incorreto e recalcula edição/exclusão', () => {
   const { sql } = database();
   sql.exec("INSERT INTO finance_assets (id, name, type, quantity, average_price, value) VALUES ('a','ABC',1,1,10,10)");
   const insert = sql.prepare('INSERT INTO finance_transactions (id, asset_id, name, type, quantity, value) VALUES (?, ?, ?, ?, ?, ?)');
   for (const args of [['t','a','ABC',1,1.5,10], ['t','a','ABC',1,1,1.001], ['t','a','ABC',6,1,10], ['t','missing','ABC',1,1,10], ['t','a','Wrong',1,1,10]]) assert.throws(() => insert.run(...args));
   insert.run('t','a','ABC',1,1,10);
-  assert.throws(() => sql.exec("UPDATE finance_transactions SET value = 100 WHERE id = 't'"));
-  assert.throws(() => sql.exec("DELETE FROM finance_transactions WHERE id = 't'"));
+  sql.exec("UPDATE finance_transactions SET value = 100 WHERE id = 't'");
+  assert.equal(sql.prepare("SELECT value FROM finance_assets WHERE id = 'a'").get().value, 110);
+  sql.exec("DELETE FROM finance_transactions WHERE id = 't'");
+  assert.equal(sql.prepare("SELECT value FROM finance_assets WHERE id = 'a'").get().value, 10);
 });
 test('autorização, ativo inexistente e duplicidade', async () => {
   const env = envFor();
@@ -200,4 +204,95 @@ test('migração 0003 preserva saldos e DY legado e valida cinco casas no banco'
   assert.throws(() => sql.exec("UPDATE finance_assets SET current_income=0.123456 WHERE id='a'"));
   assert.throws(() => sql.exec("UPDATE finance_assets SET current_income=100 WHERE id='a'"));
   assert.throws(() => sql.exec("UPDATE finance_assets SET current_income=-1 WHERE id='a'"));
+});
+test('transação calcula quantidade × valor unitário sem confiar no total enviado', async () => {
+  const env = envFor(); const a = asset({ quantity: 0, averagePrice: 0 });
+  await handleFinance(request(a), env);
+  const input = transaction(a.id, { quantity: 3, unitPrice: 12.34, value: 999 });
+  assert.equal(validateAction(input).value, 37.02);
+  const response = await handleFinance(request(input), env);
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.transactions[0].value, 37.02);
+  assert.equal(data.assets[0].quantity, 3);
+  assert.equal(data.assets[0].averagePrice, 12.34);
+  assert.equal(data.total, 37.02);
+  assert.equal(validateAction(transaction(a.id, { unitPrice: 0 })).value, 0);
+});
+const snapshot = async env => (await handleFinance(request(), env)).json();
+const mutate = (record, type, operation, changes = {}) => ({ ...record, type, operation, ...changes });
+test('editar e excluir transações preserva saldo de abertura e bloqueia versões antigas', async () => {
+  const env = envFor(); const a = asset();
+  await handleFinance(request(a), env);
+  await handleFinance(request(transaction(a.id)), env);
+  let data = await snapshot(env); let tx = data.transactions[0];
+  const update = mutate(tx, 'transaction', 'update', { quantity: 5, unitPrice: 10 });
+  assert.equal((await handleFinance(request(update), env)).status, 200);
+  data = await snapshot(env);
+  assert.equal(data.assets[0].quantity, 15); assert.equal(data.assets[0].total, 250);
+  assert.equal(data.assets[0].averagePrice, 16.67);
+  assert.equal((await handleFinance(request(update), env)).status, 409);
+  assert.equal((await handleFinance(request(mutate(tx, 'transaction', 'delete')), env)).status, 409);
+  tx = data.transactions[0];
+  assert.equal((await handleFinance(request(mutate(tx, 'transaction', 'delete')), env)).status, 200);
+  data = await snapshot(env);
+  assert.equal(data.assets[0].quantity, 10); assert.equal(data.assets[0].total, 200);
+  assert.equal(data.assets[0].averagePrice, 20); assert.equal(data.transactions.length, 0);
+});
+test('transação pode mudar de ativo e excluir última entrada zera o saldo', async () => {
+  const env = envFor(); const a = asset({ quantity: 0, averagePrice: 0 }); const b = asset({ name: 'Outro' });
+  await handleFinance(request(a), env); await handleFinance(request(b), env);
+  await handleFinance(request(transaction(a.id)), env);
+  let data = await snapshot(env);
+  assert.equal((await handleFinance(request(mutate(data.transactions[0], 'transaction', 'update', { assetId: b.id, quantity: 2, unitPrice: 5 })), env)).status, 200);
+  data = await snapshot(env);
+  assert.equal(data.assets.find(x => x.id === a.id).total, 0);
+  assert.equal(data.assets.find(x => x.id === a.id).averagePrice, 0);
+  assert.equal(data.assets.find(x => x.id === b.id).total, 210);
+  assert.equal(data.transactions[0].name, b.name);
+});
+test('editar ativo preserva custo arredondado e propaga nome/tipo sem apagar histórico', async () => {
+  const env = envFor(); const a = asset({ quantity: 1, averagePrice: 10 });
+  await handleFinance(request(a), env); await handleFinance(request(transaction(a.id, { quantity: 2, unitPrice: 10.01 })), env);
+  let data = await snapshot(env); let saved = data.assets[0]; const before = saved.total;
+  const update = mutate(saved, 'asset', 'update', { name: 'Novo nome', assetType: 1, currentIncome: .12, currentPrice: 30 });
+  assert.equal((await handleFinance(request(update), env)).status, 200);
+  data = await snapshot(env);
+  assert.equal(data.assets[0].total, before);
+  assert.equal(data.assets[0].currentIncome, .12);
+  assert.equal(data.transactions[0].name, 'Novo nome'); assert.equal(data.transactions[0].assetType, 1);
+  assert.equal((await handleFinance(request(mutate(data.assets[0], 'asset', 'update', { quantity: 99 })), env)).status, 409);
+  assert.equal((await handleFinance(request(mutate(data.assets[0], 'asset', 'delete')), env)).status, 409);
+  assert.equal((await snapshot(env)).transactions.length, 1);
+});
+test('ativo sem transações permite editar saldo e excluir; escrita exige senha', async () => {
+  const env = envFor(); const a = asset();
+  await handleFinance(request(a), env);
+  let data = await snapshot(env);
+  assert.equal((await handleFinance(request(mutate(data.assets[0], 'asset', 'update', { quantity: 5, averagePrice: 2 })), env)).status, 200);
+  data = await snapshot(env); assert.equal(data.total, 10);
+  const remove = mutate(data.assets[0], 'asset', 'delete');
+  assert.equal((await handleFinance(request(remove, 'wrong'), env)).status, 401);
+  assert.equal((await handleFinance(request(remove), env)).status, 200);
+  assert.equal((await snapshot(env)).assets.length, 0);
+});
+test('edição fora dos limites é revertida junto com o histórico', async () => {
+  const env = envFor(); const a = asset({ quantity: 100, averagePrice: 999999.98 });
+  await handleFinance(request(a), env); await handleFinance(request(transaction(a.id, { quantity: 1, unitPrice: 1 })), env);
+  const before = await snapshot(env);
+  const response = await handleFinance(request(mutate(before.transactions[0], 'transaction', 'update', { quantity: 2, unitPrice: 1 })), env);
+  assert.equal(response.status, 400);
+  assert.deepEqual(await snapshot(env), before);
+});
+test('migração 0004 preserva registros, histórico e chaves estrangeiras', () => {
+  const sql = new DatabaseSync(':memory:'); sql.exec('PRAGMA foreign_keys=ON');
+  sql.exec(migration); sql.exec(marketMigration); sql.exec(incomeMigration);
+  sql.exec("INSERT INTO finance_assets (id,name,type,quantity,average_price,value) VALUES ('a','ABC',1,1,10,10)");
+  sql.exec("INSERT INTO finance_transactions (id,asset_id,name,type,quantity,value) VALUES ('t','a','ABC',1,2,30)");
+  sql.exec(editMigration);
+  assert.equal(sql.prepare('SELECT value FROM finance_assets').get().value, 40);
+  assert.equal(sql.prepare('SELECT value FROM finance_transactions').get().value, 30);
+  assert.equal(sql.prepare('PRAGMA foreign_key_check').all().length, 0);
+  sql.exec("DELETE FROM finance_transactions WHERE id='t'");
+  assert.equal(sql.prepare('SELECT value FROM finance_assets').get().value, 10);
 });
