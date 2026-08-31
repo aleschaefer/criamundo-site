@@ -90,3 +90,51 @@ Isso garante compatibilidade com acentuacao em portugues BR.
 - Se o Worker/D1 ainda nao estiver configurado, o site pode cair no fallback legado de `content.js`.
 - O `localStorage` nao e mais a fonte principal de publicacao.
 - O modo `?preview=local` continua servindo para revisar rascunhos locais no mesmo navegador.
+
+## Finanças no admin
+
+Acesse **Finanças** para incluir ativos, registrar transações de compra e consultar
+os saldos e o histórico. A transação informa o valor total, não o preço unitário.
+Nesta versão as transações são entradas (compras); vendas não fazem parte deste modelo.
+
+### Modelo relacional
+
+- `finance_assets`: `id`, `name CHAR(30)`, `type SMALLINT`, `quantity INTEGER`,
+  `average_price DECIMAL(8,2)` e `value DECIMAL(10,2)`.
+- `finance_transactions`: `id`, `asset_id`, `name CHAR(30)`, `type SMALLINT`,
+  `quantity INTEGER`, `value DECIMAL(10,2)` e `created_at` automático.
+- Enum: **1 = Ação, 2 = FII, 3 = Renda Fixa, 4 = BDR, 5 = Outro**.
+- Nome e tipo da transação são herdados do ativo. A chave estrangeira composta
+  impede associar uma transação a um ativo com nome ou tipo diferente.
+- SQLite/D1 não aplica a precisão declarada em CHAR/DECIMAL. Por isso o script usa
+  CHECKs para comprimento, enum, quantidades inteiras, limites e duas casas decimais.
+- Quantidades: 0 a 2.147.483.647 no ativo e 1 a 2.147.483.647 na transação.
+  Preço médio: até R$ 999.999,99. Valor: até R$ 99.999.999,99.
+
+O cadastro inicial calcula `value = quantity × average_price`. Em uma compra,
+o trigger soma quantidade e valor, e calcula `average_price = round(value / quantity, 2)`.
+O valor acumulado mantém todos os centavos; multiplicar a média arredondada pela
+quantidade pode diferir ligeiramente desse valor. Não há cotação de mercado.
+Uma falha no recálculo reverte também a inclusão da transação. O identificador
+mantido no formulário permite repetir um envio sem duplicá-lo. O histórico é imutável.
+
+Todas as leituras e escritas em `GET/POST /api/admin/finance` exigem a senha do admin.
+Os dados não entram no XML público, nas exportações ou nos backups do portfólio.
+
+### Aplicação no site existente
+
+Aplique o único script de Finanças, que cria as duas tabelas, o índice e os triggers:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0001_finance.sql
+npx wrangler deploy
+```
+
+O script não utiliza a antiga estrutura JSON. Pode ser reaplicado sem apagar os
+ativos e transações existentes. Não é necessário executar outro script de Finanças.
+
+Para banco novo, use `schema.sql`, que também inclui as tabelas de conteúdo.
+Para testar localmente, use `--local` no lugar de `--remote`, configure `ADMIN_PASSWORD`
+em `.dev.vars` e execute `npx wrangler dev`. Nunca publique credenciais como assets.
+
+Testes (Node 24+, usando SQLite real em memória): `node --test tests/finance.test.mjs`.

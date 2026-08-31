@@ -380,3 +380,23 @@ textarea {
     width: 100%;
   }
 }
+
+[hidden] { display: none !important; }
+.finance-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+.finance-form { display: grid; gap: 22px; }
+.finance-form small { color: var(--muted); font-weight: 400; }
+.finance-form > button { justify-self: start; }
+.finance-summary { margin-bottom: 28px; }
+.finance-summary strong { font-size: clamp(1.5rem, 4vw, 2.2rem); overflow-wrap: anywhere; }
+.finance-table-wrap { overflow-x: auto; margin: 16px 0 28px; }
+.finance-table-wrap table { width: 100%; border-collapse: collapse; text-align: left; }
+.finance-table-wrap th, .finance-table-wrap td { padding: 14px 12px; border-bottom: 1px solid var(--line); }
+.finance-table-wrap th { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+.finance-table-wrap td:not(:first-child) { white-space: nowrap; }
+.finance-table-wrap td:first-child { overflow-wrap: anywhere; min-width: 120px; }
+select { font: inherit; width: 100%; padding: 13px 14px; color: var(--text); background: var(--panel-soft); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+button:disabled { opacity: .5; cursor: wait; transform: none; }
+input[readonly] { color: var(--gold); background: var(--gold-soft); }
+.button[aria-pressed="true"] { background: var(--gold-soft); border-color: var(--gold); }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

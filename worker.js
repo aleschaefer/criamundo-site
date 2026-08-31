@@ -1,3 +1,5 @@
+import { handleFinance } from './finance-api.mjs';
+
 function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -187,6 +189,10 @@ async function handleAdminAuth(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/api/admin/finance") {
+      return handleFinance(request, env);
+    }
 
     if (url.pathname === "/api/content" && request.method === "GET") {
       return handleGetContent(env);

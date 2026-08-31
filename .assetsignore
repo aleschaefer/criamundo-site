@@ -6,3 +6,15 @@ schema.sql
 README.md
 worker.js
 wrangler.jsonc
+finance-api.mjs
+finance-model.mjs
+migrations
+migrations/**
+tests
+tests/**
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+.wrangler
+.wrangler/**

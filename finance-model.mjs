@@ -1,0 +1,23 @@
+export const ASSET_TYPES = Object.freeze({ 1: 'Ação', 2: 'FII', 3: 'Renda Fixa', 4: 'BDR', 5: 'Outro' });
+export function moneyCents(value, max, label) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > max || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001) {
+    throw new Error(`${label}: informe um valor entre 0 e ${max}, com até 2 casas decimais.`);
+  }
+  return Math.round(value * 100);
+}
+export function validateAction(action) {
+  if (!action || !['asset', 'transaction'].includes(action.type)) throw new Error('Ação inválida.');
+  if (!Number.isInteger(action.quantity) || action.quantity < (action.type === 'asset' ? 0 : 1) || action.quantity > 2147483647) throw new Error('Quantidade deve ser um número inteiro dentro do limite permitido.');
+  if (typeof action.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(action.id)) throw new Error('Identificador inválido.');
+  if (action.type === 'asset') {
+    const name = typeof action.name === 'string' ? action.name.trim() : '';
+    if (!name || [...name].length > 30) throw new Error('Nome deve ter até 30 caracteres.');
+    if (!Number.isInteger(action.assetType) || !ASSET_TYPES[action.assetType]) throw new Error('Tipo de ativo inválido.');
+    const cents = moneyCents(action.averagePrice, 999999.99, 'Preço médio');
+    const valueCents = cents * action.quantity;
+    if (!Number.isSafeInteger(valueCents) || valueCents > 9999999999) throw new Error('Valor do ativo excede 99.999.999,99.');
+    return { ...action, name, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
+  }
+  if (typeof action.assetId !== 'string' || !action.assetId) throw new Error('Selecione um ativo.');
+  return { ...action, value: moneyCents(action.value, 99999999.99, 'Valor') / 100 };
+}
