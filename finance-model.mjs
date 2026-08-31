@@ -16,7 +16,13 @@ export function validateAction(action) {
     const cents = moneyCents(action.averagePrice, 999999.99, 'Preço médio');
     const valueCents = cents * action.quantity;
     if (!Number.isSafeInteger(valueCents) || valueCents > 9999999999) throw new Error('Valor do ativo excede 99.999.999,99.');
-    return { ...action, name, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
+    const marketFields = [1, 2].includes(action.assetType);
+    const blank = value => value === undefined || value === null || value === '';
+    const currentPrice = marketFields && !blank(action.currentPrice)
+      ? moneyCents(action.currentPrice, 999999.99, 'Valor atual') / 100 : null;
+    const currentDy = marketFields && !blank(action.currentDy)
+      ? moneyCents(action.currentDy, 999999.99, 'DY atual') / 100 : 0;
+    return { ...action, name, currentPrice, currentDy, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
   }
   if (typeof action.assetId !== 'string' || !action.assetId) throw new Error('Selecione um ativo.');
   return { ...action, value: moneyCents(action.value, 99999999.99, 'Valor') / 100 };

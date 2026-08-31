@@ -4,11 +4,14 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { validateAction } from '../finance-model.mjs';
 import { handleFinance } from '../finance-api.mjs';
+import { assetAllocation } from '../finance-allocation.mjs';
 const migration = readFileSync(new URL('../migrations/0001_finance.sql', import.meta.url), 'utf8');
+const marketMigration = readFileSync(new URL('../migrations/0002_asset_market_fields.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
   sql.exec(migration);
+  sql.exec(marketMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -75,7 +78,7 @@ test('limite excedido reverte também o INSERT de transação', async () => {
 });
 test('banco rejeita campos inválidos, relacionamento incorreto e edição de histórico', () => {
   const { sql } = database();
-  sql.exec("INSERT INTO finance_assets VALUES ('a','ABC',1,1,10,10)");
+  sql.exec("INSERT INTO finance_assets (id, name, type, quantity, average_price, value) VALUES ('a','ABC',1,1,10,10)");
   const insert = sql.prepare('INSERT INTO finance_transactions (id, asset_id, name, type, quantity, value) VALUES (?, ?, ?, ?, ?, ?)');
   for (const args of [['t','a','ABC',1,1.5,10], ['t','a','ABC',1,1,1.001], ['t','a','ABC',6,1,10], ['t','missing','ABC',1,1,10], ['t','a','Wrong',1,1,10]]) assert.throws(() => insert.run(...args));
   insert.run('t','a','ABC',1,1,10);
@@ -92,7 +95,7 @@ test('autorização, ativo inexistente e duplicidade', async () => {
 });
 test('script único pode ser reaplicado sem alterar saldos e histórico', () => {
   const { sql } = database();
-  sql.exec("INSERT INTO finance_assets VALUES ('a','ABC',1,1,10,10)");
+  sql.exec("INSERT INTO finance_assets (id, name, type, quantity, average_price, value) VALUES ('a','ABC',1,1,10,10)");
   sql.exec("INSERT INTO finance_transactions (id, asset_id, name, type, quantity, value) VALUES ('t','a','ABC',1,2,30)");
   sql.exec(migration);
   assert.equal(sql.prepare('SELECT count(*) AS count FROM finance_transactions').get().count, 1);
@@ -101,4 +104,69 @@ test('script único pode ser reaplicado sem alterar saldos e histórico', () => 
   assert.equal(asset.average_price, 13.33);
   assert.equal(asset.value, 40);
   assert.equal(sql.prepare("SELECT count(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'finance_state'").get().count, 0);
+});
+test('valor atual e DY opcionais, explícitos e restritos a Ação/FII', async () => {
+  for (const assetType of [1, 2]) {
+    const env = envFor();
+    const omitted = asset({ assetType });
+    let response = await handleFinance(request(omitted), env);
+    let data = await response.json();
+    assert.equal(data.assets[0].currentPrice, 20);
+    assert.equal(data.assets[0].currentDy, 0);
+    // O padrão acompanha a média recalculada.
+    data = await (await handleFinance(request(transaction(omitted.id)), env)).json();
+    assert.equal(data.assets[0].currentPrice, 25);
+    const explicit = asset({ name: 'Cotação', assetType, currentPrice: 45.67, currentDy: 8.91 });
+    await handleFinance(request(explicit), env);
+    data = await (await handleFinance(request(transaction(explicit.id)), env)).json();
+    const saved = data.assets.find(item => item.id === explicit.id);
+    assert.equal(saved.currentPrice, 45.67);
+    assert.equal(saved.currentDy, 8.91);
+    assert.equal(saved.averagePrice, 25);
+    const zero = validateAction(asset({ assetType, currentPrice: 0, currentDy: 0 }));
+    assert.equal(zero.currentPrice, 0);
+    assert.equal(zero.currentDy, 0);
+    const blank = validateAction(asset({ assetType, currentPrice: '', currentDy: '' }));
+    assert.equal(blank.currentPrice, null);
+    assert.equal(blank.currentDy, 0);
+    for (const values of [{ currentPrice: -1 }, { currentPrice: 1.001 }, { currentPrice: 1000000 }, { currentDy: -1 }, { currentDy: NaN }, { currentDy: 1.001 }]) {
+      assert.throws(() => validateAction(asset({ assetType, ...values })));
+    }
+  }
+  for (const assetType of [3, 4, 5]) {
+    const value = validateAction(asset({ assetType, currentPrice: 100, currentDy: 10 }));
+    assert.equal(value.currentPrice, null);
+    assert.equal(value.currentDy, 0);
+  }
+});
+test('migração preserva registros e aplica os padrões aos ativos existentes', () => {
+  const sql = new DatabaseSync(':memory:');
+  sql.exec(migration);
+  sql.exec("INSERT INTO finance_assets VALUES ('old','ABC',1,2,10,20)");
+  sql.exec(marketMigration);
+  const value = sql.prepare("SELECT COALESCE(current_price, average_price) AS price, current_dy AS dy, quantity, value FROM finance_assets WHERE id='old'").get();
+  assert.equal(value.price, 10); assert.equal(value.dy, 0);
+  assert.equal(value.quantity, 2); assert.equal(value.value, 20);
+  assert.throws(() => sql.exec("UPDATE finance_assets SET current_price=-1 WHERE id='old'"));
+  assert.throws(() => sql.exec("UPDATE finance_assets SET current_dy=1.001 WHERE id='old'"));
+});
+test('schema completo inclui os campos atuais para banco novo', () => {
+  const sql = new DatabaseSync(':memory:');
+  sql.exec(readFileSync(new URL('../schema.sql', import.meta.url), 'utf8'));
+  sql.exec("INSERT INTO finance_assets (id,name,type,quantity,average_price,value,current_price,current_dy) VALUES ('a','ABC',1,1,10,10,12.34,5.67)");
+  assert.equal(sql.prepare('SELECT current_dy FROM finance_assets').get().current_dy, 5.67);
+});
+test('pizza agrupa custos em centavos para os cinco tipos sem usar a cotação', () => {
+  const allocation = assetAllocation([
+    { assetType: 1, total: .1, currentPrice: 100 },
+    { assetType: 1, total: .2, currentPrice: 500 },
+    { assetType: 2, total: .3 },
+    { assetType: 3, total: .6 },
+    { assetType: 4, total: 0 },
+    { assetType: 5, total: 0 }
+  ]);
+  assert.deepEqual(allocation.map(item => item.amount), [.3, .3, .6, 0, 0]);
+  assert.deepEqual(allocation.map(item => item.percent), [25, 25, 50, 0, 0]);
+  assert.ok(assetAllocation([]).every(item => item.percent === 0));
+  assert.equal(assetAllocation([{ assetType: 2, total: 10 }])[1].percent, 100);
 });

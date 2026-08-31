@@ -100,7 +100,8 @@ Nesta versão as transações são entradas (compras); vendas não fazem parte d
 ### Modelo relacional
 
 - `finance_assets`: `id`, `name CHAR(30)`, `type SMALLINT`, `quantity INTEGER`,
-  `average_price DECIMAL(8,2)` e `value DECIMAL(10,2)`.
+  `average_price DECIMAL(8,2)`, `value DECIMAL(10,2)`,
+  `current_price DECIMAL(8,2)` e `current_dy DECIMAL(8,2)`.
 - `finance_transactions`: `id`, `asset_id`, `name CHAR(30)`, `type SMALLINT`,
   `quantity INTEGER`, `value DECIMAL(10,2)` e `created_at` automático.
 - Enum: **1 = Ação, 2 = FII, 3 = Renda Fixa, 4 = BDR, 5 = Outro**.
@@ -121,19 +122,49 @@ mantido no formulário permite repetir um envio sem duplicá-lo. O histórico é
 Todas as leituras e escritas em `GET/POST /api/admin/finance` exigem a senha do admin.
 Os dados não entram no XML público, nas exportações ou nos backups do portfólio.
 
+### Distribuição e campos de mercado
+
+A visão geral inclui um gráfico de pizza com o montante acumulado por tipo de ativo,
+acompanhado de legenda com valores e percentuais. Usa o custo de aquisição (`value`),
+não a cotação atual. O gráfico é atualizado ao salvar ativos e transações, e exibe
+uma mensagem quando não há valores positivos. A legenda também oferece os dados em texto.
+
+Tipo é o primeiro campo do formulário. Somente Ação e FII exibem os campos opcionais:
+
+- **Valor atual:** preço por unidade em reais, com duas casas. Se não informado,
+  `current_price` é NULL e a API retorna o preço médio usando COALESCE. Assim o padrão
+  acompanha eventuais mudanças na média. Um zero explícito é mantido como zero.
+- **DY atual:** percentual informado manualmente (ex.: `8,50` significa 8,50%),
+  com duas casas e padrão zero. Não há busca automática de cotações ou dividendos.
+
+Ambos aceitam valores entre 0 e 999.999,99. Em outros tipos os campos ficam ocultos e
+desabilitados; a API ignora valores de mercado enviados para esses tipos. A tabela
+exibe esses campos apenas nos registros de Ação/FII (travessão para os demais).
+
 ### Aplicação no site existente
 
-Aplique o único script de Finanças, que cria as duas tabelas, o índice e os triggers:
+Se já aplicou `0001_finance.sql`, aplique **apenas a nova migração 0002**, uma única vez:
 
 ```sh
-npx wrangler d1 execute criamundo-content --remote --file=migrations/0001_finance.sql
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0002_asset_market_fields.sql
 npx wrangler deploy
 ```
 
-O script não utiliza a antiga estrutura JSON. Pode ser reaplicado sem apagar os
-ativos e transações existentes. Não é necessário executar outro script de Finanças.
+Ela adiciona os campos sem apagar ativos nem transações existentes. Reaplicar 0001
+não adiciona colunas em tabelas já criadas, por isso esta atualização tem um script
+separado. Não execute 0002 novamente após seu sucesso (as colunas já existirão).
 
-Para banco novo, use `schema.sql`, que também inclui as tabelas de conteúdo.
+Se o banco ainda não tem as tabelas financeiras, aplique 0001 e depois 0002:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0001_finance.sql
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0002_asset_market_fields.sql
+```
+
+Alternativamente, **para um banco totalmente novo**, `schema.sql` já contém todas as
+tabelas de conteúdo e de Finanças, incluindo os novos campos; neste caso não aplique
+0002 depois. O script 0001 não utiliza a antiga estrutura JSON.
+
 Para testar localmente, use `--local` no lugar de `--remote`, configure `ADMIN_PASSWORD`
 em `.dev.vars` e execute `npx wrangler dev`. Nunca publique credenciais como assets.
 

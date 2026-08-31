@@ -108,10 +108,12 @@
         <form id="finance-asset" class="finance-form" hidden>
           <h3>Incluir ativo</h3>
           <div class="grid grid-2">
-            <label class="full-width">Nome<input name="name" required maxlength="30" placeholder="Ex.: Reserva de emergência" /></label>
             <label>Tipo<select name="assetType" required><option value="1">Ação</option><option value="2">FII</option><option value="3">Renda Fixa</option><option value="4">BDR</option><option value="5">Outro</option></select></label>
+            <label class="full-width">Nome<input name="name" required maxlength="30" placeholder="Ex.: Reserva de emergência" /></label>
             <label>Quantidade<input name="quantity" type="number" min="0" max="2147483647" step="1" required inputmode="decimal" /></label>
             <label>Preço médio (R$)<input name="averagePrice" type="number" min="0" max="999999.99" step="0.01" required inputmode="decimal" /></label>
+            <label data-market-field>Valor atual (R$ por unidade)<input name="currentPrice" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" placeholder="Usar preço médio" /><small>Opcional. Em branco, acompanha o preço médio.</small></label>
+            <label data-market-field>DY atual (%)<input name="currentDy" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" placeholder="0,00" /><small>Opcional. Em branco, será 0%.</small></label>
             <label>Valor total<input name="total" readonly value="R$ 0,00" aria-live="polite" /><small>Calculado automaticamente: quantidade × preço médio.</small></label>
           </div>
           <button class="button button-primary" type="submit">Salvar ativo</button>
@@ -132,8 +134,17 @@
             <div class="group-shell"><p class="eyebrow">Valor total dos ativos</p><strong id="finance-total">—</strong><p class="draft-note">Custo acumulado, sem cotação de mercado. Preço médio arredondado a 2 casas.</p></div>
             <div class="group-shell"><p class="eyebrow">Ativos cadastrados</p><strong id="finance-count">—</strong></div>
           </div>
+          <section class="finance-allocation group-shell" aria-labelledby="finance-allocation-title">
+            <h3 id="finance-allocation-title">Distribuição por tipo de ativo</h3>
+            <p class="draft-note">Montante acumulado pelo custo de aquisição, sem usar a cotação atual.</p>
+            <p id="finance-pie-empty" class="intro">Inclua ativos com valor positivo para visualizar a distribuição.</p>
+            <div id="finance-pie-content" class="finance-pie-content" hidden>
+              <div id="finance-pie" class="finance-pie" role="img" aria-label="Distribuição por tipo de ativo"></div>
+              <ul id="finance-pie-legend" class="finance-pie-legend" aria-label="Montantes e percentuais por tipo"></ul>
+            </div>
+          </section>
           <h3>Ativos</h3><p id="finance-empty" class="intro">Carregue os dados para consultar seus ativos.</p>
-          <div class="finance-table-wrap"><table><caption class="sr-only">Ativos cadastrados</caption><thead><tr><th>Nome</th><th>Tipo</th><th>Quantidade</th><th>Preço médio</th><th>Valor total</th></tr></thead><tbody id="finance-assets"></tbody></table></div>
+          <div class="finance-table-wrap"><table><caption class="sr-only">Ativos cadastrados</caption><thead><tr><th>Nome</th><th>Tipo</th><th>Quantidade</th><th>Preço médio</th><th>Valor atual</th><th>DY atual</th><th>Valor total</th></tr></thead><tbody id="finance-assets"></tbody></table></div>
           <h3>Histórico de transações</h3><p id="finance-history-empty" class="intro">Nenhuma transação registrada.</p>
           <div class="finance-table-wrap"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Registro</th><th>Nome</th><th>Tipo</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody id="finance-history"></tbody></table></div>
         </div>
@@ -250,6 +261,6 @@
     <script src="content.js"></script>
     <script src="data-manager.js"></script>
     <script src="admin.js"></script>
-    <script src="finance.js"></script>
+    <script type="module" src="finance.js"></script>
   </body>
 </html>

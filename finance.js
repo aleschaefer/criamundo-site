@@ -1,3 +1,5 @@
+import { assetAllocation } from './finance-allocation.mjs';
+
 (() => {
   const $ = (selector) => document.querySelector(selector);
   const section = $('#finance-section');
@@ -20,6 +22,7 @@
     [assetForm, transactionForm].forEach(form => {
       for (const input of form.elements) input.disabled = busy || !data;
     });
+    marketFields();
     transactionForm.querySelector('button').disabled = busy || !data?.assets.length;
     $('#finance-refresh').disabled = busy;
   }
@@ -34,7 +37,46 @@
     values.forEach(value => { const td = document.createElement('td'); td.textContent = value; tr.append(td); });
     target.append(tr);
   }
+  function marketFields() {
+    const visible = ['1', '2'].includes(assetForm.elements.assetType.value);
+    assetForm.querySelectorAll('[data-market-field]').forEach(label => {
+      label.hidden = !visible;
+      label.querySelector('input').disabled = !visible || busy || !data;
+    });
+    assetForm.elements.currentPrice.placeholder = assetForm.elements.averagePrice.value
+      ? money(Number(assetForm.elements.averagePrice.value)) : 'Usar preço médio';
+  }
+  function renderAllocation() {
+    const allocation = assetAllocation(data?.assets || []);
+    const colors = ['#c89b5b', '#71b6aa', '#879dd8', '#bf8cc9', '#d98772'];
+    const hasValue = allocation.some(item => item.amount > 0);
+    $('#finance-pie-content').hidden = !hasValue;
+    $('#finance-pie-empty').hidden = hasValue;
+    const legend = $('#finance-pie-legend');
+    legend.replaceChildren();
+    const segments = [];
+    let start = 0;
+    const descriptions = [];
+    allocation.forEach((item, index) => {
+      const percent = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(item.percent) + '%';
+      const description = `${types[item.type]}: ${money(item.amount)} (${percent})`;
+      descriptions.push(description);
+      const li = document.createElement('li');
+      const swatch = document.createElement('span');
+      swatch.className = 'finance-pie-swatch'; swatch.style.backgroundColor = colors[index]; swatch.setAttribute('aria-hidden', 'true');
+      const label = document.createElement('span'); label.textContent = types[item.type];
+      const amount = document.createElement('strong'); amount.textContent = `${money(item.amount)} · ${percent}`;
+      li.append(swatch, label, amount); legend.append(li);
+      if (item.percent > 0) {
+        segments.push(`${colors[index]} ${start}% ${start + item.percent}%`);
+        start += item.percent;
+      }
+    });
+    $('#finance-pie').style.background = hasValue ? `conic-gradient(${segments.join(',')})` : '';
+    $('#finance-pie').setAttribute('aria-label', hasValue ? descriptions.join('; ') : 'Sem valores para exibir');
+  }
   function render() {
+    renderAllocation();
     $('#finance-total').textContent = money(data.total);
     $('#finance-count').textContent = data.assets.length;
     $('#finance-empty').textContent = 'Nenhum ativo cadastrado. Comece em “Incluir ativo”.';
@@ -45,7 +87,7 @@
     const selection = transactionForm.elements.assetId.value;
     transactionForm.elements.assetId.replaceChildren(new Option(data.assets.length ? 'Selecione um ativo' : 'Cadastre um ativo primeiro', ''));
     data.assets.forEach(asset => {
-      row($('#finance-assets'), [asset.name, types[asset.assetType], quantity(asset.quantity), money(asset.averagePrice), money(asset.total)]);
+      row($('#finance-assets'), [asset.name, types[asset.assetType], quantity(asset.quantity), money(asset.averagePrice), [1, 2].includes(asset.assetType) ? money(asset.currentPrice) : '—', [1, 2].includes(asset.assetType) ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(asset.currentDy) + '%' : '—', money(asset.total)]);
       transactionForm.elements.assetId.add(new Option(`${asset.name} · ${types[asset.assetType]}`, asset.id));
     });
     transactionForm.elements.assetId.value = selection;
@@ -91,14 +133,15 @@
     const asset = data?.assets.find(item => item.id === transactionForm.elements.assetId.value);
     transactionForm.elements.assetTypeLabel.value = asset ? types[asset.assetType] : '';
   }
-  assetForm.addEventListener('input', () => { assetRequestId = crypto.randomUUID(); total(assetForm, 'averagePrice'); });
+  assetForm.addEventListener('input', () => { assetRequestId = crypto.randomUUID(); total(assetForm, 'averagePrice'); marketFields(); });
+  assetForm.elements.assetType.addEventListener('change', marketFields);
   transactionForm.addEventListener('input', () => { transactionRequestId = crypto.randomUUID(); updateType(); });
   transactionForm.elements.assetId.addEventListener('change', updateType);
   assetForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!data || busy) return;
-    if (await request({ type: 'asset', id: assetRequestId, assetType: Number(assetForm.elements.assetType.value), name: assetForm.elements.name.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value) })) {
-      assetForm.reset(); assetRequestId = crypto.randomUUID(); view('overview');
+    if (await request({ type: 'asset', id: assetRequestId, assetType: Number(assetForm.elements.assetType.value), name: assetForm.elements.name.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentDy: assetForm.elements.currentDy.value === '' ? null : Number(assetForm.elements.currentDy.value) })) {
+      assetForm.reset(); marketFields(); assetRequestId = crypto.randomUUID(); view('overview');
     }
   });
   transactionForm.addEventListener('submit', async event => {
@@ -115,7 +158,7 @@
     $('#finance-assets').replaceChildren(); $('#finance-history').replaceChildren();
     transactionForm.elements.assetId.replaceChildren();
     $('#finance-total').textContent = '—'; $('#finance-count').textContent = '—';
-    message(''); controls(); area(false); view('overview');
+    renderAllocation(); message(''); controls(); area(false); view('overview');
   });
   controls();
 })();
