@@ -169,6 +169,7 @@
           <button type="button" class="button button-secondary" data-card-view="group">Incluir grupo</button>
           <button type="button" class="button button-secondary" data-card-view="period">Incluir período</button>
           <button type="button" class="button button-secondary" data-card-view="transaction">Incluir transação</button>
+          <button type="button" class="button button-secondary" data-card-view="import">Importar transações</button>
           <button type="button" class="button button-primary" data-card-view="expenses" aria-pressed="true">Exibir gastos</button>
           <button type="button" class="button button-secondary" id="card-refresh">Atualizar dados</button>
         </div>
@@ -201,6 +202,30 @@
           </div><p id="card-installment-summary" class="draft-note"></p>
           <button class="button button-primary" type="submit">Salvar transação</button>
         </form>
+        <form id="card-import-form" class="finance-form" hidden><h3>Importar transações</h3>
+          <p class="intro">O PDF é lido neste navegador. O arquivo e os dados do cartão não são enviados; somente as transações marcadas na conferência serão salvas.</p>
+          <div class="grid grid-2">
+            <label>Fatura de destino<select name="periodId" required></select></label>
+            <label>Arquivo PDF<input name="statement" type="file" accept="application/pdf,.pdf" required /></label>
+          </div>
+          <div class="finance-actions">
+            <button class="button button-secondary" id="card-import-read" type="button">Ler PDF e conferir</button>
+            <button class="button button-primary" id="card-import-confirm" type="submit" hidden>Importar selecionadas</button>
+            <button class="button button-secondary" id="card-import-clear" type="button" hidden>Limpar</button>
+          </div>
+          <div id="card-import-progress" class="card-import-progress" hidden>
+            <progress id="card-import-progress-bar" max="100" value="0"></progress>
+            <span id="card-import-progress-text"></span>
+          </div>
+          <p id="card-import-empty" class="intro" hidden>Nenhuma transação foi reconhecida. Confira se o arquivo contém o detalhamento da fatura.</p>
+          <div id="card-import-preview" class="finance-table-wrap" hidden><table>
+            <caption class="sr-only">Prévia das transações reconhecidas no PDF</caption>
+            <thead><tr><th>Importar</th><th>Data da compra</th><th>Nome reconhecido</th><th>Valor</th><th>Grupo</th><th>Pagamento</th><th>Parcela</th><th>Leitura</th></tr></thead>
+            <tbody id="card-import-items"></tbody>
+          </table></div>
+          <h3>Importações recentes</h3><p id="card-imports-empty" class="intro">Nenhum PDF importado.</p>
+          <div class="finance-table-wrap"><table><thead><tr><th>Arquivo</th><th>Fatura</th><th>Transações</th><th>Importado em</th></tr></thead><tbody id="card-imports-list"></tbody></table></div>
+        </form>
         <section id="card-expenses">
           <label>Fatura<select id="card-period-filter"></select></label>
           <p id="card-expenses-empty" class="intro">Cadastre um período para consultar os gastos.</p>
@@ -209,7 +234,7 @@
             <ul id="card-pie-legend" class="finance-pie-legend"></ul>
           </div>
           <h3>Transações da fatura</h3>
-          <div class="finance-table-wrap"><table><thead><tr><th>Data</th><th>Nome</th><th>Grupo</th><th>Pagamento</th><th>Parcela</th><th>Valor</th></tr></thead><tbody id="card-transactions"></tbody></table></div>
+          <div class="finance-table-wrap"><table><thead><tr><th>Data da compra</th><th>Nome</th><th>Grupo</th><th>Pagamento</th><th>Parcela</th><th>Valor</th></tr></thead><tbody id="card-transactions"></tbody></table></div>
         </section>
       </section>
 

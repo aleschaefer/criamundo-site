@@ -270,6 +270,10 @@ separados do XML público e das tabelas de investimentos.
   DD/MM/AAAA. A lista de períodos cadastrados aparece abaixo do formulário, com **Editar**.
 - **Incluir transação:** data, nome (até 120 caracteres), valor de cada parcela, grupo e
   pagamento. À vista grava 1/1. À prazo exige parcela atual e quantidade total.
+- **Importar transações:** recebe uma fatura em PDF, faz a leitura e o OCR em português
+  no próprio navegador e apresenta uma conferência editável antes de salvar. O PDF não
+  é enviado ao servidor. Cada lançamento selecionado exige grupo e pode ter data, nome,
+  valor e parcela corrigidos. Pagamentos e créditos reconhecidos ficam desmarcados.
 - **Exibir gastos:** seleciona a fatura por mês/ano, apresenta pizza com o total por grupo
   e lista as transações, forma de pagamento e posição da parcela.
 
@@ -310,3 +314,19 @@ npx wrangler deploy
 ```
 
 A migração 0010 preserva grupos, períodos e transações existentes.
+
+Para habilitar a importação de PDFs, execute uma vez:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0011_credit_card_import.sql
+npx wrangler deploy
+```
+
+A migração 0011 cria o histórico de arquivos e linhas importadas e os metadados usados
+para distinguir a data original da compra da fatura de cobrança. O hash SHA-256 impede
+reimportar o mesmo PDF. Parcelas futuras ficam marcadas como previstas; quando a parcela
+aparece em outra fatura, ela confirma o registro previsto em vez de criar uma duplicata.
+
+O leitor aceita PDFs de até 15 MB e 30 páginas. PDF.js 6.3.289, Tesseract.js 7.0.0 e o
+modelo de português ficam versionados em `vendor/`, de modo que o navegador não envie o
+arquivo ou seu conteúdo a CDNs e serviços externos.
