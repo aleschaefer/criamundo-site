@@ -1,4 +1,4 @@
-import { parseOcrText } from './credit-card-import-model.mjs';
+import { parseOcrText } from './credit-card-import-model.mjs?v=2';
 
 const PDF_MAX_BYTES = 15 * 1024 * 1024, PDF_MAX_PAGES = 30;
 let librariesPromise;
@@ -67,11 +67,11 @@ export async function readCreditCardPdf(file, periodEnd, onProgress=()=>{}) {
         }
         canvas.width=canvas.height=1;
       }
-      for(const portion of portions){
-        for(const item of parseOcrText(portion.text,{page:pageNumber,periodEnd,confidence:portion.confidence})) candidates.push({...item,row:++sequence});
-      }
+      const combinedText=portions.map(portion=>portion.text).join('\n');
+      const combinedConfidence=portions.reduce((sum,portion)=>sum+(Number(portion.confidence)||0),0)/portions.length;
+      for(const item of parseOcrText(combinedText,{page:pageNumber,periodEnd,confidence:combinedConfidence})) candidates.push({...item,row:++sequence});
     }
-  } finally { if(worker)await worker.terminate(); await pdf.destroy(); }
+  } finally { if(worker)await worker.terminate(); }
   onProgress(100,`${candidates.length} lançamento(s) reconhecido(s).`);
   return candidates;
 }

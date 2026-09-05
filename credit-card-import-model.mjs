@@ -30,7 +30,9 @@ const stripMarks = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '
 
 function parseAmount(value) {
   const negative = /^\s*[-−]/.test(value);
-  const numeric = value.replace(/[^\d,.]/g, '').replace(/\./g, '').replace(',', '.');
+  let cleaned = value.replace(/[^\d,.]/g, '').replace(/\./g, '');
+  if (!cleaned.includes(',') && cleaned.length >= 3) cleaned = `${cleaned.slice(0,-2)},${cleaned.slice(-2)}`;
+  const numeric = cleaned.replace(',', '.');
   const amount = Number(numeric);
   return Number.isFinite(amount) ? Math.round((negative ? -amount : amount) * 100) / 100 : NaN;
 }
@@ -40,16 +42,17 @@ export function parseOcrText(text, { page = 1, periodEnd, confidence = 0 } = {})
   const result = [];
   for (const rawLine of String(text || '').split(/\r?\n/)) {
     row++;
-    const line = normalizeImportText(rawLine).replace(/[|]/g, '/');
+    let line = normalizeImportText(rawLine);
     if (!line) continue;
+    line = line.replace(/^[^\d\p{L}]*/u,'').replace(/^(\d{3})(\/\d{2})\b/,(_,day,month)=>`${day.slice(-2)}${month}`).replace(/^(\d{1,2}\/\d{2}(?:\/\d{2,4})?)[\]|)]\s*/, '$1 ');
     const categoryKey = stripMarks(line.replace(/[:.]$/, ''));
     const knownCategory = [...categoryNames].find(([key]) => categoryKey === key || categoryKey.startsWith(`${key} `));
     if (knownCategory) { category = knownCategory[1]; ignored = false; continue; }
     if (ignoredCategories.test(line)) { ignored = true; continue; }
-    const match = line.match(/^(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+(.+?)\s+(?:R\s*\$?|RS|R5)?\s*(-?\s*\d[\d.]*,\d{2})\s*$/i);
+    const match = line.match(/^(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+(.+?)\s+(?:R\s*\$?|RS|R5)?\s*[|/]?\s*(-?\s*\d(?:[\d.]*,\d{2}|\d{2,}))\s*$/i);
     if (!match) continue;
     const value = parseAmount(match[3]);
-    let name = normalizeImportText(match[2]).replace(/\s+(?:R\s*\$?|RS|R5)$/i, '').trim();
+    let name = normalizeImportText(match[2]).replace(/^[/|\[\]]+\s*/,'').replace(/\s+(?:R\s*\$?|RS|R5)\s*[|/]?$/i, '').trim();
     if (!name || !Number.isFinite(value)) continue;
     const installment = name.match(/\bPARC\s*(\d{1,3})\s*\/\s*(\d{1,3})\b/i);
     const currentInstallment = installment ? Number(installment[1]) : 1;
