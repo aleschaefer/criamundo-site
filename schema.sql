@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS credit_card_groups (
   id TEXT PRIMARY KEY NOT NULL,
   name CHAR(30) COLLATE NOCASE NOT NULL UNIQUE CHECK (length(trim(name)) BETWEEN 1 AND 30 AND name = trim(name)),
   name_key TEXT NOT NULL UNIQUE,
+  revision INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 CREATE TABLE IF NOT EXISTS credit_card_periods (
@@ -140,6 +141,7 @@ CREATE TABLE IF NOT EXISTS credit_card_periods (
   start_date TEXT NOT NULL CHECK (start_date = date(start_date, '+0 days')),
   end_date TEXT NOT NULL CHECK (end_date = date(end_date, '+0 days') AND end_date >= start_date),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  revision INTEGER NOT NULL DEFAULT 0,
   UNIQUE (month, year)
 );
 CREATE TRIGGER IF NOT EXISTS credit_card_period_no_overlap_insert BEFORE INSERT ON credit_card_periods
@@ -175,4 +177,15 @@ CREATE TRIGGER IF NOT EXISTS credit_card_period_fit AFTER INSERT ON credit_card_
 BEGIN
   UPDATE credit_card_transactions SET period_id = NEW.id
   WHERE transaction_date BETWEEN NEW.start_date AND NEW.end_date;
+END;
+-- Permite edição segura de grupos e períodos e reencaixa transações.
+CREATE TRIGGER IF NOT EXISTS credit_card_period_no_overlap_update BEFORE UPDATE OF start_date, end_date ON credit_card_periods
+WHEN EXISTS (SELECT 1 FROM credit_card_periods WHERE id != NEW.id AND NEW.start_date <= end_date AND NEW.end_date >= start_date)
+BEGIN SELECT RAISE(ABORT, 'O período sobrepõe outra fatura.'); END;
+CREATE TRIGGER IF NOT EXISTS credit_card_period_refit AFTER UPDATE OF start_date, end_date ON credit_card_periods
+BEGIN
+  UPDATE credit_card_transactions SET period_id = (
+    SELECT id FROM credit_card_periods p
+    WHERE credit_card_transactions.transaction_date BETWEEN p.start_date AND p.end_date LIMIT 1
+  );
 END;

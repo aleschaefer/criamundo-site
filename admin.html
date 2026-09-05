@@ -173,17 +173,21 @@
           <button type="button" class="button button-secondary" id="card-refresh">Atualizar dados</button>
         </div>
         <p id="card-status" class="save-status" role="status" aria-live="polite"></p>
-        <form id="card-group-form" class="finance-form" hidden><h3>Incluir grupo</h3>
+        <form id="card-group-form" class="finance-form" hidden><h3 id="card-group-title">Incluir grupo</h3>
           <label>Nome do grupo<input name="name" maxlength="30" required placeholder="Ex.: SAÚDE" /></label>
-          <button class="button button-primary" type="submit">Salvar grupo</button>
+          <div class="finance-actions"><button class="button button-primary" type="submit">Salvar grupo</button><button class="button button-secondary" id="card-group-cancel" type="button" hidden>Cancelar edição</button></div>
+          <h3>Grupos cadastrados</h3><p id="card-groups-empty" class="intro">Nenhum grupo cadastrado.</p>
+          <div class="finance-table-wrap"><table><thead><tr><th>Nome</th><th>Ações</th></tr></thead><tbody id="card-groups-list"></tbody></table></div>
         </form>
-        <form id="card-period-form" class="finance-form" hidden><h3>Incluir período</h3>
+        <form id="card-period-form" class="finance-form" hidden><h3 id="card-period-title">Incluir período</h3>
           <div class="grid grid-2">
             <label>Mês<select name="month" required></select></label>
             <label>Ano<input name="year" type="number" min="1900" max="9999" step="1" required /></label>
             <label>Data início<input name="startDate" type="date" required /><small>Formato exibido conforme o navegador; salvo como DD/MM/AAAA na consulta.</small></label>
             <label>Data fim<input name="endDate" type="date" required /></label>
-          </div><button class="button button-primary" type="submit">Salvar período</button>
+          </div><div class="finance-actions"><button class="button button-primary" type="submit">Salvar período</button><button class="button button-secondary" id="card-period-cancel" type="button" hidden>Cancelar edição</button></div>
+          <h3>Períodos cadastrados</h3><p id="card-periods-empty" class="intro">Nenhum período cadastrado.</p>
+          <div class="finance-table-wrap"><table><thead><tr><th>Fatura</th><th>Data início</th><th>Data fim</th><th>Ações</th></tr></thead><tbody id="card-periods-list"></tbody></table></div>
         </form>
         <form id="card-transaction-form" class="finance-form" hidden><h3>Incluir transação</h3>
           <div class="grid grid-2">

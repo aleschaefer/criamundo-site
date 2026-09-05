@@ -2,8 +2,8 @@ import { validateCreditAction, expandInstallments } from './credit-card-model.mj
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 async function overview(db) {
   const [groups, periods, transactions] = await db.batch([
-    db.prepare('SELECT id, name FROM credit_card_groups ORDER BY name COLLATE NOCASE'),
-    db.prepare('SELECT id, month, year, start_date AS startDate, end_date AS endDate FROM credit_card_periods ORDER BY year DESC, month DESC'),
+    db.prepare('SELECT id, name, revision FROM credit_card_groups ORDER BY name COLLATE NOCASE'),
+    db.prepare('SELECT id, month, year, start_date AS startDate, end_date AS endDate, revision FROM credit_card_periods ORDER BY year DESC, month DESC'),
     db.prepare(`SELECT t.id, t.series_id AS seriesId, t.transaction_date AS transactionDate, t.name, t.value,
       t.group_id AS groupId, g.name AS groupName, t.payment, t.installment_number AS installmentNumber,
       t.installment_count AS installmentCount, t.period_id AS periodId
@@ -22,7 +22,13 @@ export async function handleCreditCard(request, env) {
     if (request.method === 'GET') return reply(await overview(env.CONTENT_DB));
     try { action = validateCreditAction(await request.json()); } catch (error) { return reply({ error: error.message }, 400); }
     const db = env.CONTENT_DB;
-    if (action.type === 'group') {
+    if (action.operation === 'update' && action.type === 'group') {
+      const result = await db.prepare('UPDATE credit_card_groups SET name=?1,name_key=?2,revision=revision+1 WHERE id=?3 AND revision=?4').bind(action.name,action.nameKey,action.id,action.revision).run();
+      if (!result.meta.changes) return reply({ error: 'Grupo alterado ou excluído. Atualize os dados.' }, 409);
+    } else if (action.operation === 'update' && action.type === 'period') {
+      const result = await db.prepare('UPDATE credit_card_periods SET month=?1,year=?2,start_date=?3,end_date=?4,revision=revision+1 WHERE id=?5 AND revision=?6').bind(action.month,action.year,action.startDate,action.endDate,action.id,action.revision).run();
+      if (!result.meta.changes) return reply({ error: 'Período alterado ou excluído. Atualize os dados.' }, 409);
+    } else if (action.type === 'group') {
       await db.prepare('INSERT INTO credit_card_groups (id,name,name_key) VALUES (?1,?2,?3) ON CONFLICT(id) DO NOTHING').bind(action.id, action.name, action.nameKey).run();
     } else if (action.type === 'period') {
       await db.prepare('INSERT INTO credit_card_periods (id,month,year,start_date,end_date) VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO NOTHING').bind(action.id, action.month, action.year, action.startDate, action.endDate).run();

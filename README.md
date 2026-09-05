@@ -263,10 +263,11 @@ A área **Cartão de Crédito** usa a mesma autenticação do admin e mantém os
 separados do XML público e das tabelas de investimentos.
 
 - **Incluir grupo:** nome obrigatório de até 30 caracteres. A comparação ignora
-  maiúsculas/minúsculas, inclusive em nomes acentuados, para impedir duplicatas.
+  maiúsculas/minúsculas, inclusive em nomes acentuados, para impedir duplicatas. Abaixo
+  do formulário aparece a lista atual; **Editar** carrega o grupo no mesmo formulário.
 - **Incluir período:** mês, ano, data inicial e data final. Existe apenas uma fatura por
   mês/ano e períodos não podem se sobrepor. As datas usam calendário e são exibidas em
-  DD/MM/AAAA.
+  DD/MM/AAAA. A lista de períodos cadastrados aparece abaixo do formulário, com **Editar**.
 - **Incluir transação:** data, nome (até 120 caracteres), valor de cada parcela, grupo e
   pagamento. À vista grava 1/1. À prazo exige parcela atual e quantidade total.
 - **Exibir gastos:** seleciona a fatura por mês/ano, apresenta pizza com o total por grupo
@@ -282,6 +283,12 @@ duas extremidades. Se o período ainda não existe, a parcela fica sem fatura; a
 período compatível, ela é associada automaticamente. Períodos não podem se sobrepor para
 que cada transação pertença a no máximo uma fatura.
 
+Ao editar um período, todas as transações são reavaliadas: registros que saíram do
+intervalo são desassociados, e os que passaram a pertencer ao novo intervalo são
+encaixados automaticamente. Grupo e período usam revisão de registro para impedir que
+uma tela desatualizada sobrescreva uma edição mais recente. **Cancelar edição** limpa o
+formulário sem alterar o banco.
+
 ### Banco do Cartão de Crédito
 
 Após aplicar as migrações de Finanças até 0008, execute uma vez:
@@ -294,3 +301,12 @@ npx wrangler deploy
 A migração cria `credit_card_groups`, `credit_card_periods` e
 `credit_card_transactions`, com chaves estrangeiras, índices, validações e triggers de
 encaixe. Para banco totalmente novo, `schema.sql` já contém tudo e não exige migrações.
+
+Para habilitar as listas editáveis após aplicar 0009, execute uma vez:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0010_credit_card_edit.sql
+npx wrangler deploy
+```
+
+A migração 0010 preserva grupos, períodos e transações existentes.
