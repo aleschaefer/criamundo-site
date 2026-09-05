@@ -256,3 +256,41 @@ Para testar localmente, use `--local` no lugar de `--remote`, configure `ADMIN_P
 em `.dev.vars` e execute `npx wrangler dev`. Nunca publique credenciais como assets.
 
 Testes (Node 24+, usando SQLite real em memória): `node --test tests/finance.test.mjs`.
+
+## Cartão de Crédito
+
+A área **Cartão de Crédito** usa a mesma autenticação do admin e mantém os dados no D1,
+separados do XML público e das tabelas de investimentos.
+
+- **Incluir grupo:** nome obrigatório de até 30 caracteres. A comparação ignora
+  maiúsculas/minúsculas, inclusive em nomes acentuados, para impedir duplicatas.
+- **Incluir período:** mês, ano, data inicial e data final. Existe apenas uma fatura por
+  mês/ano e períodos não podem se sobrepor. As datas usam calendário e são exibidas em
+  DD/MM/AAAA.
+- **Incluir transação:** data, nome (até 120 caracteres), valor de cada parcela, grupo e
+  pagamento. À vista grava 1/1. À prazo exige parcela atual e quantidade total.
+- **Exibir gastos:** seleciona a fatura por mês/ano, apresenta pizza com o total por grupo
+  e lista as transações, forma de pagamento e posição da parcela.
+
+O valor de uma compra parcelada é interpretado como **valor de cada parcela**. Uma compra
+na parcela atual 5 de 10 cria as parcelas 5, 6, 7, 8, 9 e 10; as cinco posteriores recebem
+uma data nos meses seguintes. Para datas no fim do mês, usa-se o último dia válido do mês
+seguinte (31/01 → 28/02 ou 29/02). O mesmo envio pode ser repetido sem duplicar parcelas.
+
+O encaixe em fatura compara `transaction_date` com `start_date`/`end_date`, incluindo as
+duas extremidades. Se o período ainda não existe, a parcela fica sem fatura; ao criar o
+período compatível, ela é associada automaticamente. Períodos não podem se sobrepor para
+que cada transação pertença a no máximo uma fatura.
+
+### Banco do Cartão de Crédito
+
+Após aplicar as migrações de Finanças até 0008, execute uma vez:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0009_credit_card.sql
+npx wrangler deploy
+```
+
+A migração cria `credit_card_groups`, `credit_card_periods` e
+`credit_card_transactions`, com chaves estrangeiras, índices, validações e triggers de
+encaixe. Para banco totalmente novo, `schema.sql` já contém tudo e não exige migrações.

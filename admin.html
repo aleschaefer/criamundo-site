@@ -94,6 +94,7 @@
       <nav class="finance-actions" aria-label="Áreas do painel">
         <button type="button" class="button button-primary" id="show-content" aria-pressed="true">Conteúdo</button>
         <button type="button" class="button button-secondary" id="show-finance" aria-pressed="false">Finanças</button>
+        <button type="button" class="button button-secondary" id="show-credit-card" aria-pressed="false">Cartão de Crédito</button>
       </nav>
       <section id="finance-section" class="panel" hidden aria-labelledby="finance-title">
         <div class="panel-heading"><div><p class="eyebrow">Gestão de ativos</p><h2 id="finance-title">Finanças</h2></div></div>
@@ -160,6 +161,52 @@
           <h3>Histórico de transações</h3><p id="finance-history-empty" class="intro">Nenhuma transação registrada.</p>
           <div class="finance-table-wrap"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Data da transação</th><th>Registro</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
         </div>
+      </section>
+
+      <section id="credit-card-section" class="panel" hidden aria-labelledby="credit-card-title">
+        <div class="panel-heading"><div><p class="eyebrow">Controle de faturas</p><h2 id="credit-card-title">Cartão de Crédito</h2></div></div>
+        <div class="finance-actions" aria-label="Ações do Cartão de Crédito">
+          <button type="button" class="button button-secondary" data-card-view="group">Incluir grupo</button>
+          <button type="button" class="button button-secondary" data-card-view="period">Incluir período</button>
+          <button type="button" class="button button-secondary" data-card-view="transaction">Incluir transação</button>
+          <button type="button" class="button button-primary" data-card-view="expenses" aria-pressed="true">Exibir gastos</button>
+          <button type="button" class="button button-secondary" id="card-refresh">Atualizar dados</button>
+        </div>
+        <p id="card-status" class="save-status" role="status" aria-live="polite"></p>
+        <form id="card-group-form" class="finance-form" hidden><h3>Incluir grupo</h3>
+          <label>Nome do grupo<input name="name" maxlength="30" required placeholder="Ex.: SAÚDE" /></label>
+          <button class="button button-primary" type="submit">Salvar grupo</button>
+        </form>
+        <form id="card-period-form" class="finance-form" hidden><h3>Incluir período</h3>
+          <div class="grid grid-2">
+            <label>Mês<select name="month" required></select></label>
+            <label>Ano<input name="year" type="number" min="1900" max="9999" step="1" required /></label>
+            <label>Data início<input name="startDate" type="date" required /><small>Formato exibido conforme o navegador; salvo como DD/MM/AAAA na consulta.</small></label>
+            <label>Data fim<input name="endDate" type="date" required /></label>
+          </div><button class="button button-primary" type="submit">Salvar período</button>
+        </form>
+        <form id="card-transaction-form" class="finance-form" hidden><h3>Incluir transação</h3>
+          <div class="grid grid-2">
+            <label>Data<input name="transactionDate" type="date" required /></label>
+            <label>Nome<input name="name" maxlength="120" required /></label>
+            <label>Valor (R$ por parcela)<input name="value" type="number" min="0" max="99999999.99" step="0.01" required /></label>
+            <label>Grupo<select name="groupId" required></select></label>
+            <label>Pagamento<select name="payment" required><option value="1">À VISTA</option><option value="2">À PRAZO</option></select></label>
+            <label data-installment-field hidden>Parcela atual<input name="currentInstallment" type="number" min="1" max="999" step="1" /></label>
+            <label data-installment-field hidden>Qtde. parcelas<input name="installmentCount" type="number" min="1" max="999" step="1" /></label>
+          </div><p id="card-installment-summary" class="draft-note"></p>
+          <button class="button button-primary" type="submit">Salvar transação</button>
+        </form>
+        <section id="card-expenses">
+          <label>Fatura<select id="card-period-filter"></select></label>
+          <p id="card-expenses-empty" class="intro">Cadastre um período para consultar os gastos.</p>
+          <div id="card-expenses-content" class="finance-pie-content" hidden>
+            <div id="card-pie" class="finance-pie" role="img" aria-label="Gastos por grupo"></div>
+            <ul id="card-pie-legend" class="finance-pie-legend"></ul>
+          </div>
+          <h3>Transações da fatura</h3>
+          <div class="finance-table-wrap"><table><thead><tr><th>Data</th><th>Nome</th><th>Grupo</th><th>Pagamento</th><th>Parcela</th><th>Valor</th></tr></thead><tbody id="card-transactions"></tbody></table></div>
+        </section>
       </section>
 
       <form id="admin-form" class="admin-form">
@@ -274,5 +321,6 @@
     <script src="data-manager.js"></script>
     <script src="admin.js"></script>
     <script type="module" src="finance.js"></script>
+    <script type="module" src="credit-card.js"></script>
   </body>
 </html>

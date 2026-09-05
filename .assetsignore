@@ -8,6 +8,8 @@ worker.js
 wrangler.jsonc
 finance-api.mjs
 finance-model.mjs
+credit-card-api.mjs
+credit-card-model.mjs
 migrations
 migrations/**
 tests

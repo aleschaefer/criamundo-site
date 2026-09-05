@@ -1,4 +1,5 @@
 import { handleFinance } from './finance-api.mjs';
+import { handleCreditCard } from './credit-card-api.mjs';
 
 function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -192,6 +193,10 @@ export default {
 
     if (url.pathname === "/api/admin/finance") {
       return handleFinance(request, env);
+    }
+
+    if (url.pathname === "/api/admin/credit-card") {
+      return handleCreditCard(request, env);
     }
 
     if (url.pathname === "/api/content" && request.method === "GET") {
