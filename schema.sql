@@ -159,6 +159,9 @@ CREATE TABLE IF NOT EXISTS credit_card_transactions (
   installment_count INTEGER NOT NULL CHECK (typeof(installment_count) = 'integer' AND installment_count >= installment_number AND installment_count <= 999),
   period_id TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  deleted_at TEXT,
+  revision INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY (group_id) REFERENCES credit_card_groups(id) ON UPDATE CASCADE ON DELETE RESTRICT,
   FOREIGN KEY (period_id) REFERENCES credit_card_periods(id) ON UPDATE CASCADE ON DELETE SET NULL,
   UNIQUE (series_id, installment_number),
@@ -167,6 +170,7 @@ CREATE TABLE IF NOT EXISTS credit_card_transactions (
 CREATE INDEX IF NOT EXISTS idx_credit_card_transactions_period ON credit_card_transactions(period_id);
 CREATE INDEX IF NOT EXISTS idx_credit_card_transactions_group ON credit_card_transactions(group_id);
 CREATE INDEX IF NOT EXISTS idx_credit_card_transactions_date ON credit_card_transactions(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_credit_card_transactions_created ON credit_card_transactions(deleted_at, created_at DESC);
 CREATE TRIGGER IF NOT EXISTS credit_card_transaction_fit AFTER INSERT ON credit_card_transactions
 BEGIN
   UPDATE credit_card_transactions SET period_id = (

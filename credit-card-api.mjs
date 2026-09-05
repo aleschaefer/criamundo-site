@@ -8,10 +8,12 @@ async function overview(db) {
     db.prepare(`SELECT t.id, t.series_id AS seriesId, t.transaction_date AS transactionDate,
       COALESCE(m.purchase_date,t.transaction_date) AS purchaseDate, COALESCE(m.is_projected,0) AS isProjected, t.name, t.value,
       t.group_id AS groupId, g.name AS groupName, t.payment, t.installment_number AS installmentNumber,
-      t.installment_count AS installmentCount, t.period_id AS periodId
+      t.installment_count AS installmentCount, t.period_id AS periodId, t.created_at AS createdAt,
+      COALESCE(t.updated_at,t.created_at) AS updatedAt, t.revision
       FROM credit_card_transactions t JOIN credit_card_groups g ON g.id=t.group_id
       LEFT JOIN credit_card_transaction_meta m ON m.transaction_id=t.id
-      ORDER BY t.transaction_date DESC, t.created_at DESC`)
+      WHERE t.deleted_at IS NULL
+      ORDER BY t.created_at DESC, t.transaction_date DESC, t.id DESC`)
     ,db.prepare(`SELECT i.id, i.file_name AS fileName, i.period_id AS periodId, i.item_count AS itemCount,
       i.created_at AS createdAt FROM credit_card_imports i ORDER BY i.created_at DESC LIMIT 20`)
   ]);
@@ -33,7 +35,7 @@ async function importTransactions(db, action) {
   const keys = await Promise.all(action.items.map(item => hexDigest(`${seriesName(item.name)}|${item.purchaseDate}|${item.value.toFixed(2)}|${item.installmentCount}`)));
   const matches = await db.batch(action.items.map((item,index)=>db.prepare(`SELECT t.id,t.series_id AS seriesId FROM credit_card_transactions t
     JOIN credit_card_transaction_meta m ON m.transaction_id=t.id
-    WHERE m.source_series_key=?1 AND m.is_projected=1 AND t.installment_number=?2 LIMIT 1`).bind(keys[index],item.currentInstallment)));
+    WHERE m.source_series_key=?1 AND m.is_projected=1 AND t.deleted_at IS NULL AND t.installment_number=?2 LIMIT 1`).bind(keys[index],item.currentInstallment)));
   const statements = [db.prepare(`INSERT INTO credit_card_imports(id,file_hash,file_name,period_id,item_count)
     VALUES(?1,?2,?3,?4,?5)`).bind(action.id,action.fileHash,action.fileName,action.periodId,action.items.length)];
   action.items.forEach((item,index)=>{
@@ -41,7 +43,8 @@ async function importTransactions(db, action) {
     const transactionId = projected?.id || item.id, seriesId = projected?.seriesId || item.id;
     if (projected) {
       statements.push(db.prepare(`UPDATE credit_card_transactions SET transaction_date=?1,name=?2,value=?3,group_id=?4,payment=?5,
-        installment_number=?6,installment_count=?7,period_id=?8 WHERE id=?9`).bind(period.endDate,item.name,item.value,item.groupId,item.payment,item.currentInstallment,item.installmentCount,action.periodId,transactionId));
+        installment_number=?6,installment_count=?7,period_id=?8,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1
+        WHERE id=?9`).bind(period.endDate,item.name,item.value,item.groupId,item.payment,item.currentInstallment,item.installmentCount,action.periodId,transactionId));
     } else {
       statements.push(db.prepare(`INSERT INTO credit_card_transactions
         (id,series_id,transaction_date,name,value,group_id,payment,installment_number,installment_count,period_id)
@@ -82,7 +85,25 @@ export async function handleCreditCard(request, env) {
     try { const body=await request.json(); action=body?.type==='import'?validateImportAction(body):validateCreditAction(body); } catch (error) { return reply({ error: error.message }, 400); }
     const db = env.CONTENT_DB;
     if (action.type === 'import') return await importTransactions(db,action);
-    if (action.operation === 'update' && action.type === 'group') {
+    if (action.type === 'transaction' && action.operation === 'delete') {
+      const result=await db.prepare(`UPDATE credit_card_transactions SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
+        updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE id=?1 AND revision=?2 AND deleted_at IS NULL`).bind(action.id,action.revision).run();
+      if(!result.meta.changes)return reply({error:'Transação alterada ou excluída. Atualize os dados.'},409);
+    } else if (action.type === 'transaction' && action.operation === 'update') {
+      const meta=await db.prepare('SELECT transaction_id FROM credit_card_transaction_meta WHERE transaction_id=?1').bind(action.id).first();
+      const transactionSql=meta
+        ? `UPDATE credit_card_transactions SET name=?1,value=?2,group_id=?3,payment=?4,installment_number=?5,installment_count=?6,
+           updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE id=?7 AND revision=?8 AND deleted_at IS NULL`
+        : `UPDATE credit_card_transactions SET transaction_date=?9,name=?1,value=?2,group_id=?3,payment=?4,installment_number=?5,installment_count=?6,
+           period_id=(SELECT id FROM credit_card_periods WHERE ?9 BETWEEN start_date AND end_date LIMIT 1),
+           updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE id=?7 AND revision=?8 AND deleted_at IS NULL`;
+      const statement=db.prepare(transactionSql);
+      const result=await (meta
+        ? statement.bind(action.name,action.value,action.groupId,action.payment,action.currentInstallment,action.installmentCount,action.id,action.revision)
+        : statement.bind(action.name,action.value,action.groupId,action.payment,action.currentInstallment,action.installmentCount,action.id,action.revision,action.transactionDate)).run();
+      if(!result.meta.changes)return reply({error:'Transação alterada ou excluída. Atualize os dados.'},409);
+      if(meta)await db.prepare('UPDATE credit_card_transaction_meta SET purchase_date=?1 WHERE transaction_id=?2').bind(action.transactionDate,action.id).run();
+    } else if (action.operation === 'update' && action.type === 'group') {
       const result = await db.prepare('UPDATE credit_card_groups SET name=?1,name_key=?2,revision=revision+1 WHERE id=?3 AND revision=?4').bind(action.name,action.nameKey,action.id,action.revision).run();
       if (!result.meta.changes) return reply({ error: 'Grupo alterado ou excluído. Atualize os dados.' }, 409);
     } else if (action.operation === 'update' && action.type === 'period') {
@@ -104,10 +125,10 @@ export async function handleCreditCard(request, env) {
     }
     return reply(await overview(db));
   } catch (error) {
-    if (/UNIQUE constraint/i.test(error.message)) return reply({ error: action?.type === 'period' ? 'Já existe uma fatura para esse mês/ano.' : action?.type === 'import' ? 'Este PDF ou uma de suas linhas já foi importado.' : 'Já existe um grupo com esse nome.' }, 409);
+    if (/UNIQUE constraint/i.test(error.message)) return reply({ error: action?.type === 'period' ? 'Já existe uma fatura para esse mês/ano.' : action?.type === 'import' ? 'Este PDF ou uma de suas linhas já foi importado.' : action?.type === 'transaction' ? 'Já existe uma parcela com este número na mesma compra.' : 'Já existe um grupo com esse nome.' }, 409);
     if (/sobrepõe/i.test(error.message)) return reply({ error: 'Este período sobrepõe as datas de outra fatura.' }, 409);
     if (/FOREIGN KEY|CHECK constraint/i.test(error.message)) return reply({ error: 'Os dados não atendem às regras de Cartão de Crédito.' }, 400);
     console.error('Credit card database error', error);
-    return reply({ error: 'Não foi possível acessar Cartão de Crédito. Aplique as migrações até 0011.' }, 503);
+    return reply({ error: 'Não foi possível acessar Cartão de Crédito. Aplique as migrações até 0012.' }, 503);
   }
 }

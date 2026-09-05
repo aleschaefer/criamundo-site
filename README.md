@@ -330,3 +330,14 @@ aparece em outra fatura, ela confirma o registro previsto em vez de criar uma du
 O leitor aceita PDFs de até 15 MB e 30 páginas. PDF.js 6.3.289, Tesseract.js 7.0.0 e o
 modelo de português ficam versionados em `vendor/`, de modo que o navegador não envie o
 arquivo ou seu conteúdo a CDNs e serviços externos.
+
+Para habilitar **Editar** e **Excluir** na lista abaixo de **Incluir transação**, execute:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0012_credit_card_transaction_edit.sql
+npx wrangler deploy
+```
+
+A migração 0012 adiciona revisão, última atualização e exclusão lógica às transações. A
+lista é ordenada pela data/hora de inclusão. A exclusão retira o registro das listas e dos
+gráficos sem apagar a referência histórica de uma importação em PDF.
