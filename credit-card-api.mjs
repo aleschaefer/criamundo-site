@@ -85,7 +85,10 @@ export async function handleCreditCard(request, env) {
     try { const body=await request.json(); action=body?.type==='import'?validateImportAction(body):validateCreditAction(body); } catch (error) { return reply({ error: error.message }, 400); }
     const db = env.CONTENT_DB;
     if (action.type === 'import') return await importTransactions(db,action);
-    if (action.type === 'transaction' && action.operation === 'delete') {
+    if (action.type === 'transaction' && action.operation === 'delete-all') {
+      await db.prepare(`UPDATE credit_card_transactions SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
+        updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE deleted_at IS NULL`).run();
+    } else if (action.type === 'transaction' && action.operation === 'delete') {
       const result=await db.prepare(`UPDATE credit_card_transactions SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
         updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE id=?1 AND revision=?2 AND deleted_at IS NULL`).bind(action.id,action.revision).run();
       if(!result.meta.changes)return reply({error:'Transação alterada ou excluída. Atualize os dados.'},409);
