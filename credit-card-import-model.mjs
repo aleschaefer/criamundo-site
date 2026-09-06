@@ -62,7 +62,8 @@ export function parseOcrText(text, { page = 1, periodEnd, confidence = 0 } = {})
     if (currentInstallment < 1 || installmentCount < currentInstallment || installmentCount > 999) continue;
     let purchaseDate;
     try { purchaseDate = inferPurchaseDate(match[1], periodEnd); } catch { continue; }
-    const excluded = value <= 0 || (ignored && nonExpenseNames.test(name));
+    const processing = category === 'LANÇAMENTOS EM PROCESSAMENTO';
+    const excluded = nonExpenseNames.test(name) || (value <= 0 && !processing);
     result.push({
       page, row, purchaseDate, name: name.slice(0, 50), value: Math.abs(value), category,
       payment: installment ? 2 : 1, currentInstallment, installmentCount,
