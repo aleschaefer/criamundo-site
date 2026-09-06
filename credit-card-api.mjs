@@ -30,7 +30,7 @@ const hexDigest = async value => [...new Uint8Array(await crypto.subtle.digest('
 const seriesName = name => normalizeImportText(name).replace(/\bPARC\s*\d{1,3}\s*\/\s*\d{1,3}\b/ig,'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
 
 async function importTransactions(db, action) {
-  const period = await db.prepare('SELECT id,end_date AS endDate FROM credit_card_periods WHERE id=?1').bind(action.periodId).first();
+  const period = await db.prepare('SELECT id,month,year,end_date AS endDate FROM credit_card_periods WHERE id=?1').bind(action.periodId).first();
   if (!period) return reply({ error: 'A fatura selecionada não existe mais. Atualize os dados.' }, 409);
   const keys = await Promise.all(action.items.map(item => hexDigest(`${seriesName(item.name)}|${item.purchaseDate}|${item.value.toFixed(2)}|${item.installmentCount}`)));
   const matches = await db.batch(action.items.map((item,index)=>db.prepare(`SELECT t.id,t.series_id AS seriesId FROM credit_card_transactions t
@@ -55,19 +55,20 @@ async function importTransactions(db, action) {
       (id,import_id,page_number,row_number,purchase_date,raw_name,value,confidence,transaction_id)
       VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)`).bind(item.id,action.id,item.page,item.row,item.purchaseDate,item.name,item.value,item.confidence,transactionId));
     if (projected) {
-      statements.push(db.prepare(`UPDATE credit_card_transaction_meta SET purchase_date=?1,source_import_item_id=?2,is_projected=0 WHERE transaction_id=?3`)
-        .bind(item.purchaseDate,item.id,transactionId));
+      statements.push(db.prepare(`UPDATE credit_card_transaction_meta SET purchase_date=?1,source_import_item_id=?2,is_projected=0,billing_month=?3,billing_year=?4 WHERE transaction_id=?5`)
+        .bind(item.purchaseDate,item.id,period.month,period.year,transactionId));
     } else {
-      statements.push(db.prepare(`INSERT INTO credit_card_transaction_meta(transaction_id,purchase_date,source_series_key,source_import_item_id,is_projected)
-        VALUES(?1,?2,?3,?4,0)`).bind(transactionId,item.purchaseDate,keys[index],item.id));
+      statements.push(db.prepare(`INSERT INTO credit_card_transaction_meta(transaction_id,purchase_date,source_series_key,source_import_item_id,is_projected,billing_month,billing_year)
+        VALUES(?1,?2,?3,?4,0,?5,?6)`).bind(transactionId,item.purchaseDate,keys[index],item.id,period.month,period.year));
+      const billingAnchor=`${period.year}-${String(period.month).padStart(2,'0')}-01`;
       for(let offset=1;offset<=item.installmentCount-item.currentInstallment;offset++){
-        const futureId=crypto.randomUUID();
+        const futureId=crypto.randomUUID(),futureDate=addMonthsClamped(billingAnchor,offset),[futureYear,futureMonth]=futureDate.split('-').map(Number);
         statements.push(db.prepare(`INSERT INTO credit_card_transactions
           (id,series_id,transaction_date,name,value,group_id,payment,installment_number,installment_count)
           SELECT ?1,?2,?3,?4,?5,id,2,?7,?8 FROM credit_card_groups WHERE id=?6`)
-          .bind(futureId,seriesId,addMonthsClamped(period.endDate,offset),item.name,item.value,item.groupId,item.currentInstallment+offset,item.installmentCount));
-        statements.push(db.prepare(`INSERT INTO credit_card_transaction_meta(transaction_id,purchase_date,source_series_key,is_projected)
-          VALUES(?1,?2,?3,1)`).bind(futureId,item.purchaseDate,keys[index]));
+          .bind(futureId,seriesId,futureDate,item.name,item.value,item.groupId,item.currentInstallment+offset,item.installmentCount));
+        statements.push(db.prepare(`INSERT INTO credit_card_transaction_meta(transaction_id,purchase_date,source_series_key,is_projected,billing_month,billing_year)
+          VALUES(?1,?2,?3,1,?4,?5)`).bind(futureId,item.purchaseDate,keys[index],futureMonth,futureYear));
       }
     }
   });
@@ -132,6 +133,6 @@ export async function handleCreditCard(request, env) {
     if (/sobrepõe/i.test(error.message)) return reply({ error: 'Este período sobrepõe as datas de outra fatura.' }, 409);
     if (/FOREIGN KEY|CHECK constraint/i.test(error.message)) return reply({ error: 'Os dados não atendem às regras de Cartão de Crédito.' }, 400);
     console.error('Credit card database error', error);
-    return reply({ error: 'Não foi possível acessar Cartão de Crédito. Aplique as migrações até 0012.' }, 503);
+    return reply({ error: 'Não foi possível acessar Cartão de Crédito. Aplique as migrações até 0013.' }, 503);
   }
 }

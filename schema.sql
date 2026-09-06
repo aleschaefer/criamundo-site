@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS credit_card_transactions (
   id TEXT PRIMARY KEY NOT NULL,
   series_id TEXT NOT NULL,
   transaction_date TEXT NOT NULL CHECK (transaction_date = date(transaction_date, '+0 days')),
-  name CHAR(120) NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 120 AND name = trim(name)),
+  name CHAR(50) NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 50 AND name = trim(name)),
   value DECIMAL(10,2) NOT NULL CHECK (value BETWEEN 0 AND 99999999.99 AND value = round(value, 2)),
   group_id TEXT NOT NULL,
   payment SMALLINT NOT NULL CHECK (payment IN (1, 2)),
@@ -226,6 +226,8 @@ CREATE TABLE IF NOT EXISTS credit_card_transaction_meta (
   source_series_key TEXT NOT NULL,
   source_import_item_id TEXT UNIQUE,
   is_projected INTEGER NOT NULL DEFAULT 0 CHECK (is_projected IN (0, 1)),
+  billing_month INTEGER NOT NULL CHECK (billing_month BETWEEN 1 AND 12),
+  billing_year INTEGER NOT NULL CHECK (billing_year BETWEEN 1900 AND 9999),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   FOREIGN KEY (transaction_id) REFERENCES credit_card_transactions(id) ON DELETE CASCADE,
   FOREIGN KEY (source_import_item_id) REFERENCES credit_card_import_items(id) ON DELETE SET NULL
@@ -233,3 +235,18 @@ CREATE TABLE IF NOT EXISTS credit_card_transaction_meta (
 CREATE INDEX IF NOT EXISTS idx_credit_card_imports_period ON credit_card_imports(period_id);
 CREATE INDEX IF NOT EXISTS idx_credit_card_import_items_import ON credit_card_import_items(import_id);
 CREATE INDEX IF NOT EXISTS idx_credit_card_meta_series ON credit_card_transaction_meta(source_series_key, is_projected);
+CREATE INDEX IF NOT EXISTS idx_credit_card_meta_billing ON credit_card_transaction_meta(billing_year, billing_month);
+CREATE TRIGGER IF NOT EXISTS credit_card_period_fit_import AFTER INSERT ON credit_card_periods
+BEGIN
+  UPDATE credit_card_transactions SET period_id=NEW.id
+  WHERE id IN (SELECT transaction_id FROM credit_card_transaction_meta WHERE billing_month=NEW.month AND billing_year=NEW.year);
+END;
+DROP TRIGGER IF EXISTS credit_card_period_refit;
+CREATE TRIGGER credit_card_period_refit AFTER UPDATE OF month, year, start_date, end_date ON credit_card_periods
+BEGIN
+  UPDATE credit_card_transactions SET period_id=COALESCE(
+    (SELECT p.id FROM credit_card_periods p JOIN credit_card_transaction_meta m
+      ON m.transaction_id=credit_card_transactions.id AND m.billing_month=p.month AND m.billing_year=p.year LIMIT 1),
+    (SELECT p.id FROM credit_card_periods p WHERE credit_card_transactions.transaction_date BETWEEN p.start_date AND p.end_date LIMIT 1)
+  );
+END;

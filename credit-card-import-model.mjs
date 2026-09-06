@@ -61,7 +61,7 @@ export function parseOcrText(text, { page = 1, periodEnd, confidence = 0 } = {})
     let purchaseDate;
     try { purchaseDate = inferPurchaseDate(match[1], periodEnd); } catch { continue; }
     result.push({
-      page, row, purchaseDate, name: name.slice(0, 120), value: Math.abs(value), category,
+      page, row, purchaseDate, name: name.slice(0, 50), value: Math.abs(value), category,
       payment: installment ? 2 : 1, currentInstallment, installmentCount,
       confidence: Math.max(0, Math.min(100, Math.round(confidence))),
       include: !ignored && value > 0,
@@ -79,7 +79,7 @@ export function validateImportAction(action) {
   const items = action.items.map((item, index) => {
     if (!validId(item.id) || !validId(item.groupId) || !validTransactionDate(item.purchaseDate)) throw new Error(`Revise a transação ${index + 1}.`);
     const name = normalizeImportText(item.name);
-    if (!name || [...name].length > 120) throw new Error(`Nome inválido na transação ${index + 1}.`);
+    if (!name || [...name].length > 50) throw new Error(`Nome inválido na transação ${index + 1}.`);
     if (typeof item.value !== 'number' || !Number.isFinite(item.value) || item.value <= 0 || item.value > 99999999.99 || Math.abs(item.value * 100 - Math.round(item.value * 100)) > .000001) throw new Error(`Valor inválido na transação ${index + 1}.`);
     const current = item.payment === 2 ? item.currentInstallment : 1;
     const count = item.payment === 2 ? item.installmentCount : 1;

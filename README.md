@@ -341,3 +341,14 @@ npx wrangler deploy
 A migração 0012 adiciona revisão, última atualização e exclusão lógica às transações. A
 lista é ordenada pela data/hora de inclusão. A exclusão retira o registro das listas e dos
 gráficos sem apagar a referência histórica de uma importação em PDF.
+
+Para garantir o encaixe das parcelas importadas nas próximas faturas, execute:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0013_credit_card_future_periods.sql
+npx wrangler deploy
+```
+
+A migração 0013 registra mês e ano de cobrança em cada parcela importada. Assim, uma
+parcela futura é associada à competência correta mesmo quando as datas de fechamento
+variam de uma fatura para outra.

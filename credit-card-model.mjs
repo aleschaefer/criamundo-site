@@ -42,7 +42,7 @@ export function validateCreditAction(action) {
     return action;
   }
   if (!validId(action.groupId) || !validTransactionDate(action.transactionDate)) throw new Error('Selecione um grupo e informe uma data válida.');
-  const name = cleanName(action.name, 120, 'Nome da transação');
+  const name = cleanName(action.name, 50, 'Nome da transação');
   if (![1, 2].includes(action.payment)) throw new Error('Forma de pagamento inválida.');
   const current = action.payment === 1 ? 1 : integer(action.currentInstallment, 1, 999, 'Parcela atual');
   const count = action.payment === 1 ? 1 : integer(action.installmentCount, 1, 999, 'Quantidade de parcelas');
