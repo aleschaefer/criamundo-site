@@ -69,6 +69,9 @@ async function importTransactions(db, action) {
           .bind(futureId,seriesId,futureDate,item.name,item.value,item.groupId,item.currentInstallment+offset,item.installmentCount));
         statements.push(db.prepare(`INSERT INTO credit_card_transaction_meta(transaction_id,purchase_date,source_series_key,is_projected,billing_month,billing_year)
           VALUES(?1,?2,?3,1,?4,?5)`).bind(futureId,item.purchaseDate,keys[index],futureMonth,futureYear));
+        statements.push(db.prepare(`UPDATE credit_card_transactions SET period_id=(
+          SELECT id FROM credit_card_periods WHERE month=?1 AND year=?2 LIMIT 1
+        ) WHERE id=?3`).bind(futureMonth,futureYear,futureId));
       }
     }
   });
@@ -133,6 +136,6 @@ export async function handleCreditCard(request, env) {
     if (/sobrepõe/i.test(error.message)) return reply({ error: 'Este período sobrepõe as datas de outra fatura.' }, 409);
     if (/FOREIGN KEY|CHECK constraint/i.test(error.message)) return reply({ error: 'Os dados não atendem às regras de Cartão de Crédito.' }, 400);
     console.error('Credit card database error', error);
-    return reply({ error: 'Não foi possível acessar Cartão de Crédito. Aplique as migrações até 0013.' }, 503);
+    return reply({ error: 'Não foi possível acessar Cartão de Crédito. Aplique as migrações até 0014.' }, 503);
   }
 }

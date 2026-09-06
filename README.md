@@ -352,3 +352,14 @@ npx wrangler deploy
 A migração 0013 registra mês e ano de cobrança em cada parcela importada. Assim, uma
 parcela futura é associada à competência correta mesmo quando as datas de fechamento
 variam de uma fatura para outra.
+
+Se já existiam períodos futuros no momento da importação, aplique também a correção de
+competência:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0014_credit_card_installment_competence.sql
+npx wrangler deploy
+```
+
+A migração 0014 move as parcelas já importadas para a fatura correspondente ao mês e
+ano de cobrança. As novas importações passam a fazer esse encaixe imediatamente.

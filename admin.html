@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="admin.css" />
+    <link rel="stylesheet" href="admin.css?v=2" />
   </head>
   <body class="admin-page is-locked">
     <main class="auth-shell" id="auth-shell">
@@ -237,12 +237,16 @@
             <ul id="card-pie-legend" class="finance-pie-legend"></ul>
           </div>
           <h3>Transações da fatura</h3>
-          <h4 class="card-payment-heading">Pagamentos à vista</h4>
-          <p id="card-cash-transactions-empty" class="intro">Nenhum pagamento à vista nesta fatura.</p>
-          <div class="finance-table-wrap"><table><thead><tr><th>Data da compra</th><th>Nome</th><th>Grupo</th><th>Parcela</th><th>Valor</th></tr></thead><tbody id="card-cash-transactions"></tbody></table></div>
-          <h4 class="card-payment-heading">Pagamentos a prazo</h4>
-          <p id="card-installment-transactions-empty" class="intro">Nenhum pagamento a prazo nesta fatura.</p>
-          <div class="finance-table-wrap"><table><thead><tr><th>Data da compra</th><th>Nome</th><th>Grupo</th><th>Parcela</th><th>Valor</th></tr></thead><tbody id="card-installment-transactions"></tbody></table></div>
+          <details class="card-payment-collapse" open>
+            <summary>Pagamentos à vista</summary>
+            <p id="card-cash-transactions-empty" class="intro">Nenhum pagamento à vista nesta fatura.</p>
+            <div class="finance-table-wrap"><table><thead><tr><th>Data da compra</th><th>Nome</th><th>Grupo</th><th>Parcela</th><th>Valor</th></tr></thead><tbody id="card-cash-transactions"></tbody></table></div>
+          </details>
+          <details class="card-payment-collapse" open>
+            <summary>Pagamentos a prazo</summary>
+            <p id="card-installment-transactions-empty" class="intro">Nenhum pagamento a prazo nesta fatura.</p>
+            <div class="finance-table-wrap"><table><thead><tr><th>Data da compra</th><th>Nome</th><th>Grupo</th><th>Parcela</th><th>Valor</th></tr></thead><tbody id="card-installment-transactions"></tbody></table></div>
+          </details>
         </section>
       </section>
 
