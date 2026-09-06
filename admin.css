@@ -427,8 +427,7 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 #card-import-items input[type="date"] { min-width: 150px; }
 #card-import-items input[type="number"] { min-width: 105px; }
 #card-import-items select { min-width: 150px; }
-.card-import-installments { display: flex; align-items: center; gap: 8px; min-width: 245px; }
-.card-import-installments input { width: 92px; min-width: 92px !important; }
+#card-import-items input[data-field="installments"] { width: 110px; min-width: 110px; text-align: center; }
 .card-import-confidence { display: inline-block; border-radius: 999px; padding: 5px 9px; background: rgba(255,255,255,.07); }
 .card-import-confidence.is-low { color: #ffd0c7; background: rgba(185,74,49,.2); }
 
