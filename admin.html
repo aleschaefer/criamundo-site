@@ -237,7 +237,12 @@
             <ul id="card-pie-legend" class="finance-pie-legend"></ul>
           </div>
           <h3>Transações da fatura</h3>
-          <div class="finance-table-wrap"><table><thead><tr><th>Data da compra</th><th>Nome</th><th>Grupo</th><th>Pagamento</th><th>Parcela</th><th>Valor</th></tr></thead><tbody id="card-transactions"></tbody></table></div>
+          <h4 class="card-payment-heading">Pagamentos à vista</h4>
+          <p id="card-cash-transactions-empty" class="intro">Nenhum pagamento à vista nesta fatura.</p>
+          <div class="finance-table-wrap"><table><thead><tr><th>Data da compra</th><th>Nome</th><th>Grupo</th><th>Parcela</th><th>Valor</th></tr></thead><tbody id="card-cash-transactions"></tbody></table></div>
+          <h4 class="card-payment-heading">Pagamentos a prazo</h4>
+          <p id="card-installment-transactions-empty" class="intro">Nenhum pagamento a prazo nesta fatura.</p>
+          <div class="finance-table-wrap"><table><thead><tr><th>Data da compra</th><th>Nome</th><th>Grupo</th><th>Parcela</th><th>Valor</th></tr></thead><tbody id="card-installment-transactions"></tbody></table></div>
         </section>
       </section>
 
@@ -353,6 +358,6 @@
     <script src="data-manager.js"></script>
     <script src="admin.js"></script>
     <script type="module" src="finance.js"></script>
-    <script type="module" src="credit-card.js?v=6"></script>
+    <script type="module" src="credit-card.js?v=7"></script>
   </body>
 </html>

@@ -436,6 +436,7 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .card-invoice-total strong { color: var(--text); font-size: clamp(1.35rem, 3vw, 2rem); }
 .card-invoice-status { display: inline-flex; margin-left: 12px; padding: 5px 9px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .card-invoice-status[hidden] { display: none; }
+.card-payment-heading { margin: 26px 0 8px; color: var(--gold); font-size: 1rem; text-transform: uppercase; letter-spacing: .06em; }
 .finance-pie-legend li { column-gap: 9px; }
 .finance-pie-legend .card-group-label { margin-right: 3px; }
 
