@@ -33,13 +33,17 @@ async function importTransactions(db, action) {
   const period = await db.prepare('SELECT id,month,year,end_date AS endDate FROM credit_card_periods WHERE id=?1').bind(action.periodId).first();
   if (!period) return reply({ error: 'A fatura selecionada não existe mais. Atualize os dados.' }, 409);
   const keys = await Promise.all(action.items.map(item => hexDigest(`${seriesName(item.name)}|${item.purchaseDate}|${item.value.toFixed(2)}|${item.installmentCount}`)));
-  const matches = await db.batch(action.items.map((item,index)=>db.prepare(`SELECT t.id,t.series_id AS seriesId FROM credit_card_transactions t
+  const matches = await db.batch(action.items.map((item,index)=>db.prepare(`SELECT t.id,t.series_id AS seriesId,m.source_series_key AS sourceSeriesKey FROM credit_card_transactions t
     JOIN credit_card_transaction_meta m ON m.transaction_id=t.id
-    WHERE m.source_series_key=?1 AND m.is_projected=1 AND t.deleted_at IS NULL AND t.installment_number=?2 LIMIT 1`).bind(keys[index],item.currentInstallment)));
+    WHERE m.is_projected=1 AND t.deleted_at IS NULL AND t.installment_number=?2
+      AND (m.source_series_key=?1 OR (m.purchase_date=?3 AND t.value=?4 AND t.installment_count=?5))`)
+    .bind(keys[index],item.currentInstallment,item.purchaseDate,item.value,item.installmentCount)));
   const statements = [db.prepare(`INSERT INTO credit_card_imports(id,file_hash,file_name,period_id,item_count)
     VALUES(?1,?2,?3,?4,?5)`).bind(action.id,action.fileHash,action.fileName,action.periodId,action.items.length)];
   action.items.forEach((item,index)=>{
-    const projected = matches[index].results[0];
+    const candidates = matches[index].results;
+    const exact = candidates.find(candidate=>candidate.sourceSeriesKey===keys[index]);
+    const projected = exact || (candidates.length===1 ? candidates[0] : null);
     const transactionId = projected?.id || item.id, seriesId = projected?.seriesId || item.id;
     if (projected) {
       statements.push(db.prepare(`UPDATE credit_card_transactions SET transaction_date=?1,name=?2,value=?3,group_id=?4,payment=?5,
