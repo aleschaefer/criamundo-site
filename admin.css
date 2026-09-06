@@ -439,6 +439,7 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .card-payment-collapse { margin-top: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-soft); overflow: hidden; }
 .card-payment-collapse summary { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; color: var(--gold); font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; list-style: none; user-select: none; }
 .card-payment-collapse summary::-webkit-details-marker { display: none; }
+.card-payment-collapse summary small { margin-left: auto; margin-right: 14px; color: var(--muted); font-size: .72rem; font-weight: 600; text-transform: none; letter-spacing: normal; }
 .card-payment-collapse summary::after { content: '⌄'; color: var(--muted); font-size: 1.25rem; line-height: 1; transform: rotate(0); transition: transform .18s ease; }
 .card-payment-collapse[open] summary::after { transform: rotate(180deg); }
 .card-payment-collapse summary:hover { background: var(--gold-soft); }
