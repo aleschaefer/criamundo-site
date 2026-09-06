@@ -23,7 +23,8 @@ export function inferPurchaseDate(shortDate, periodEnd) {
 const categoryNames = new Map([
   ['educacao','EDUCAÇÃO'], ['lazer','LAZER'], ['restaurantes','RESTAURANTES'],
   ['servicos','SERVIÇOS'], ['supermercados','SUPERMERCADOS'], ['transporte','TRANSPORTE'],
-  ['outros lancamentos','OUTRO'], ['compras parceladas','COMPRAS PARCELADAS']
+  ['outros lancamentos','OUTRO'], ['compras parceladas','COMPRAS PARCELADAS'],
+  ['lancamentos em processamento','LANÇAMENTOS EM PROCESSAMENTO']
 ]);
 const ignoredCategories = /pagamentos?\s*\/\s*cr[eé]ditos?|saldo fatura anterior/i;
 const stripMarks = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
