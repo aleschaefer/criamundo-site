@@ -445,6 +445,7 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .card-payment-collapse summary:hover { background: var(--gold-soft); }
 .card-payment-collapse > .intro { margin: 0; padding: 12px 18px 18px; }
 .card-payment-collapse > .finance-table-wrap { margin: 0; border-width: 1px 0 0; border-radius: 0; }
+.card-transaction-period-filter { display: block; max-width: 620px; margin: 0 0 16px; }
 .finance-pie-legend li { column-gap: 9px; }
 .finance-pie-legend .card-group-label { margin-right: 3px; }
 

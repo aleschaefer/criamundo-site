@@ -363,3 +363,15 @@ npx wrangler deploy
 
 A migração 0014 move as parcelas já importadas para a fatura correspondente ao mês e
 ano de cobrança. As novas importações passam a fazer esse encaixe imediatamente.
+
+Se uma importação anterior deixou a parcela confirmada ao lado da previsão antiga,
+execute a limpeza de duplicidades:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0015_credit_card_remove_duplicate_projections.sql
+npx wrangler deploy
+```
+
+A migração 0015 faz exclusão lógica apenas de previsões que correspondem a uma parcela
+confirmada pelos campos da compra e pelo nome-base. Valores divergentes são preservados
+para conferência manual.
