@@ -27,6 +27,7 @@ const categoryNames = new Map([
   ['lancamentos em processamento','LANÇAMENTOS EM PROCESSAMENTO']
 ]);
 const ignoredCategories = /pagamentos?\s*\/\s*cr[eé]ditos?|saldo fatura anterior/i;
+const nonExpenseNames = /\b(?:pagamento|cr[eé]dito|estorno|desconto|saldo\s+fatura)\b/i;
 const stripMarks = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
 
 function parseAmount(value) {
@@ -61,12 +62,13 @@ export function parseOcrText(text, { page = 1, periodEnd, confidence = 0 } = {})
     if (currentInstallment < 1 || installmentCount < currentInstallment || installmentCount > 999) continue;
     let purchaseDate;
     try { purchaseDate = inferPurchaseDate(match[1], periodEnd); } catch { continue; }
+    const excluded = value <= 0 || (ignored && nonExpenseNames.test(name));
     result.push({
       page, row, purchaseDate, name: name.slice(0, 50), value: Math.abs(value), category,
       payment: installment ? 2 : 1, currentInstallment, installmentCount,
       confidence: Math.max(0, Math.min(100, Math.round(confidence))),
-      include: !ignored && value > 0,
-      reason: ignored || value <= 0 ? 'Pagamento ou crédito: não será somado aos gastos.' : ''
+      include: !excluded,
+      reason: excluded ? 'Pagamento ou crédito: não será somado aos gastos.' : ''
     });
   }
   return result;
