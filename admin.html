@@ -231,6 +231,7 @@
         <section id="card-expenses">
           <label>Fatura<select id="card-period-filter"></select></label>
           <p id="card-expenses-empty" class="intro">Cadastre um período para consultar os gastos.</p>
+          <div id="card-invoice-total" class="card-invoice-total" hidden><div><span>Total da fatura</span><small id="card-invoice-status" class="card-invoice-status" hidden>Fatura encerrada</small></div><strong id="card-invoice-total-value">R$ 0,00</strong></div>
           <div id="card-expenses-content" class="finance-pie-content" hidden>
             <div id="card-pie" class="finance-pie" role="img" aria-label="Gastos por grupo"></div>
             <ul id="card-pie-legend" class="finance-pie-legend"></ul>
@@ -352,6 +353,6 @@
     <script src="data-manager.js"></script>
     <script src="admin.js"></script>
     <script type="module" src="finance.js"></script>
-    <script type="module" src="credit-card.js?v=4"></script>
+    <script type="module" src="credit-card.js?v=6"></script>
   </body>
 </html>

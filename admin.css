@@ -430,6 +430,14 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 #card-import-items input[data-field="installments"] { width: 110px; min-width: 110px; text-align: center; }
 .card-import-confidence { display: inline-block; border-radius: 999px; padding: 5px 9px; background: rgba(255,255,255,.07); }
 .card-import-confidence.is-low { color: #ffd0c7; background: rgba(185,74,49,.2); }
+.card-invoice-total { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin: 22px 0 18px; padding: 18px 22px; border: 1px solid var(--gold); border-radius: 14px; background: var(--gold-soft); }
+.card-invoice-total[hidden] { display: none; }
+.card-invoice-total span { color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.card-invoice-total strong { color: var(--text); font-size: clamp(1.35rem, 3vw, 2rem); }
+.card-invoice-status { display: inline-flex; margin-left: 12px; padding: 5px 9px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.card-invoice-status[hidden] { display: none; }
+.finance-pie-legend li { column-gap: 9px; }
+.finance-pie-legend .card-group-label { margin-right: 3px; }
 
 .finance-legend-filter { width: 100%; min-height: 48px; padding: 10px; border: 1px solid transparent; border-radius: 10px; color: var(--text); background: transparent; text-align: left; cursor: pointer; }
 .finance-legend-filter:hover { background: var(--panel-soft); border-color: var(--line); }
