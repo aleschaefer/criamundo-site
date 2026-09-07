@@ -17,6 +17,17 @@ export function validateAssetIncomeBatch(action) {
     return { id: item.id, revision: item.revision, currentIncome: Math.round(item.currentIncome * 100000) / 100000 };
   }) };
 }
+export function validateAssetAveragePriceBatch(action) {
+  if (action?.type !== 'asset-average-price-batch' || !Array.isArray(action.items) || !action.items.length || action.items.length > 100) throw new Error('Nenhum preço médio válido foi informado.');
+  const ids = new Set();
+  return { type: action.type, items: action.items.map((item, index) => {
+    if (typeof item.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(item.id) || ids.has(item.id)) throw new Error(`Ativo inválido na posição ${index + 1}.`);
+    ids.add(item.id);
+    if (!Number.isSafeInteger(item.revision) || item.revision < 0) throw new Error(`Versão inválida no ativo ${index + 1}.`);
+    const cents = moneyCents(item.averagePrice, 999999.99, `Preço médio do ativo ${index + 1}`);
+    return { id: item.id, revision: item.revision, averagePrice: cents / 100 };
+  }) };
+}
 export function validateAction(action) {
   if (!action || !['asset', 'transaction'].includes(action.type)) throw new Error('Ação inválida.');
   const operation = action.operation || 'create';

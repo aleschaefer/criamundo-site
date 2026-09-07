@@ -3,6 +3,7 @@ import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
 import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
+import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1';
 
 (() => {
   const $ = (selector) => document.querySelector(selector);
@@ -25,6 +26,14 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
   let busy = false;
   let generation = 0;
   let importedAssets = [];
+  async function fetchJsonWithTimeout(url, options = {}, timeout = 15000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      return { response, result: await response.json() };
+    } finally { clearTimeout(timer); }
+  }
   function message(text, error = false) {
     status.textContent = text;
     status.className = `save-status${error ? ' is-error' : ''}`;
@@ -37,7 +46,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
     assetForm.elements.subType.disabled = busy || !data || assetForm.elements.assetType.value === '3';
     transactionControls();
     $('#finance-refresh').disabled = busy;
-    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, #finance-filter-clear').forEach(button => { button.disabled = busy; });
+    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-average-price-import, #finance-filter-clear').forEach(button => { button.disabled = busy; });
   }
   function view(name) {
     assetForm.hidden = name !== 'asset';
@@ -107,6 +116,29 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
       const summaryLabel = document.createElement('span'); summaryLabel.textContent = `${group.owner} · ${types[group.assetType]} · ${subtypes[group.subType]} (${group.assets.length})`;
       summary.append(summaryLabel);
       if (group.assetType === 1 && [1, 2].includes(group.subType)) {
+        const groupActions = document.createElement('span'); groupActions.className = 'finance-group-actions';
+        const importPrices = document.createElement('button'); importPrices.type = 'button'; importPrices.className = 'button button-secondary finance-average-price-import'; importPrices.textContent = 'Importar preços médios';
+        const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = '.pdf,application/pdf'; fileInput.hidden = true;
+        importPrices.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); if (!busy) fileInput.click(); });
+        fileInput.addEventListener('click', event => event.stopPropagation());
+        fileInput.addEventListener('change', async event => {
+          event.stopPropagation(); const file = fileInput.files?.[0]; if (!file || busy) return;
+          busy = true; controls(); importPrices.textContent = 'Lendo PDF…';
+          try {
+            const recognized = await readRicoAveragePricesPdf(file);
+            const bySymbol = new Map(recognized.map(item => [item.symbol, item.averagePrice]));
+            const updates = group.assets.filter(asset => bySymbol.has(asset.symbol)).map(asset => ({ id: asset.id, revision: asset.revision, averagePrice: bySymbol.get(asset.symbol) }));
+            if (!updates.length) throw new Error(`Nenhum preço médio do PDF corresponde aos ativos de ${group.owner} · ${subtypes[group.subType]}.`);
+            const ignored = group.assets.length - updates.length;
+            const question = `${updates.length} preço(s) médio(s) encontrado(s) para este agrupamento${ignored ? `; ${ignored} ativo(s) sem preço médio correspondente serão mantidos.` : '.'}\n\nDeseja importar?`;
+            if (!confirm(question)) { message('Importação de preços médios cancelada.'); return; }
+            importPrices.textContent = `Salvando ${updates.length}…`;
+            const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-average-price-batch', items: updates }) });
+            if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os preços médios.');
+            data = result; render(); message(`${updates.length} preço(s) médio(s) importado(s) para ${group.owner} · ${subtypes[group.subType]}.`);
+          } catch (error) { message(error.message || 'Não foi possível importar os preços médios.', true); }
+          finally { fileInput.value = ''; busy = false; controls(); importPrices.textContent = 'Importar preços médios'; }
+        });
         const fetchAll = document.createElement('button'); fetchAll.type = 'button'; fetchAll.className = 'button button-secondary finance-income-batch'; fetchAll.textContent = 'Obter todos rendimentos';
         fetchAll.addEventListener('click', async event => {
           event.preventDefault(); event.stopPropagation();
@@ -116,22 +148,22 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
             for (const [index, asset] of group.assets.entries()) {
               fetchAll.textContent = `Consultando ${index + 1}/${group.assets.length}…`;
               try {
-                const response = await fetch(`/api/admin/finance/income?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
-                const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
+                const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/income?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
+                if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
                 updates.push({ id: asset.id, revision: asset.revision, currentIncome: Number(result.value) });
               } catch { failures.push(asset.symbol || asset.name); }
             }
             if (updates.length) {
               fetchAll.textContent = `Salvando ${updates.length}…`;
-              const response = await fetch('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-income-batch', items: updates }) });
-              const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os rendimentos.');
+              const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-income-batch', items: updates }) });
+              if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os rendimentos.');
               data = result; render();
             }
             message(`${updates.length} rendimento(s) atualizado(s)${failures.length ? `. Não encontrados: ${failures.join(', ')}.` : '.'}`, Boolean(failures.length));
           } catch (error) { message(error.message || 'Não foi possível atualizar os rendimentos.', true); }
           finally { busy = false; controls(); }
         });
-        summary.append(fetchAll);
+        groupActions.append(importPrices, fetchAll, fileInput); summary.append(groupActions);
       }
       const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap';
       const table = document.createElement('table');
@@ -206,8 +238,8 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
       const category = Number(form.elements.subType.value) === 1 ? 'stock' : 'fii';
       fetchIncome.disabled = true; incomeResult.textContent = 'Consultando Status Invest…';
       try {
-        const response = await fetch(`/api/admin/finance/income?symbol=${encodeURIComponent(ticker)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
-        const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
+        const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/income?symbol=${encodeURIComponent(ticker)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
+        if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
         form.elements.currentIncome.value = Number(result.value).toFixed(5);
         incomeResult.textContent = `${result.source}: ${money(result.value)} por cota. Clique em Salvar para confirmar.`;
       } catch (error) { incomeResult.textContent = error.message || 'Não foi possível obter o rendimento.'; }

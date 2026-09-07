@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { validateAction, validateAssetIncomeBatch } from '../finance-model.mjs';
+import { validateAction, validateAssetIncomeBatch, validateAssetAveragePriceBatch } from '../finance-model.mjs';
 import { handleFinance } from '../finance-api.mjs';
 import { todayInSaoPaulo, validTransactionDate, formatTransactionDate } from '../finance-date.mjs';
 import { calculateYields } from '../finance-yield.mjs';
@@ -88,6 +88,15 @@ test('atualiza em lote os rendimentos de ações e FIIs', async () => {
   const data = await response.json();
   assert.equal(data.assets.find(item => item.id === 'action').currentIncome, 0.14);
   assert.equal(data.assets.find(item => item.id === 'fii').currentIncome, 0.75);
+});
+test('atualiza em lote os preços médios e recalcula o valor dos ativos', async () => {
+  const env = envFor(); const fii = asset({ id: 'fii-price', name: 'FUNDO', symbol: 'MCCI11', assetType: 1, subType: 2, quantity: 275, averagePrice: 90 });
+  await handleFinance(request(fii), env);
+  const batch = { type: 'asset-average-price-batch', items: [{ id: fii.id, revision: 0, averagePrice: 91.82 }] };
+  assert.equal(validateAssetAveragePriceBatch(batch).items[0].averagePrice, 91.82);
+  assert.throws(() => validateAssetAveragePriceBatch({ ...batch, items: [{ ...batch.items[0], averagePrice: 1.001 }] }));
+  const response = await handleFinance(request(batch), env); assert.equal(response.status, 200);
+  const updated = (await response.json()).assets[0]; assert.equal(updated.averagePrice, 91.82); assert.equal(updated.total, 25250.5);
 });
 test('importação B3 permite mesmo nome com siglas diferentes e atualiza a combinação exata', async () => {
   const env = envFor();
