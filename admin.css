@@ -387,6 +387,10 @@ textarea {
 .finance-form small { color: var(--muted); font-weight: 400; }
 .finance-form > button { justify-self: start; }
 .finance-owner-filter { display: grid; gap: 8px; max-width: 320px; margin: 20px 0; }
+.finance-asset-groups { display: grid; gap: 12px; margin: 16px 0 28px; }
+.finance-asset-group { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.finance-asset-group > summary { cursor: pointer; padding: 15px 18px; color: var(--gold); font-weight: 700; background: rgba(255,255,255,.025); }
+.finance-asset-group > .finance-table-wrap { margin: 0; border-width: 1px 0 0; border-radius: 0; }
 .finance-summary { margin-bottom: 28px; }
 .finance-summary strong { font-size: clamp(1.5rem, 4vw, 2.2rem); overflow-wrap: anywhere; }
 .finance-table-wrap { overflow-x: auto; margin: 16px 0 28px; }

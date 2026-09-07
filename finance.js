@@ -93,6 +93,27 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     });
     actions.append(buttons); tr.append(actions); target.append(tr);
   }
+  function renderAssetGroups(assets) {
+    const container = $('#finance-asset-groups'); container.replaceChildren();
+    const groups = new Map();
+    for (const asset of assets) {
+      const key = `${asset.owner}\u0000${asset.assetType}\u0000${asset.subType}`;
+      if (!groups.has(key)) groups.set(key, { owner: asset.owner, assetType: asset.assetType, subType: asset.subType, assets: [] });
+      groups.get(key).assets.push(asset);
+    }
+    for (const group of groups.values()) {
+      const details = document.createElement('details'); details.className = 'finance-asset-group'; details.open = true;
+      const summary = document.createElement('summary');
+      summary.textContent = `${group.owner} · ${types[group.assetType]} · ${subtypes[group.subType]} (${group.assets.length})`;
+      const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap';
+      const table = document.createElement('table');
+      const caption = document.createElement('caption'); caption.className = 'sr-only'; caption.textContent = `Ativos de ${group.owner}, ${types[group.assetType]}, ${subtypes[group.subType]}`;
+      const head = document.createElement('thead'); head.innerHTML = '<tr><th>Sigla</th><th>Nome</th><th>Quantidade</th><th>Preço médio</th><th>Valor atual</th><th>Rendimento atual (R$)</th><th>DY atual (%)</th><th>DY médio (%)</th><th>Valor total</th><th>Ações</th></tr>';
+      const body = document.createElement('tbody');
+      for (const asset of group.assets) row(body, [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
+      table.append(caption, head, body); wrap.append(table); details.append(summary, wrap); container.append(details);
+    }
+  }
   function updateSubtypes(selection = assetForm.elements.subType.value) {
     const type = Number(assetForm.elements.assetType.value);
     const choices = SUBTYPES_BY_TYPE[type] || [];
@@ -148,7 +169,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
       button.type = 'button'; button.className = 'finance-legend-filter';
       button.dataset.filterType = item.type;
       button.setAttribute('aria-pressed', String(selectedAssetType === item.type));
-      button.setAttribute('aria-controls', 'finance-assets finance-history');
+      button.setAttribute('aria-controls', 'finance-asset-groups finance-history');
       button.setAttribute('aria-label', `${selectedAssetType === item.type ? 'Remover filtro' : 'Filtrar listas por'} ${types[item.type]}. ${money(item.amount)}, ${percent}`);
       button.disabled = busy || !data;
       const swatch = document.createElement('span');
@@ -181,11 +202,9 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     $('#finance-history-empty').textContent = selectedAssetType === null ? 'Nenhuma transação registrada.' : `Nenhuma transação do tipo ${types[selectedAssetType]}.`;
     $('#finance-empty').hidden = assets.length > 0;
     $('#finance-history-empty').hidden = transactions.length > 0;
-    $('#finance-assets').replaceChildren();
+    $('#finance-asset-groups').replaceChildren();
     $('#finance-history').replaceChildren();
-    ownerAssets.forEach(asset => {
-      if (selectedAssetType === null || asset.assetType === selectedAssetType) row($('#finance-assets'), [asset.owner, asset.symbol || '—', asset.name, types[asset.assetType], subtypes[asset.subType], quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
-    });
+    renderAssetGroups(assets);
     updateTransactionAssets();
     [...transactions].reverse().forEach(item => row($('#finance-history'), [item.owner, formatTransactionDate(item.transactionDate), new Date(item.createdAt).toLocaleString('pt-BR'), item.name, types[item.assetType], subtypes[item.subType], quantity(item.quantity), money(item.value)], 'transaction', item));
   }
@@ -391,7 +410,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     $('#finance-filter-clear').hidden = true;
     clearEdit('asset'); clearEdit('transaction');
     clearAssetImport();
-    $('#finance-assets').replaceChildren(); $('#finance-history').replaceChildren();
+    $('#finance-asset-groups').replaceChildren(); $('#finance-history').replaceChildren();
     transactionForm.elements.assetId.replaceChildren();
     $('#finance-total').textContent = '—'; $('#finance-count').textContent = '—';
     renderAllocation(); message(''); controls(); area(false); view('overview');
