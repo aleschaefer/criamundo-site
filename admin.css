@@ -446,6 +446,10 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .card-payment-collapse > .intro { margin: 0; padding: 12px 18px 18px; }
 .card-payment-collapse > .finance-table-wrap { margin: 0; border-width: 1px 0 0; border-radius: 0; }
 .card-transaction-period-filter { display: block; max-width: 620px; margin: 0 0 16px; }
+.card-inline-edit input, .card-inline-edit select { min-width: 110px; padding: 8px 9px; }
+.card-inline-edit input[data-inline-field="name"] { width: 240px; }
+.card-inline-edit input[data-inline-field="installments"] { width: 82px; min-width: 82px; text-align: center; }
+.card-inline-edit input[data-inline-field="value"] { width: 105px; min-width: 105px; }
 .finance-pie-legend li { column-gap: 9px; }
 .finance-pie-legend .card-group-label { margin-right: 3px; }
 
