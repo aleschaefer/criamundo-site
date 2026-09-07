@@ -22,6 +22,7 @@ ON site_content_backups(created_at DESC);
 CREATE TABLE IF NOT EXISTS finance_assets (
   id TEXT PRIMARY KEY NOT NULL,
   name CHAR(30) NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 30 AND name = trim(name)),
+  symbol VARCHAR(7) CHECK (symbol IS NULL OR (length(trim(symbol)) BETWEEN 1 AND 7 AND symbol = trim(symbol) AND symbol = upper(symbol))),
   type SMALLINT NOT NULL CHECK (typeof(type) = 'integer' AND type BETWEEN 1 AND 3),
   subtype SMALLINT NOT NULL CHECK (typeof(subtype) = 'integer' AND (
     (type = 1 AND subtype IN (1, 2, 3)) OR
@@ -106,7 +107,7 @@ BEGIN
     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS finance_asset_updated
-AFTER UPDATE OF name, type, subtype, quantity, average_price, value, current_price, current_income, revision ON finance_assets
+AFTER UPDATE OF name, symbol, type, subtype, quantity, average_price, value, current_price, current_income, revision ON finance_assets
 BEGIN
   UPDATE finance_assets SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
 END;

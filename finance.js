@@ -145,7 +145,7 @@ import { assetAllocation } from './finance-allocation.mjs';
     $('#finance-assets').replaceChildren();
     $('#finance-history').replaceChildren();
     data.assets.forEach(asset => {
-      if (selectedAssetType === null || asset.assetType === selectedAssetType) row($('#finance-assets'), [asset.name, types[asset.assetType], subtypes[asset.subType], quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
+      if (selectedAssetType === null || asset.assetType === selectedAssetType) row($('#finance-assets'), [asset.symbol || '—', asset.name, types[asset.assetType], subtypes[asset.subType], quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
     });
     updateTransactionAssets();
     [...transactions].reverse().forEach(item => row($('#finance-history'), [formatTransactionDate(item.transactionDate), new Date(item.createdAt).toLocaleString('pt-BR'), item.name, types[item.assetType], subtypes[item.subType], quantity(item.quantity), money(item.value)], 'transaction', item));
@@ -210,7 +210,7 @@ import { assetAllocation } from './finance-allocation.mjs';
     if (kind === 'asset') {
       clearEdit(kind); editingAsset = { ...record };
       const fields = assetForm.elements;
-      fields.name.value = record.name; fields.assetType.value = record.assetType; updateSubtypes(record.subType);
+      fields.name.value = record.name; fields.symbol.value = record.symbol || ''; fields.assetType.value = record.assetType; updateSubtypes(record.subType);
       fields.quantity.value = record.quantity; fields.averagePrice.value = record.averagePrice;
       fields.currentPrice.value = record.priceIsDefault ? '' : record.currentPrice;
       fields.currentIncome.value = record.currentIncome;
@@ -304,7 +304,7 @@ import { assetAllocation } from './finance-allocation.mjs';
   assetForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!data || busy) return;
-    if (await request({ type: 'asset', operation: editingAsset ? 'update' : 'create', id: editingAsset?.id || assetRequestId, revision: editingAsset?.revision, assetType: Number(assetForm.elements.assetType.value), subType: Number(assetForm.elements.subType.value), name: assetForm.elements.name.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value) })) {
+    if (await request({ type: 'asset', operation: editingAsset ? 'update' : 'create', id: editingAsset?.id || assetRequestId, revision: editingAsset?.revision, assetType: Number(assetForm.elements.assetType.value), subType: Number(assetForm.elements.subType.value), name: assetForm.elements.name.value, symbol: assetForm.elements.symbol.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value) })) {
       clearEdit('asset'); view('overview');
     }
   });

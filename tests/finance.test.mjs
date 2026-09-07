@@ -15,6 +15,7 @@ const timestampMigration = readFileSync(new URL('../migrations/0005_finance_time
 const dateMigration = readFileSync(new URL('../migrations/0006_transaction_date.sql', import.meta.url), 'utf8');
 const fixedIncomeMigration = readFileSync(new URL('../migrations/0007_fixed_income_current_price.sql', import.meta.url), 'utf8');
 const subtypeMigration = readFileSync(new URL('../migrations/0008_asset_subtypes.sql', import.meta.url), 'utf8');
+const symbolMigration = readFileSync(new URL('../migrations/0017_finance_asset_symbol.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
@@ -26,6 +27,7 @@ function database() {
   sql.exec(dateMigration);
   sql.exec(fixedIncomeMigration);
   sql.exec(subtypeMigration);
+  sql.exec(symbolMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -41,13 +43,14 @@ function database() {
     catch (error) { sql.exec('ROLLBACK'); throw error; }
   } };
 }
-const asset = (values = {}) => ({ type: 'asset', id: crypto.randomUUID(), name: 'Reserva', assetType: 2, subType: 7, quantity: 10, averagePrice: 20, ...values });
+const asset = (values = {}) => ({ type: 'asset', id: crypto.randomUUID(), name: 'Reserva', symbol: 'RESERVA', assetType: 2, subType: 7, quantity: 10, averagePrice: 20, ...values });
 const transaction = (assetId, values = {}) => ({ type: 'transaction', id: crypto.randomUUID(), assetId, transactionDate: '2026-08-31', quantity: 10, unitPrice: 30, ...values });
 const request = (body, password = 'test-password') => new Request('https://example.test/api/admin/finance', { method: body ? 'POST' : 'GET', headers: { 'x-admin-password': password }, ...(body ? { body: JSON.stringify(body) } : {}) });
 const envFor = () => ({ ADMIN_PASSWORD: 'test-password', ALLOW_LEGACY_ADMIN_AUTH: 'true', CONTENT_DB: database() });
 test('valida nomes, enum, quantidades inteiras e precisão decimal', () => {
   assert.equal(validateAction(asset({ averagePrice: 12.34 })).value, 123.4);
-  for (const values of [{ name: 'a'.repeat(31) }, { name: ' ' }, { assetType: 0 }, { assetType: '1' }, { quantity: 1.5 }, { quantity: -1 }, { averagePrice: 1.001 }, { averagePrice: 1000000 }, { quantity: 1000, averagePrice: 999999.99 }]) assert.throws(() => validateAction(asset(values)));
+  assert.equal(validateAction(asset({symbol:'petr4'})).symbol,'PETR4');
+  for (const values of [{ name: 'a'.repeat(31) }, { name: ' ' }, { symbol: '' }, { symbol: 'ABCDEFGH' }, { assetType: 0 }, { assetType: '1' }, { quantity: 1.5 }, { quantity: -1 }, { averagePrice: 1.001 }, { averagePrice: 1000000 }, { quantity: 1000, averagePrice: 999999.99 }]) assert.throws(() => validateAction(asset(values)));
   for (const values of [{ quantity: 0 }, { quantity: 1.1 }, { unitPrice: 1.001 }, { unitPrice: -1 }, { unitPrice: Infinity }, { unitPrice: 1000000 }, { unitPrice: undefined }, { quantity: 1000, unitPrice: 999999.99 }]) assert.throws(() => validateAction(transaction('id', values)));
 });
 test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', async () => {

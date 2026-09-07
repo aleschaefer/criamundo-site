@@ -20,6 +20,8 @@ export function validateAction(action) {
   if (action.type === 'asset') {
     const name = typeof action.name === 'string' ? action.name.trim() : '';
     if (!name || [...name].length > 30) throw new Error('Nome deve ter até 30 caracteres.');
+    const symbol = typeof action.symbol === 'string' ? action.symbol.trim().toUpperCase() : '';
+    if (!symbol || [...symbol].length > 7) throw new Error('Sigla deve ter até 7 caracteres.');
     if (!Number.isInteger(action.assetType) || !ASSET_TYPES[action.assetType]) throw new Error('Tipo de ativo inválido.');
     if (!Number.isInteger(action.subType) || !SUBTYPES_BY_TYPE[action.assetType].includes(action.subType)) throw new Error('Selecione um subtipo válido para o tipo de ativo.');
     const cents = moneyCents(action.averagePrice, 999999.99, action.assetType === 2 ? 'Valor de Compra' : 'Preço médio');
@@ -33,7 +35,7 @@ export function validateAction(action) {
     if (typeof currentIncome !== 'number' || !Number.isFinite(currentIncome) || currentIncome < 0 || currentIncome > 99.99999 || Math.abs(currentIncome * 100000 - Math.round(currentIncome * 100000)) > 0.000001) {
       throw new Error('Rendimento atual: informe um valor entre 0 e 99,99999, com até 5 casas decimais.');
     }
-    return { ...action, name, currentPrice, currentIncome: Math.round(currentIncome * 100000) / 100000, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
+    return { ...action, name, symbol, currentPrice, currentIncome: Math.round(currentIncome * 100000) / 100000, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
   }
   if (!validTransactionDate(action.transactionDate)) throw new Error('Informe uma data da transação válida.');
   if (typeof action.assetId !== 'string' || !action.assetId) throw new Error('Selecione um ativo.');

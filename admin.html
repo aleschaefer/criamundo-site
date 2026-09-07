@@ -126,6 +126,7 @@
             <label>Tipo<select name="assetType" required><option value="1">Renda Variável</option><option value="2">Renda Fixa</option><option value="3">Outro</option></select></label>
             <label id="finance-subtype-field">Subtipo<select name="subType" required></select></label>
             <label class="full-width">Nome<input name="name" required maxlength="30" placeholder="Ex.: Reserva de emergência" /></label>
+            <label>Sigla<input name="symbol" required maxlength="7" placeholder="Ex.: PETR4" autocapitalize="characters" /></label>
             <label>Quantidade<input name="quantity" type="number" min="0" max="2147483647" step="1" required inputmode="decimal" /></label>
             <label data-market-field>Rendimento atual (R$)<input name="currentIncome" type="number" min="0" max="99.99999" step="0.00001" inputmode="decimal" placeholder="0,00000" /><small>Rendimento por unidade no período informado, sem anualização. Em branco, será zero.</small></label>
             <label data-current-price-field>Valor atual (R$ por unidade)<input name="currentPrice" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" placeholder="Usar preço médio" /><small id="finance-current-price-hint">Opcional. Em branco, acompanha o preço médio.</small></label>
@@ -170,7 +171,7 @@
             <button id="finance-filter-clear" type="button" class="button button-secondary" hidden>Mostrar todos</button>
           </div>
           <h3>Ativos</h3><p id="finance-empty" class="intro">Carregue os dados para consultar seus ativos.</p>
-          <div class="finance-table-wrap"><table><caption class="sr-only">Ativos cadastrados</caption><thead><tr><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Preço médio</th><th>Valor atual</th><th>Rendimento atual (R$)</th><th>DY atual (%)</th><th>DY médio (%)</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-assets"></tbody></table></div>
+          <div class="finance-table-wrap"><table><caption class="sr-only">Ativos cadastrados</caption><thead><tr><th>Sigla</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Preço médio</th><th>Valor atual</th><th>Rendimento atual (R$)</th><th>DY atual (%)</th><th>DY médio (%)</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-assets"></tbody></table></div>
           <h3>Histórico de transações</h3><p id="finance-history-empty" class="intro">Nenhuma transação registrada.</p>
           <div class="finance-table-wrap"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Data da transação</th><th>Registro</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
         </div>
@@ -379,7 +380,7 @@
     <script src="content.js"></script>
     <script src="data-manager.js?v=2"></script>
     <script src="admin.js?v=2"></script>
-    <script type="module" src="finance.js?v=2"></script>
+    <script type="module" src="finance.js?v=3"></script>
   <script type="module" src="credit-card.js?v=22"></script>
   </body>
 </html>
