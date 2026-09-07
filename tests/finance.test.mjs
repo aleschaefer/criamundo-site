@@ -16,6 +16,7 @@ const dateMigration = readFileSync(new URL('../migrations/0006_transaction_date.
 const fixedIncomeMigration = readFileSync(new URL('../migrations/0007_fixed_income_current_price.sql', import.meta.url), 'utf8');
 const subtypeMigration = readFileSync(new URL('../migrations/0008_asset_subtypes.sql', import.meta.url), 'utf8');
 const symbolMigration = readFileSync(new URL('../migrations/0017_finance_asset_symbol.sql', import.meta.url), 'utf8');
+const identityMigration = readFileSync(new URL('../migrations/0018_finance_asset_identity.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
@@ -28,6 +29,7 @@ function database() {
   sql.exec(fixedIncomeMigration);
   sql.exec(subtypeMigration);
   sql.exec(symbolMigration);
+  sql.exec(identityMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -71,16 +73,16 @@ test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', 
   assert.equal(saved.transactions.length, 1);
   assert.equal(saved.total, 500);
 });
-test('importação B3 inclui ativos e atualiza apenas a mesma combinação de sigla e nome', async () => {
+test('importação B3 permite mesmo nome com siglas diferentes e atualiza a combinação exata', async () => {
   const env = envFor();
-  const imported = (id, name, quantity, total) => ({ id, symbol: 'CDB', name, assetType: 2, subType: 4, quantity, currentPrice: total / quantity, total });
-  let response = await handleFinance(request({ type: 'asset-import', items: [imported('one', 'BANCO A', 2, 200), imported('two', 'BANCO B', 3, 300)] }), env);
+  const imported = (id, symbol, quantity, total) => ({ id, symbol, name: 'PATRIA RENDA URBANA - FII', assetType: 1, subType: 2, quantity, currentPrice: total / quantity, total });
+  let response = await handleFinance(request({ type: 'asset-import', items: [imported('one', 'HGRU11', 2, 200), imported('two', 'HGRU12', 3, 300)] }), env);
   assert.equal(response.status, 200);
   let data = await response.json(); assert.equal(data.assets.length, 2);
-  response = await handleFinance(request({ type: 'asset-import', items: [imported('retry', 'BANCO A', 4, 440)] }), env);
+  response = await handleFinance(request({ type: 'asset-import', items: [imported('retry', 'HGRU11', 4, 440)] }), env);
   assert.equal(response.status, 200); data = await response.json();
   assert.equal(data.assets.length, 2);
-  const updated = data.assets.find(asset => asset.name === 'BANCO A');
+  const updated = data.assets.find(asset => asset.symbol === 'HGRU11');
   assert.equal(updated.quantity, 4); assert.equal(updated.averagePrice, 110); assert.equal(updated.currentPrice, 110); assert.equal(updated.total, 440);
 });
 test('importação B3 reconhece ativo legado sem sigla e completa seu cadastro', async () => {
@@ -90,6 +92,17 @@ test('importação B3 reconhece ativo legado sem sigla e completa seu cadastro',
   assert.equal(response.status, 200);
   const data = await response.json(); assert.equal(data.assets.length, 1);
   assert.equal(data.assets[0].id, 'legacy'); assert.equal(data.assets[0].symbol, 'BBAS3'); assert.equal(data.assets[0].quantity, 505);
+});
+test('migração 0018 inclui a sigla na unicidade e preserva ativos e transações', () => {
+  const sql = new DatabaseSync(':memory:'); sql.exec('PRAGMA foreign_keys=ON');
+  for (const script of [migration, marketMigration, incomeMigration, editMigration, timestampMigration, dateMigration, fixedIncomeMigration, subtypeMigration, symbolMigration]) sql.exec(script);
+  sql.exec("INSERT INTO finance_assets(id,name,symbol,type,subtype,quantity,average_price,value,current_price) VALUES('a','MESMO FUNDO','HGRU11',1,2,1,10,10,10)");
+  sql.exec("INSERT INTO finance_transactions(id,asset_id,name,type,subtype,quantity,value,transaction_date) VALUES('t','a','MESMO FUNDO',1,2,1,10,'2026-09-01')");
+  sql.exec(identityMigration);
+  sql.exec("INSERT INTO finance_assets(id,name,symbol,type,subtype,quantity,average_price,value,current_price) VALUES('b','MESMO FUNDO','HGRU12',1,2,1,20,20,20)");
+  assert.equal(sql.prepare('SELECT count(*) AS count FROM finance_assets').get().count, 2);
+  assert.equal(sql.prepare("SELECT asset_id FROM finance_transactions WHERE id='t'").get().asset_id, 'a');
+  assert.equal(sql.prepare('PRAGMA foreign_key_check').all().length, 0);
 });
 test('média arredondada não perde centavos no custo acumulado', async () => {
   const env = envFor(); const a = asset({ quantity: 0, averagePrice: 0 });

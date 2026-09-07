@@ -394,3 +394,12 @@ npx wrangler deploy
 A migração 0015 faz exclusão lógica apenas de previsões que correspondem a uma parcela
 confirmada pelos campos da compra e pelo nome-base. Valores divergentes são preservados
 para conferência manual.
+
+Para permitir ativos com o mesmo nome e classificação, mas siglas diferentes, aplique:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0018_finance_asset_identity.sql
+```
+
+A migração 0018 inclui a sigla na identidade única do ativo e preserva saldos,
+transações, datas e revisões existentes.
