@@ -17,6 +17,7 @@ export function validateAction(action) {
   }
   if (!Number.isInteger(action.quantity) || action.quantity < (action.type === 'asset' ? 0 : 1) || action.quantity > 2147483647) throw new Error('Quantidade deve ser um número inteiro dentro do limite permitido.');
   if (typeof action.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(action.id)) throw new Error('Identificador inválido.');
+  if (!['Ale', 'Ana'].includes(action.owner)) throw new Error('Selecione um proprietário válido.');
   if (action.type === 'asset') {
     const name = typeof action.name === 'string' ? action.name.trim() : '';
     if (!name || [...name].length > 30) throw new Error('Nome deve ter até 30 caracteres.');

@@ -17,6 +17,7 @@ const fixedIncomeMigration = readFileSync(new URL('../migrations/0007_fixed_inco
 const subtypeMigration = readFileSync(new URL('../migrations/0008_asset_subtypes.sql', import.meta.url), 'utf8');
 const symbolMigration = readFileSync(new URL('../migrations/0017_finance_asset_symbol.sql', import.meta.url), 'utf8');
 const identityMigration = readFileSync(new URL('../migrations/0018_finance_asset_identity.sql', import.meta.url), 'utf8');
+const ownerMigration = readFileSync(new URL('../migrations/0019_finance_owner.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
@@ -30,6 +31,7 @@ function database() {
   sql.exec(subtypeMigration);
   sql.exec(symbolMigration);
   sql.exec(identityMigration);
+  sql.exec(ownerMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -45,14 +47,14 @@ function database() {
     catch (error) { sql.exec('ROLLBACK'); throw error; }
   } };
 }
-const asset = (values = {}) => ({ type: 'asset', id: crypto.randomUUID(), name: 'Reserva', symbol: 'RESERVA', assetType: 2, subType: 7, quantity: 10, averagePrice: 20, ...values });
-const transaction = (assetId, values = {}) => ({ type: 'transaction', id: crypto.randomUUID(), assetId, transactionDate: '2026-08-31', quantity: 10, unitPrice: 30, ...values });
+const asset = (values = {}) => ({ type: 'asset', id: crypto.randomUUID(), owner: 'Ale', name: 'Reserva', symbol: 'RESERVA', assetType: 2, subType: 7, quantity: 10, averagePrice: 20, ...values });
+const transaction = (assetId, values = {}) => ({ type: 'transaction', id: crypto.randomUUID(), owner: 'Ale', assetId, transactionDate: '2026-08-31', quantity: 10, unitPrice: 30, ...values });
 const request = (body, password = 'test-password') => new Request('https://example.test/api/admin/finance', { method: body ? 'POST' : 'GET', headers: { 'x-admin-password': password }, ...(body ? { body: JSON.stringify(body) } : {}) });
 const envFor = () => ({ ADMIN_PASSWORD: 'test-password', ALLOW_LEGACY_ADMIN_AUTH: 'true', CONTENT_DB: database() });
 test('valida nomes, enum, quantidades inteiras e precisão decimal', () => {
   assert.equal(validateAction(asset({ averagePrice: 12.34 })).value, 123.4);
   assert.equal(validateAction(asset({symbol:'petr4'})).symbol,'PETR4');
-  for (const values of [{ name: 'a'.repeat(31) }, { name: ' ' }, { symbol: '' }, { symbol: 'ABCDEFGH' }, { assetType: 0 }, { assetType: '1' }, { quantity: 1.5 }, { quantity: -1 }, { averagePrice: 1.001 }, { averagePrice: 1000000 }, { quantity: 1000, averagePrice: 999999.99 }]) assert.throws(() => validateAction(asset(values)));
+  for (const values of [{ owner: 'Outro' }, { name: 'a'.repeat(31) }, { name: ' ' }, { symbol: '' }, { symbol: 'ABCDEFGH' }, { assetType: 0 }, { assetType: '1' }, { quantity: 1.5 }, { quantity: -1 }, { averagePrice: 1.001 }, { averagePrice: 1000000 }, { quantity: 1000, averagePrice: 999999.99 }]) assert.throws(() => validateAction(asset(values)));
   for (const values of [{ quantity: 0 }, { quantity: 1.1 }, { unitPrice: 1.001 }, { unitPrice: -1 }, { unitPrice: Infinity }, { unitPrice: 1000000 }, { unitPrice: undefined }, { quantity: 1000, unitPrice: 999999.99 }]) assert.throws(() => validateAction(transaction('id', values)));
 });
 test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', async () => {
@@ -67,6 +69,7 @@ test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', 
   assert.equal(data.assets[0].total, 500);
   assert.equal(data.transactions[0].name, a.name);
   assert.equal(data.transactions[0].assetType, a.assetType);
+  assert.equal(data.assets[0].owner, 'Ale'); assert.equal(data.transactions[0].owner, 'Ale');
   // Repetir o mesmo envio após uma falha de rede não duplica a transação.
   await handleFinance(request(tx), env);
   const saved = await (await handleFinance(request(), env)).json();
@@ -75,7 +78,7 @@ test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', 
 });
 test('importação B3 permite mesmo nome com siglas diferentes e atualiza a combinação exata', async () => {
   const env = envFor();
-  const imported = (id, symbol, quantity, total) => ({ id, symbol, name: 'PATRIA RENDA URBANA - FII', assetType: 1, subType: 2, quantity, currentPrice: total / quantity, total });
+  const imported = (id, symbol, quantity, total) => ({ id, owner: 'Ana', symbol, name: 'PATRIA RENDA URBANA - FII', assetType: 1, subType: 2, quantity, currentPrice: total / quantity, total });
   let response = await handleFinance(request({ type: 'asset-import', items: [imported('one', 'HGRU11', 2, 200), imported('two', 'HGRU12', 3, 300)] }), env);
   assert.equal(response.status, 200);
   let data = await response.json(); assert.equal(data.assets.length, 2);
@@ -88,7 +91,7 @@ test('importação B3 permite mesmo nome com siglas diferentes e atualiza a comb
 test('importação B3 reconhece ativo legado sem sigla e completa seu cadastro', async () => {
   const env = envFor();
   env.CONTENT_DB.sql.exec("INSERT INTO finance_assets(id,name,type,subtype,quantity,average_price,value,current_price) VALUES('legacy','BCO BRASIL S.A.',1,1,1,10,10,10)");
-  const response = await handleFinance(request({ type: 'asset-import', items: [{ id: 'new', symbol: 'BBAS3', name: 'BCO BRASIL S.A.', assetType: 1, subType: 1, quantity: 505, currentPrice: 22.52, total: 11372.6 }] }), env);
+  const response = await handleFinance(request({ type: 'asset-import', items: [{ id: 'new', owner: 'Ana', symbol: 'BBAS3', name: 'BCO BRASIL S.A.', assetType: 1, subType: 1, quantity: 505, currentPrice: 22.52, total: 11372.6 }] }), env);
   assert.equal(response.status, 200);
   const data = await response.json(); assert.equal(data.assets.length, 1);
   assert.equal(data.assets[0].id, 'legacy'); assert.equal(data.assets[0].symbol, 'BBAS3'); assert.equal(data.assets[0].quantity, 505);
@@ -103,6 +106,17 @@ test('migração 0018 inclui a sigla na unicidade e preserva ativos e transaçõ
   assert.equal(sql.prepare('SELECT count(*) AS count FROM finance_assets').get().count, 2);
   assert.equal(sql.prepare("SELECT asset_id FROM finance_transactions WHERE id='t'").get().asset_id, 'a');
   assert.equal(sql.prepare('PRAGMA foreign_key_check').all().length, 0);
+});
+test('migração 0019 preserva dados, atribui Ale aos antigos e valida proprietário', () => {
+  const sql = new DatabaseSync(':memory:'); sql.exec('PRAGMA foreign_keys=ON');
+  for (const script of [migration, marketMigration, incomeMigration, editMigration, timestampMigration, dateMigration, fixedIncomeMigration, subtypeMigration, symbolMigration, identityMigration]) sql.exec(script);
+  sql.exec("INSERT INTO finance_assets(id,name,symbol,type,subtype,quantity,average_price,value,current_price) VALUES('a','ATIVO','ATV1',1,1,1,10,10,10)");
+  sql.exec("INSERT INTO finance_transactions(id,asset_id,name,type,subtype,quantity,value,transaction_date) VALUES('t','a','ATIVO',1,1,1,10,'2026-09-01')");
+  sql.exec(ownerMigration);
+  assert.equal(sql.prepare("SELECT owner FROM finance_assets WHERE id='a'").get().owner, 'Ale');
+  assert.equal(sql.prepare("SELECT owner FROM finance_transactions WHERE id='t'").get().owner, 'Ale');
+  sql.exec("UPDATE finance_assets SET owner='Ana' WHERE id='a'");
+  assert.throws(() => sql.exec("UPDATE finance_transactions SET owner='Outro' WHERE id='t'"));
 });
 test('média arredondada não perde centavos no custo acumulado', async () => {
   const env = envFor(); const a = asset({ quantity: 0, averagePrice: 0 });

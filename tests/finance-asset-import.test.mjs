@@ -24,8 +24,9 @@ test('extrai produto, classificação, quantidade e valores de linhas B3', () =>
 });
 
 test('valida os ativos selecionados e mantém CDBs de nomes diferentes', () => {
-  const base = { id: 'asset-1', symbol: 'CDB', name: 'BANCO A', assetType: 2, subType: 4, quantity: 10, currentPrice: 100, total: 1000 };
+  const base = { id: 'asset-1', owner: 'Ale', symbol: 'CDB', name: 'BANCO A', assetType: 2, subType: 4, quantity: 10, currentPrice: 100, total: 1000 };
   assert.equal(validateAssetImport({ type: 'asset-import', items: [base] }).items[0].symbol, 'CDB');
   assert.throws(() => validateAssetImport({ type: 'asset-import', items: [{ ...base, quantity: 0, total: 1 }] }));
   assert.throws(() => validateAssetImport({ type: 'asset-import', items: [{ ...base, currentPrice: 1.234 }] }));
+  assert.throws(() => validateAssetImport({ type: 'asset-import', items: [{ ...base, owner: '' }] }));
 });

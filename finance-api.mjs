@@ -6,8 +6,8 @@ const reply = (body, status = 200) => new Response(JSON.stringify(body), { statu
 async function overview(db) {
   // Um batch fornece uma visão consistente das duas tabelas.
   const [assets, transactions] = await db.batch([
-    db.prepare('SELECT id, name, symbol, type AS assetType, subtype AS subType, quantity, average_price AS averagePrice, value AS total, COALESCE(current_price, average_price) AS currentPrice, current_income AS currentIncome, current_price IS NULL AS priceIsDefault, created_at AS createdAt, updated_at AS updatedAt, revision, (SELECT COUNT(*) FROM finance_transactions t WHERE t.asset_id = finance_assets.id) AS transactionCount FROM finance_assets ORDER BY name, type'),
-    db.prepare('SELECT id, asset_id AS assetId, name, type AS assetType, subtype AS subType, quantity, value, created_at AS createdAt, updated_at AS updatedAt, transaction_date AS transactionDate, revision FROM finance_transactions ORDER BY transaction_date, created_at, rowid')
+    db.prepare('SELECT id, owner, name, symbol, type AS assetType, subtype AS subType, quantity, average_price AS averagePrice, value AS total, COALESCE(current_price, average_price) AS currentPrice, current_income AS currentIncome, current_price IS NULL AS priceIsDefault, created_at AS createdAt, updated_at AS updatedAt, revision, (SELECT COUNT(*) FROM finance_transactions t WHERE t.asset_id = finance_assets.id) AS transactionCount FROM finance_assets ORDER BY owner, name, type'),
+    db.prepare('SELECT id, owner, asset_id AS assetId, name, type AS assetType, subtype AS subType, quantity, value, created_at AS createdAt, updated_at AS updatedAt, transaction_date AS transactionDate, revision FROM finance_transactions ORDER BY transaction_date, created_at, rowid')
   ]);
   return { assets: assets.results.map(asset => ({ ...asset, ...calculateYields(asset.currentIncome, asset.currentPrice, asset.averagePrice) })), transactions: transactions.results, total: assets.results.reduce((sum, asset) => sum + Math.round(asset.total * 100), 0) / 100 };
 }
@@ -28,8 +28,8 @@ export async function handleFinance(request, env) {
           WHERE (symbol=?1 AND name=?2) OR (name=?2 AND type=?3 AND subtype=?4)
           ORDER BY CASE WHEN symbol=?1 THEN 0 ELSE 1 END LIMIT 1`)
           .bind(item.symbol,item.name,item.assetType,item.subType).first();
-        if(existing)statements.push(db.prepare(`UPDATE finance_assets SET name=?1,symbol=?2,type=?3,subtype=?4,quantity=?5,average_price=?6,value=?7,current_price=?8,current_income=0,current_dy=0,revision=revision+1 WHERE id=?9`).bind(item.name,item.symbol,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice,existing.id));
-        else statements.push(db.prepare(`INSERT INTO finance_assets(id,name,symbol,type,subtype,quantity,average_price,value,current_price,current_income,current_dy) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,0,0)`).bind(item.id,item.name,item.symbol,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice));
+        if(existing)statements.push(db.prepare(`UPDATE finance_assets SET owner=?1,name=?2,symbol=?3,type=?4,subtype=?5,quantity=?6,average_price=?7,value=?8,current_price=?9,current_income=0,current_dy=0,revision=revision+1 WHERE id=?10`).bind(item.owner,item.name,item.symbol,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice,existing.id));
+        else statements.push(db.prepare(`INSERT INTO finance_assets(id,owner,name,symbol,type,subtype,quantity,average_price,value,current_price,current_income,current_dy) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,0,0)`).bind(item.id,item.owner,item.name,item.symbol,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice));
       }
       await db.batch(statements);return reply(await overview(db));
     }
@@ -39,31 +39,31 @@ export async function handleFinance(request, env) {
       const result = await db.prepare(`DELETE FROM ${table} WHERE id = ?1 AND revision = ?2`).bind(action.id, action.revision).run();
       if (!result.meta.changes) return reply({ error: 'Registro alterado ou excluído. Atualize os dados antes de tentar novamente.' }, 409);
     } else if (operation === 'update' && action.type === 'asset') {
-      const result = await db.prepare(`UPDATE finance_assets SET name = ?1, type = ?2, subtype = ?10, symbol = ?11,
+      const result = await db.prepare(`UPDATE finance_assets SET name = ?1, type = ?2, subtype = ?10, symbol = ?11, owner = ?12,
         quantity = ?3, average_price = ?4,
         value = CASE WHEN EXISTS (SELECT 1 FROM finance_transactions WHERE asset_id = ?7) THEN value ELSE ?5 END,
         current_price = ?6, current_income = ?8, current_dy = 0, revision = revision + 1
         WHERE id = ?7 AND revision = ?9 AND
           (NOT EXISTS (SELECT 1 FROM finance_transactions WHERE asset_id = ?7) OR (quantity = ?3 AND average_price = ?4))`)
-        .bind(action.name, action.assetType, action.quantity, action.averagePrice, action.value, action.currentPrice, action.id, action.currentIncome, action.revision, action.subType, action.symbol).run();
+        .bind(action.name, action.assetType, action.quantity, action.averagePrice, action.value, action.currentPrice, action.id, action.currentIncome, action.revision, action.subType, action.symbol, action.owner).run();
       if (!result.meta.changes) return reply({ error: 'Registro alterado ou saldo vinculado a transações. Atualize os dados; altere o saldo pelo histórico.' }, 409);
     } else if (operation === 'update') {
       const result = await db.prepare(`UPDATE finance_transactions SET
         asset_id = ?1, name = (SELECT name FROM finance_assets WHERE id = ?1),
-        type = (SELECT type FROM finance_assets WHERE id = ?1), subtype = (SELECT subtype FROM finance_assets WHERE id = ?1), quantity = ?2, value = ?3, transaction_date = ?6, revision = revision + 1
+        type = (SELECT type FROM finance_assets WHERE id = ?1), subtype = (SELECT subtype FROM finance_assets WHERE id = ?1), owner = ?7, quantity = ?2, value = ?3, transaction_date = ?6, revision = revision + 1
         WHERE id = ?4 AND revision = ?5 AND EXISTS (SELECT 1 FROM finance_assets WHERE id = ?1)`)
-        .bind(action.assetId, action.quantity, action.value, action.id, action.revision, action.transactionDate).run();
+        .bind(action.assetId, action.quantity, action.value, action.id, action.revision, action.transactionDate, action.owner).run();
       if (!result.meta.changes) return reply({ error: 'Registro alterado, excluído ou ativo indisponível. Atualize os dados.' }, 409);
     } else if (action.type === 'asset') {
-      await db.prepare(`INSERT INTO finance_assets (id, name, type, quantity, average_price, value, current_price, current_income, subtype, symbol)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) ON CONFLICT(id) DO NOTHING`)
-        .bind(action.id, action.name, action.assetType, action.quantity, action.averagePrice, action.value, action.currentPrice, action.currentIncome, action.subType, action.symbol).run();
+      await db.prepare(`INSERT INTO finance_assets (id, owner, name, type, quantity, average_price, value, current_price, current_income, subtype, symbol)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11) ON CONFLICT(id) DO NOTHING`)
+        .bind(action.id, action.owner, action.name, action.assetType, action.quantity, action.averagePrice, action.value, action.currentPrice, action.currentIncome, action.subType, action.symbol).run();
     } else {
       // O INSERT e o trigger são atômicos: falha no saldo desfaz também a transação.
       // Nome e tipo vêm do ativo, nunca de campos livres enviados pelo cliente.
-      const result = await db.prepare(`INSERT INTO finance_transactions (id, asset_id, name, type, quantity, value, transaction_date, subtype)
-        SELECT ?1, id, name, type, ?3, ?4, ?5, subtype FROM finance_assets WHERE id = ?2
-        ON CONFLICT(id) DO NOTHING`).bind(action.id, action.assetId, action.quantity, action.value, action.transactionDate).run();
+      const result = await db.prepare(`INSERT INTO finance_transactions (id, owner, asset_id, name, type, quantity, value, transaction_date, subtype)
+        SELECT ?1, ?6, id, name, type, ?3, ?4, ?5, subtype FROM finance_assets WHERE id = ?2
+        ON CONFLICT(id) DO NOTHING`).bind(action.id, action.assetId, action.quantity, action.value, action.transactionDate, action.owner).run();
       if (!result.meta.changes) {
         const existing = await db.prepare('SELECT id FROM finance_transactions WHERE id = ?1').bind(action.id).first();
         if (!existing) return reply({ error: 'Ativo não encontrado. Atualize os dados.' }, 400);
@@ -75,6 +75,6 @@ export async function handleFinance(request, env) {
     if (/UNIQUE constraint/i.test(error.message)) return reply({ error: 'Já existe um ativo com esta sigla, nome, tipo e subtipo.' }, 409);
     if (/CHECK constraint/i.test(error.message)) return reply({ error: 'A operação excede os limites de quantidade, preço médio ou valor do ativo.' }, 400);
     console.error('Finance database error', error);
-    return reply({ error: 'Não foi possível acessar Finanças. Verifique a conexão e se as migrações de Finanças até 0018 foram aplicadas no banco.' }, 503);
+    return reply({ error: 'Não foi possível acessar Finanças. Verifique a conexão e se as migrações de Finanças até 0019 foram aplicadas no banco.' }, 503);
   }
 }

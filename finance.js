@@ -68,7 +68,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
       const existing = data?.assets.some(asset =>
         (asset.symbol === item.symbol && asset.name === item.name) ||
         (asset.name === item.name && asset.assetType === item.assetType && asset.subType === item.subType));
-      const cells = [selected, String(item.page), importInput('text', item.symbol, 'symbol', { maxlength: '7', required: '' }), importInput('text', item.name, 'name', { maxlength: '30', required: '' }), types[item.assetType], subtypes[item.subType], importInput('number', item.quantity, 'quantity', { min: '0', max: '2147483647', step: '1', required: '' }), importInput('number', item.currentPrice.toFixed(2), 'currentPrice', { min: '0', max: '999999.99', step: '0.01', required: '' }), importInput('number', item.total.toFixed(2), 'total', { min: '0', max: '99999999.99', step: '0.01', required: '' }), existing ? 'Atualizar' : 'Novo'];
+      const cells = [selected, String(item.page), assetImportForm.elements.owner.value, importInput('text', item.symbol, 'symbol', { maxlength: '7', required: '' }), importInput('text', item.name, 'name', { maxlength: '30', required: '' }), types[item.assetType], subtypes[item.subType], importInput('number', item.quantity, 'quantity', { min: '0', max: '2147483647', step: '1', required: '' }), importInput('number', item.currentPrice.toFixed(2), 'currentPrice', { min: '0', max: '999999.99', step: '0.01', required: '' }), importInput('number', item.total.toFixed(2), 'total', { min: '0', max: '99999999.99', step: '0.01', required: '' }), existing ? 'Atualizar' : 'Novo'];
       for (const value of cells) { const td = document.createElement('td'); value instanceof Node ? td.append(value) : td.textContent = value; tr.append(td); }
       body.append(tr);
     }
@@ -180,10 +180,10 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     $('#finance-assets').replaceChildren();
     $('#finance-history').replaceChildren();
     data.assets.forEach(asset => {
-      if (selectedAssetType === null || asset.assetType === selectedAssetType) row($('#finance-assets'), [asset.symbol || '—', asset.name, types[asset.assetType], subtypes[asset.subType], quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
+      if (selectedAssetType === null || asset.assetType === selectedAssetType) row($('#finance-assets'), [asset.owner, asset.symbol || '—', asset.name, types[asset.assetType], subtypes[asset.subType], quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
     });
     updateTransactionAssets();
-    [...transactions].reverse().forEach(item => row($('#finance-history'), [formatTransactionDate(item.transactionDate), new Date(item.createdAt).toLocaleString('pt-BR'), item.name, types[item.assetType], subtypes[item.subType], quantity(item.quantity), money(item.value)], 'transaction', item));
+    [...transactions].reverse().forEach(item => row($('#finance-history'), [item.owner, formatTransactionDate(item.transactionDate), new Date(item.createdAt).toLocaleString('pt-BR'), item.name, types[item.assetType], subtypes[item.subType], quantity(item.quantity), money(item.value)], 'transaction', item));
   }
   async function request(action) {
     if (busy) return false;
@@ -245,7 +245,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     if (kind === 'asset') {
       clearEdit(kind); editingAsset = { ...record };
       const fields = assetForm.elements;
-      fields.name.value = record.name; fields.symbol.value = record.symbol || ''; fields.assetType.value = record.assetType; updateSubtypes(record.subType);
+      fields.owner.value = record.owner; fields.name.value = record.name; fields.symbol.value = record.symbol || ''; fields.assetType.value = record.assetType; updateSubtypes(record.subType);
       fields.quantity.value = record.quantity; fields.averagePrice.value = record.averagePrice;
       fields.currentPrice.value = record.priceIsDefault ? '' : record.currentPrice;
       fields.currentIncome.value = record.currentIncome;
@@ -257,7 +257,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     } else {
       clearEdit(kind); editingTransaction = { ...record };
       const fields = transactionForm.elements;
-      fields.assetType.value = record.assetType; updateTransactionAssets(record.assetId); fields.quantity.value = record.quantity;
+      fields.owner.value = record.owner; fields.assetType.value = record.assetType; updateTransactionAssets(record.assetId); fields.quantity.value = record.quantity;
       fields.transactionDate.value = record.transactionDate || '';
       fields.unitPrice.value = (record.value / record.quantity).toFixed(2);
       $('#finance-transaction-title').textContent = 'Editar transação'; $('#finance-transaction-cancel').hidden = false;
@@ -339,7 +339,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
   assetForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!data || busy) return;
-    if (await request({ type: 'asset', operation: editingAsset ? 'update' : 'create', id: editingAsset?.id || assetRequestId, revision: editingAsset?.revision, assetType: Number(assetForm.elements.assetType.value), subType: Number(assetForm.elements.subType.value), name: assetForm.elements.name.value, symbol: assetForm.elements.symbol.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value) })) {
+    if (await request({ type: 'asset', operation: editingAsset ? 'update' : 'create', id: editingAsset?.id || assetRequestId, revision: editingAsset?.revision, owner: assetForm.elements.owner.value, assetType: Number(assetForm.elements.assetType.value), subType: Number(assetForm.elements.subType.value), name: assetForm.elements.name.value, symbol: assetForm.elements.symbol.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value) })) {
       clearEdit('asset'); view('overview');
     }
   });
@@ -347,12 +347,13 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     event.preventDefault();
     if (!data || busy) return;
     const fields = transactionForm.elements;
-    if (await request({ type: 'transaction', operation: editingTransaction ? 'update' : 'create', id: editingTransaction?.id || transactionRequestId, revision: editingTransaction?.revision, assetId: fields.assetId.value, transactionDate: fields.transactionDate.value, quantity: Number(fields.quantity.value), unitPrice: Number(fields.unitPrice.value) })) {
+    if (await request({ type: 'transaction', operation: editingTransaction ? 'update' : 'create', id: editingTransaction?.id || transactionRequestId, revision: editingTransaction?.revision, owner: fields.owner.value, assetId: fields.assetId.value, transactionDate: fields.transactionDate.value, quantity: Number(fields.quantity.value), unitPrice: Number(fields.unitPrice.value) })) {
       clearEdit('transaction'); view('overview');
     }
   });
   $('#finance-asset-import-read').addEventListener('click', async () => {
     if (busy || !data) return;
+    if (!assetImportForm.elements.owner.value) { message('Selecione quem é o proprietário dos ativos antes de ler o PDF.', true); assetImportForm.elements.owner.focus(); return; }
     const file = assetImportForm.elements.statement.files[0];
     const progress = $('#finance-asset-import-progress'); const bar = progress.querySelector('progress'); const label = progress.querySelector('span');
     try {
@@ -369,7 +370,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     const items = [...$('#finance-asset-import-items').rows].filter(tr => tr.querySelector('[data-field="selected"]').checked).map(tr => {
       const original = importedAssets[Number(tr.dataset.index)];
       const value = field => tr.querySelector(`[data-field="${field}"]`).value;
-      return { ...original, id: crypto.randomUUID(), symbol: value('symbol').trim().toUpperCase(), name: value('name').trim(), quantity: Number(value('quantity')), currentPrice: Number(value('currentPrice')), total: Number(value('total')) };
+      return { ...original, id: crypto.randomUUID(), owner: assetImportForm.elements.owner.value, symbol: value('symbol').trim().toUpperCase(), name: value('name').trim(), quantity: Number(value('quantity')), currentPrice: Number(value('currentPrice')), total: Number(value('total')) };
     });
     if (!items.length) { message('Selecione ao menos um ativo para importar.', true); return; }
     if (new Set(items.map(item => `${item.symbol}\u0000${item.name}`)).size !== items.length) { message('Há ativos repetidos na seleção. Mantenha apenas uma linha para cada combinação de sigla e nome.', true); return; }

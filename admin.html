@@ -124,6 +124,7 @@
           <h3 id="finance-asset-title">Incluir ativo</h3>
           <p id="finance-asset-edit-note" class="draft-note" hidden>Quantidade e preço médio vêm das transações. Para corrigi-los, edite o histórico.</p>
           <div class="grid grid-2">
+            <label>Proprietário<select name="owner" required><option value="Ale">Ale</option><option value="Ana">Ana</option></select></label>
             <label>Tipo<select name="assetType" required><option value="1">Renda Variável</option><option value="2">Renda Fixa</option><option value="3">Outro</option></select></label>
             <label id="finance-subtype-field">Subtipo<select name="subType" required></select></label>
             <label class="full-width">Nome<input name="name" required maxlength="30" placeholder="Ex.: Reserva de emergência" /></label>
@@ -143,6 +144,7 @@
           <h3 id="finance-transaction-title">Incluir transações</h3>
           <p class="draft-note">Informe a quantidade e o valor unitário da compra. O total é calculado automaticamente. A quantidade e o valor são somados ao ativo; o preço médio é recalculado automaticamente. Escolha primeiro o tipo e depois um dos ativos cadastrados nessa categoria.</p>
           <div class="grid grid-2">
+            <label>Proprietário<select name="owner" required><option value="Ale">Ale</option><option value="Ana">Ana</option></select></label>
             <label>Tipo<select name="assetType" required><option value="">Selecione um tipo</option><option value="1">Renda Variável</option><option value="2">Renda Fixa</option><option value="3">Outro</option></select></label>
             <label>Nome do ativo<select name="assetId" required aria-describedby="finance-transaction-asset-hint"></select><small id="finance-transaction-asset-hint" role="status">Selecione primeiro o tipo de ativo.</small></label>
             <label>Data da transação<input name="transactionDate" type="date" min="0001-01-01" max="9999-12-31" required /><small>Selecione no calendário a data em que a transação ocorreu.</small></label>
@@ -156,6 +158,7 @@
         <form id="finance-asset-import" class="finance-form" hidden>
           <h3>Importar ativos</h3>
           <p class="draft-note">O PDF é lido neste navegador. Confira os dados reconhecidos antes de salvar. Se a sigla já estiver cadastrada, o ativo será atualizado.</p>
+          <label>Proprietário dos ativos<select name="owner" required><option value="">Selecione o proprietário</option><option value="Ale">Ale</option><option value="Ana">Ana</option></select><small>A escolha será aplicada a todos os ativos selecionados nesta importação.</small></label>
           <label>Extrato de posição da B3 (PDF)<input name="statement" type="file" accept=".pdf,application/pdf" required /></label>
           <div class="finance-actions">
             <button class="button button-secondary" id="finance-asset-import-read" type="button">Ler PDF e conferir</button>
@@ -164,7 +167,7 @@
           </div>
           <div class="card-import-progress" id="finance-asset-import-progress" hidden><progress max="100" value="0"></progress><span role="status" aria-live="polite"></span></div>
           <p id="finance-asset-import-empty" class="intro">Selecione o extrato em PDF para iniciar.</p>
-          <div class="finance-table-wrap" id="finance-asset-import-preview" hidden><table><caption class="sr-only">Ativos reconhecidos no PDF</caption><thead><tr><th>Importar</th><th>Página</th><th>Sigla</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor atual</th><th>Valor total</th><th>Ação</th></tr></thead><tbody id="finance-asset-import-items"></tbody></table></div>
+          <div class="finance-table-wrap" id="finance-asset-import-preview" hidden><table><caption class="sr-only">Ativos reconhecidos no PDF</caption><thead><tr><th>Importar</th><th>Página</th><th>Proprietário</th><th>Sigla</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor atual</th><th>Valor total</th><th>Ação</th></tr></thead><tbody id="finance-asset-import-items"></tbody></table></div>
         </form>
         <div id="finance-overview">
           <div class="grid grid-2 finance-summary">
@@ -185,9 +188,9 @@
             <button id="finance-filter-clear" type="button" class="button button-secondary" hidden>Mostrar todos</button>
           </div>
           <h3>Ativos</h3><p id="finance-empty" class="intro">Carregue os dados para consultar seus ativos.</p>
-          <div class="finance-table-wrap"><table><caption class="sr-only">Ativos cadastrados</caption><thead><tr><th>Sigla</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Preço médio</th><th>Valor atual</th><th>Rendimento atual (R$)</th><th>DY atual (%)</th><th>DY médio (%)</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-assets"></tbody></table></div>
+          <div class="finance-table-wrap"><table><caption class="sr-only">Ativos cadastrados</caption><thead><tr><th>Proprietário</th><th>Sigla</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Preço médio</th><th>Valor atual</th><th>Rendimento atual (R$)</th><th>DY atual (%)</th><th>DY médio (%)</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-assets"></tbody></table></div>
           <h3>Histórico de transações</h3><p id="finance-history-empty" class="intro">Nenhuma transação registrada.</p>
-          <div class="finance-table-wrap"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Data da transação</th><th>Registro</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
+          <div class="finance-table-wrap"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Proprietário</th><th>Data da transação</th><th>Registro</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
         </div>
       </section>
 
@@ -394,7 +397,7 @@
     <script src="content.js"></script>
     <script src="data-manager.js?v=2"></script>
     <script src="admin.js?v=2"></script>
-    <script type="module" src="finance.js?v=4"></script>
+    <script type="module" src="finance.js?v=5"></script>
   <script type="module" src="credit-card.js?v=22"></script>
   </body>
 </html>

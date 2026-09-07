@@ -21,6 +21,7 @@ ON site_content_backups(created_at DESC);
 -- SQLite/D1 não impõe CHAR/DECIMAL: os CHECKs abaixo validam os limites.
 CREATE TABLE IF NOT EXISTS finance_assets (
   id TEXT PRIMARY KEY NOT NULL,
+  owner TEXT NOT NULL DEFAULT 'Ale' CHECK (owner IN ('Ale', 'Ana')),
   name CHAR(30) NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 30 AND name = trim(name)),
   symbol VARCHAR(7) CHECK (symbol IS NULL OR (length(trim(symbol)) BETWEEN 1 AND 7 AND symbol = trim(symbol) AND symbol = upper(symbol))),
   type SMALLINT NOT NULL CHECK (typeof(type) = 'integer' AND type BETWEEN 1 AND 3),
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS finance_assets (
 );
 CREATE TABLE IF NOT EXISTS finance_transactions (
   id TEXT PRIMARY KEY NOT NULL,
+  owner TEXT NOT NULL DEFAULT 'Ale' CHECK (owner IN ('Ale', 'Ana')),
   asset_id TEXT NOT NULL,
   transaction_date TEXT CHECK (transaction_date IS NULL OR (
     transaction_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
@@ -107,7 +109,7 @@ BEGIN
     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS finance_asset_updated
-AFTER UPDATE OF name, symbol, type, subtype, quantity, average_price, value, current_price, current_income, revision ON finance_assets
+AFTER UPDATE OF owner, name, symbol, type, subtype, quantity, average_price, value, current_price, current_income, revision ON finance_assets
 BEGIN
   UPDATE finance_assets SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
 END;
@@ -116,7 +118,7 @@ BEGIN
   UPDATE finance_transactions SET updated_at = NEW.created_at WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS finance_transaction_updated
-AFTER UPDATE OF asset_id, name, type, subtype, quantity, value, revision, transaction_date ON finance_transactions
+AFTER UPDATE OF owner, asset_id, name, type, subtype, quantity, value, revision, transaction_date ON finance_transactions
 BEGIN
   UPDATE finance_transactions SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
 END;

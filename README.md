@@ -403,3 +403,12 @@ npx wrangler d1 execute criamundo-content --remote --file=migrations/0018_financ
 
 A migração 0018 inclui a sigla na identidade única do ativo e preserva saldos,
 transações, datas e revisões existentes.
+
+Para identificar o proprietário de ativos e transações, aplique depois:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0019_finance_owner.sql
+```
+
+Os registros anteriores recebem `Ale`. Novos registros e importações exigem a escolha
+entre `Ale` e `Ana`.
