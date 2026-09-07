@@ -154,6 +154,9 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     const average = inlineField('Preço médio / Valor de compra', 'averagePrice', record.averagePrice, { type: 'number', attributes: { min: '0', step: '0.01', required: '' } });
     const current = inlineField('Valor atual', 'currentPrice', record.priceIsDefault ? '' : record.currentPrice, { type: 'number', attributes: { min: '0', step: '0.01' } });
     const income = inlineField('Rendimento atual', 'currentIncome', record.currentIncome, { type: 'number', attributes: { min: '0', step: '0.00001' } });
+    const fetchIncome = document.createElement('button'); fetchIncome.type = 'button'; fetchIncome.className = 'button button-secondary finance-income-fetch'; fetchIncome.textContent = 'Obter rendimento';
+    const incomeResult = document.createElement('small'); incomeResult.className = 'finance-income-result'; incomeResult.setAttribute('role', 'status'); incomeResult.setAttribute('aria-live', 'polite');
+    income.append(fetchIncome, incomeResult);
     const fields = document.createElement('div'); fields.className = 'finance-inline-fields'; fields.append(owner, type, subtype, name, symbol, amount, average, current, income);
     const actions = document.createElement('div'); actions.className = 'finance-row-actions';
     const save = document.createElement('button'); save.type = 'submit'; save.className = 'button button-primary'; save.textContent = 'Salvar';
@@ -165,9 +168,23 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
       form.elements.subType.value = choices.includes(previous) ? previous : choices[0];
       const classification = { assetType: selectedType, subType: Number(form.elements.subType.value) };
       current.hidden = !hasCurrentPrice(classification); income.hidden = !hasIncome(classification);
+      fetchIncome.hidden = !(selectedType === 1 && [1, 2].includes(classification.subType));
     };
     type.querySelector('select').addEventListener('change', updateInlineFields); subtype.querySelector('select').addEventListener('change', updateInlineFields); updateInlineFields();
     if (record.transactionCount) { form.elements.quantity.readOnly = true; form.elements.averagePrice.readOnly = true; }
+    fetchIncome.addEventListener('click', async () => {
+      const ticker = form.elements.symbol.value.trim().toUpperCase();
+      if (!ticker) { incomeResult.textContent = 'Informe a sigla do ativo.'; return; }
+      const category = Number(form.elements.subType.value) === 1 ? 'stock' : 'fii';
+      fetchIncome.disabled = true; incomeResult.textContent = 'Consultando Status Invest…';
+      try {
+        const response = await fetch(`/api/admin/finance/income?symbol=${encodeURIComponent(ticker)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
+        const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
+        form.elements.currentIncome.value = Number(result.value).toFixed(5);
+        incomeResult.textContent = `${result.source}: ${money(result.value)} por cota. Clique em Salvar para confirmar.`;
+      } catch (error) { incomeResult.textContent = error.message || 'Não foi possível obter o rendimento.'; }
+      finally { fetchIncome.disabled = false; }
+    });
     cancel.addEventListener('click', () => render());
     form.addEventListener('submit', async event => {
       event.preventDefault(); const f = form.elements;
