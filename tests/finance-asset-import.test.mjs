@@ -23,6 +23,16 @@ test('extrai produto, classificação, quantidade e valores de linhas B3', () =>
   assert.deepEqual(parsed, [{ page: 1, symbol: 'AGRO3', name: 'BRASILAGRO - CIA BRAS DE PROP', assetType: 1, subType: 1, quantity: 1600, currentPrice: 19.27, total: 30832 }]);
 });
 
+test('reconhece valor total alinhado em 513,9 no extrato de ações da B3', () => {
+  const parsed = parseB3PositionItems([
+    item('Ações', 37.2, 597.5), item('Produto', 37.2, 557.5), item('Quantidade', 377.8, 557.5),
+    item('AGRO3 - BRASILAGRO - CIA BRAS DE PROP', 37.2, 526),
+    item('ON', 232.8, 521), item('295', 392.7, 521), item('R$ 19,27', 463.4, 521), item('R$ 5.684,65', 513.9, 521),
+    item('AGRICOLAS', 37.2, 516), item('Total', 540.7, 197)
+  ], 1);
+  assert.deepEqual(parsed, [{ page: 1, symbol: 'AGRO3', name: 'BRASILAGRO - CIA BRAS DE PROP', assetType: 1, subType: 1, quantity: 295, currentPrice: 19.27, total: 5684.65 }]);
+});
+
 test('valida os ativos selecionados e mantém CDBs de nomes diferentes', () => {
   const base = { id: 'asset-1', owner: 'Ale', symbol: 'CDB', name: 'BANCO A', assetType: 2, subType: 4, quantity: 10, currentPrice: 100, total: 1000 };
   assert.equal(validateAssetImport({ type: 'asset-import', items: [base] }).items[0].symbol, 'CDB');

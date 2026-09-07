@@ -38,7 +38,8 @@ export async function handleFinanceIncome(request, env, fetcher = fetch) {
   if (!/^[a-z0-9]{4,7}$/.test(symbol)) return reply({ error: 'Sigla do ativo inválida.' }, 400);
   if (!paths[category]) return reply({ error: 'Categoria do ativo inválida.' }, 400);
   try {
-    const response = await fetcher(`https://statusinvest.com.br/${paths[category]}/${encodeURIComponent(symbol)}`, {
+    const statusInvestPath = category === 'fii' && symbol === 'dcra11' ? 'fiagros' : paths[category];
+    const response = await fetcher(`https://statusinvest.com.br/${statusInvestPath}/${encodeURIComponent(symbol)}`, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CriamundoFinance/1.0)', Accept: 'text/html' },
       signal: AbortSignal.timeout(10000)
     });

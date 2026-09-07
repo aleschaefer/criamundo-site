@@ -18,7 +18,7 @@ export function parseB3PositionItems(items,page=1){
     const left=normalize(row.items.filter(item=>item.x<250).map(item=>item.text).join(' '));const starts=/^[A-Z0-9.]{2,12}\s*-\s+/i.test(left);
     if(starts){finish();current={product:[],quantity:[],price:[],total:[]};}
     if(!current)continue;
-    const values={product:row.items.filter(item=>item.x<250),quantity:row.items.filter(item=>item.x>=350&&item.x<445),price:row.items.filter(item=>item.x>=445&&item.x<515),total:row.items.filter(item=>item.x>=515)};
+    const values={product:row.items.filter(item=>item.x<250),quantity:row.items.filter(item=>item.x>=350&&item.x<440),price:row.items.filter(item=>item.x>=440&&item.x<510),total:row.items.filter(item=>item.x>=510)};
     Object.entries(values).forEach(([key,list])=>current[key].push(...list.map(item=>item.text).filter(Boolean)));
   }
   finish();return output;

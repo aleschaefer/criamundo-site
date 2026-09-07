@@ -2,7 +2,7 @@ import { ASSET_TYPES as types, ASSET_SUBTYPES as subtypes, SUBTYPES_BY_TYPE, has
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
-import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
+import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
 
 (() => {
   const $ = (selector) => document.querySelector(selector);

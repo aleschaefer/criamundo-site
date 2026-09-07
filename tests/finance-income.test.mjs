@@ -33,3 +33,15 @@ test('endpoint consulta a página de ações e rejeita outras categorias', async
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { symbol: 'BBAS3', category: 'stock', value: 0.14, source: 'Último dividendo' });
 });
+
+test('DCRA11 usa excepcionalmente a página de Fiagros', async () => {
+  const env = { ADMIN_PASSWORD: 'test-password', ALLOW_LEGACY_ADMIN_AUTH: 'true' };
+  const request = new Request('https://example.test/api/admin/finance/income?symbol=DCRA11&category=fii', { headers: { 'x-admin-password': 'test-password' } });
+  const fetcher = async url => {
+    assert.equal(url, 'https://statusinvest.com.br/fiagros/dcra11');
+    return new Response('<section>Próximo Rendimento R$ 0,11</section>');
+  };
+  const response = await handleFinanceIncome(request, env, fetcher);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { symbol: 'DCRA11', category: 'fii', value: 0.11, source: 'Próximo Rendimento' });
+});
