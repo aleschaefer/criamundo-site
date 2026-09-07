@@ -22,11 +22,15 @@
         <p class="eyebrow">Acesso restrito</p>
         <h1>Painel administrativo protegido</h1>
         <p class="intro">
-          Digite a senha para liberar a edição local deste conteúdo. A sessão
-          permanece ativa apenas neste navegador até você sair.
+          Entre com seu e-mail e senha e confirme o acesso usando o Touch ID.
+          A sessão segura permanece ativa por até oito horas.
         </p>
 
         <form id="login-form" class="auth-form">
+          <label>
+            E-mail
+            <input type="email" id="admin-email" name="email" autocomplete="username webauthn" required />
+          </label>
           <label>
             Senha
             <input
@@ -36,12 +40,18 @@
               autocomplete="current-password"
               required
             />
+            <small>No primeiro acesso, escolha uma senha com pelo menos 12 caracteres.</small>
+          </label>
+          <label id="legacy-password-label" hidden>
+            Senha administrativa atual
+            <input type="password" id="admin-legacy-password" name="legacyPassword" autocomplete="off" />
+            <small>Usada uma única vez para autorizar o primeiro usuário e cadastrar o Touch ID.</small>
           </label>
 
           <p class="auth-status" id="auth-status" aria-live="polite"></p>
 
           <button class="button button-primary" type="submit">
-            Entrar no painel
+            Entrar com Touch ID
           </button>
         </form>
       </section>
@@ -86,6 +96,9 @@
           </button>
           <button class="button button-secondary" id="logout-admin" type="button">
             Sair
+          </button>
+          <button class="button button-danger" id="logout-all-admin" type="button">
+            Encerrar todos os acessos
           </button>
           <input id="import-json-file" type="file" accept=".json,application/json" hidden />
         </div>
@@ -364,9 +377,9 @@
     </main>
 
     <script src="content.js"></script>
-    <script src="data-manager.js"></script>
-    <script src="admin.js"></script>
-    <script type="module" src="finance.js"></script>
-  <script type="module" src="credit-card.js?v=21"></script>
+    <script src="data-manager.js?v=2"></script>
+    <script src="admin.js?v=2"></script>
+    <script type="module" src="finance.js?v=2"></script>
+  <script type="module" src="credit-card.js?v=22"></script>
   </body>
 </html>

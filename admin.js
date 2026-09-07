@@ -1,8 +1,8 @@
-const ADMIN_SESSION_KEY = "rio2c-admin-session";
-const ADMIN_PASSWORD_STORAGE_KEY = "rio2c-admin-password";
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_COOLDOWN_MS = 60 * 1000;
 const ADMIN_AUTH_API_PATH = "/api/admin/auth";
+let authenticatedSession = false;
+let authConfigured = true;
 
 let adminData = createEmptySiteData();
 let failedLoginAttempts = 0;
@@ -13,8 +13,12 @@ const authShell = document.querySelector("#auth-shell");
 const adminShell = document.querySelector("#admin-shell");
 const loginForm = document.querySelector("#login-form");
 const passwordField = document.querySelector("#admin-password");
+const emailField = document.querySelector("#admin-email");
+const legacyPasswordField = document.querySelector("#admin-legacy-password");
+const legacyPasswordLabel = document.querySelector("#legacy-password-label");
 const authStatus = document.querySelector("#auth-status");
 const logoutButton = document.querySelector("#logout-admin");
+const logoutAllButton = document.querySelector("#logout-all-admin");
 const form = document.querySelector("#admin-form");
 const groupsEditor = document.querySelector("#groups-editor");
 const saveStatus = document.querySelector("#save-status");
@@ -87,26 +91,14 @@ function updateAuthView(isAuthenticated) {
   authShell.hidden = isAuthenticated;
 }
 
-function persistAuthenticatedSession() {
-  sessionStorage.setItem(ADMIN_SESSION_KEY, "authenticated");
-}
-
-function persistAdminPassword(password) {
-  sessionStorage.setItem(ADMIN_PASSWORD_STORAGE_KEY, password);
-}
-
-function clearAuthenticatedSession() {
-  sessionStorage.removeItem(ADMIN_SESSION_KEY);
-  sessionStorage.removeItem(ADMIN_PASSWORD_STORAGE_KEY);
-}
-
-function isAuthenticated() {
-  return sessionStorage.getItem(ADMIN_SESSION_KEY) === "authenticated";
-}
-
-function getStoredAdminPassword() {
-  return sessionStorage.getItem(ADMIN_PASSWORD_STORAGE_KEY) || "";
-}
+function persistAuthenticatedSession() { authenticatedSession = true; }
+function clearAuthenticatedSession() { authenticatedSession = false; }
+function isAuthenticated() { return authenticatedSession; }
+function fromBase64Url(value) { const text=value.replaceAll("-","+").replaceAll("_","/"); return Uint8Array.from(atob(text+"=".repeat((4-text.length%4)%4)),c=>c.charCodeAt(0)); }
+function toBase64Url(value) { return btoa(String.fromCharCode(...new Uint8Array(value))).replaceAll("+","-").replaceAll("/","_").replace(/=+$/,""); }
+async function authRequest(path, body) { const response=await fetch(`${ADMIN_AUTH_API_PATH}/${path}`,{method:body?"POST":"GET",credentials:"same-origin",headers:{Accept:"application/json",...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{})}); const result=await response.json(); if(!response.ok)throw new Error(result.error||"Não foi possível autenticar."); return result; }
+function publicKeyOptions(options) { return {...options,challenge:fromBase64Url(options.challenge),...(options.user?{user:{...options.user,id:fromBase64Url(options.user.id)}}:{}),...(options.allowCredentials?{allowCredentials:options.allowCredentials.map(item=>({...item,id:fromBase64Url(item.id)}))}:{})}; }
+function credentialPayload(credential, setup=false) { const response=credential.response; return {rawId:toBase64Url(credential.rawId),response:{clientDataJSON:toBase64Url(response.clientDataJSON),...(setup?{attestationObject:toBase64Url(response.attestationObject)}:{authenticatorData:toBase64Url(response.authenticatorData),signature:toBase64Url(response.signature),userHandle:response.userHandle?toBase64Url(response.userHandle):null})},...(setup?{transports:response.getTransports?.()||[]}:{})}; }
 
 function escapeHtml(value) {
   return String(value)
@@ -116,40 +108,6 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
-async function validateAdminPassword(password) {
-  const response = await fetch(ADMIN_AUTH_API_PATH, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "x-admin-password": password
-    },
-    cache: "no-store"
-  });
-
-  if (response.ok) {
-    return true;
-  }
-
-  if (response.status === 401) {
-    return false;
-  }
-
-  const errorText = await response.text();
-  let message = "Nao foi possivel validar a senha do painel.";
-
-  if (errorText) {
-    try {
-      const errorPayload = JSON.parse(errorText);
-      if (errorPayload && errorPayload.error) {
-        message = errorPayload.error;
-      }
-    } catch (error) {
-      message = errorText;
-    }
-  }
-
-  throw new Error(message);
-}
 
 function applyLoginCooldown() {
   const remainingMs = loginCooldownUntil - Date.now();
@@ -388,56 +346,34 @@ async function importJsonFileContents(file) {
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-
-  if (Date.now() < loginCooldownUntil) {
-    applyLoginCooldown();
-    return;
-  }
-
+  if (Date.now() < loginCooldownUntil) { applyLoginCooldown(); return; }
+  if (!window.PublicKeyCredential) { setAuthStatus("Este navegador não oferece suporte a passkeys/Touch ID.","error"); return; }
   try {
-    const password = passwordField.value;
-    const validPassword = await validateAdminPassword(password);
-
-    if (!validPassword) {
-      failedLoginAttempts += 1;
-      passwordField.value = "";
-
-      if (failedLoginAttempts >= MAX_LOGIN_ATTEMPTS) {
-        loginCooldownUntil = Date.now() + LOGIN_COOLDOWN_MS;
-        failedLoginAttempts = 0;
-        applyLoginCooldown();
-        return;
-      }
-
-      setAuthStatus("Senha incorreta. Tente novamente.", "error");
-      return;
-    }
-
-    failedLoginAttempts = 0;
-    loginCooldownUntil = 0;
-    passwordField.disabled = false;
-    persistAuthenticatedSession();
-    persistAdminPassword(password);
-    updateAuthView(true);
-    setAuthStatus("");
-    passwordField.value = "";
-    setSaveStatus("Painel liberado para edicao.", "success");
+    const path=authConfigured?"login-options":"setup-options";
+    const options=await authRequest(path,{email:emailField.value,password:passwordField.value,legacyPassword:legacyPasswordField.value});
+    setAuthStatus("Confirme sua identidade com o Touch ID…");
+    const credential=authConfigured
+      ? await navigator.credentials.get({publicKey:publicKeyOptions(options.publicKey)})
+      : await navigator.credentials.create({publicKey:publicKeyOptions(options.publicKey)});
+    await authRequest(authConfigured?"login-verify":"setup-verify",{flowId:options.flowId,...credentialPayload(credential,!authConfigured)});
+    failedLoginAttempts=0; loginCooldownUntil=0; passwordField.disabled=false; authConfigured=true; persistAuthenticatedSession(); updateAuthView(true); setAuthStatus(""); passwordField.value=""; legacyPasswordField.value=""; setSaveStatus("Painel liberado com senha e Touch ID.","success");
   } catch (error) {
-    console.error(error);
-    setAuthStatus(
-      error.message || "Nao foi possivel validar o acesso do painel.",
-      "error"
-    );
+    failedLoginAttempts += 1; passwordField.value="";
+    if(failedLoginAttempts>=MAX_LOGIN_ATTEMPTS){loginCooldownUntil=Date.now()+LOGIN_COOLDOWN_MS;failedLoginAttempts=0;applyLoginCooldown();return;}
+    setAuthStatus(error.name==="NotAllowedError"?"A confirmação pelo Touch ID foi cancelada.":error.message||"Não foi possível validar o acesso.","error");
   }
 });
 
-logoutButton.addEventListener("click", () => {
-  clearAuthenticatedSession();
-  updateAuthView(false);
-  passwordField.value = "";
-  passwordField.disabled = false;
-  setAuthStatus("Sessao encerrada.", "success");
-  setSaveStatus("");
+logoutButton.addEventListener("click", async () => {
+  try { await authRequest("logout",{}); } catch (error) { console.error(error); }
+  clearAuthenticatedSession(); updateAuthView(false); passwordField.value=""; passwordField.disabled=false; setAuthStatus("Sessão encerrada.","success"); setSaveStatus(""); emailField.focus();
+});
+
+logoutAllButton.addEventListener("click", async () => {
+  if(!confirm("Deseja encerrar todas as sessões administrativas abertas?"))return;
+  try { await authRequest("logout-all",{}); setAuthStatus("Todos os acessos foram encerrados.","success"); }
+  catch (error) { setAuthStatus(error.message,"error"); return; }
+  clearAuthenticatedSession(); updateAuthView(false); passwordField.value=""; setSaveStatus(""); emailField.focus();
 });
 
 groupsEditor.addEventListener("input", (event) => {
@@ -602,12 +538,7 @@ importJsonFile.addEventListener("change", async (event) => {
 
 restoreBackupButton.addEventListener("click", async () => {
   try {
-    const adminPassword = getStoredAdminPassword();
-    if (!adminPassword) {
-      throw new Error("Sua sessao expirou. Entre novamente para restaurar.");
-    }
-
-    adminData = await loadLatestPublishedBackupSiteData(adminPassword);
+    adminData = await loadLatestPublishedBackupSiteData("");
     adminData = saveSiteData(adminData);
     fillTopFields();
     renderGroups();
@@ -644,12 +575,7 @@ form.addEventListener("submit", (event) => {
 async function publishAdminData() {
   try {
     syncTopFieldsToState();
-    const adminPassword = getStoredAdminPassword();
-    if (!adminPassword) {
-      throw new Error("Sua sessao expirou. Entre novamente para publicar.");
-    }
-
-    await savePublishedSiteData(adminData, adminPassword);
+    await savePublishedSiteData(adminData, "");
     adminData = saveSiteData(adminData);
     renderGroups();
     setSaveStatus(
@@ -675,11 +601,12 @@ async function initializeAdmin() {
 
   fillTopFields();
   renderGroups();
-  updateAuthView(isAuthenticated());
-
-  if (!isAuthenticated()) {
-    passwordField.focus();
-  }
+  const authState=await authRequest("status");
+  authenticatedSession=authState.authenticated; authConfigured=authState.configured;
+  legacyPasswordLabel.hidden=authConfigured; legacyPasswordField.required=!authConfigured;
+  loginForm.querySelector("button[type=submit]").textContent=authConfigured?"Entrar com Touch ID":"Cadastrar usuário e Touch ID";
+  updateAuthView(authenticatedSession);
+  if (!authenticatedSession) emailField.focus();
 }
 
 initializeAdmin().catch((error) => {

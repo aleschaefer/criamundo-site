@@ -44,7 +44,7 @@ function database() {
 const asset = (values = {}) => ({ type: 'asset', id: crypto.randomUUID(), name: 'Reserva', assetType: 2, subType: 7, quantity: 10, averagePrice: 20, ...values });
 const transaction = (assetId, values = {}) => ({ type: 'transaction', id: crypto.randomUUID(), assetId, transactionDate: '2026-08-31', quantity: 10, unitPrice: 30, ...values });
 const request = (body, password = 'test-password') => new Request('https://example.test/api/admin/finance', { method: body ? 'POST' : 'GET', headers: { 'x-admin-password': password }, ...(body ? { body: JSON.stringify(body) } : {}) });
-const envFor = () => ({ ADMIN_PASSWORD: 'test-password', CONTENT_DB: database() });
+const envFor = () => ({ ADMIN_PASSWORD: 'test-password', ALLOW_LEGACY_ADMIN_AUTH: 'true', CONTENT_DB: database() });
 test('valida nomes, enum, quantidades inteiras e precisão decimal', () => {
   assert.equal(validateAction(asset({ averagePrice: 12.34 })).value, 123.4);
   for (const values of [{ name: 'a'.repeat(31) }, { name: ' ' }, { assetType: 0 }, { assetType: '1' }, { quantity: 1.5 }, { quantity: -1 }, { averagePrice: 1.001 }, { averagePrice: 1000000 }, { quantity: 1000, averagePrice: 999999.99 }]) assert.throws(() => validateAction(asset(values)));

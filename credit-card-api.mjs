@@ -1,5 +1,6 @@
 import { validateCreditAction, expandInstallments } from './credit-card-model.mjs';
 import { validateImportAction, normalizeImportText } from './credit-card-import-model.mjs';
+import { requireAdminSession } from './admin-auth.mjs';
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 async function overview(db) {
   const [groups, periods, transactions, imports] = await db.batch([
@@ -97,8 +98,7 @@ async function importTransactions(db, action) {
   return reply(await overview(db));
 }
 export async function handleCreditCard(request, env) {
-  if (!env.ADMIN_PASSWORD) return reply({ error: 'Acesso administrativo não configurado.' }, 503);
-  if (request.headers.get('x-admin-password') !== env.ADMIN_PASSWORD) return reply({ error: 'Sessão inválida. Entre novamente.' }, 401);
+  if (!await requireAdminSession(request, env)) return reply({ error: 'Sessão inválida. Entre novamente.' }, 401);
   if (!['GET', 'POST'].includes(request.method)) return reply({ error: 'Método não permitido.' }, 405);
   if (!env.CONTENT_DB) return reply({ error: 'Banco de dados não configurado.' }, 503);
   let action;

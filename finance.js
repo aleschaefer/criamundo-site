@@ -157,7 +157,7 @@ import { assetAllocation } from './finance-allocation.mjs';
     try {
       const response = await fetch('/api/admin/finance', {
         method: action ? 'POST' : 'GET', cache: 'no-store',
-        headers: { 'Content-Type': 'application/json', 'x-admin-password': getStoredAdminPassword() },
+        headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
         ...(action ? { body: JSON.stringify(action) } : {})
       });
       const result = await response.json();

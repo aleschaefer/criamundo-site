@@ -62,13 +62,32 @@ No projeto Worker, adicione um binding D1:
 - Binding name: `CONTENT_DB`
 - Database: o banco criado acima
 
-### 3. Variavel de ambiente
+### 3. Autenticação administrativa com senha e Touch ID
+
+Antes de publicar o código que exige passkey, aplique no D1:
+
+```sql
+-- conteúdo de migrations/0016_admin_passkey_auth.sql
+```
+
+No primeiro acesso ao `/admin`, informe um e-mail, uma nova senha com pelo menos
+12 caracteres e a senha administrativa atual. O navegador solicitará o Touch ID
+e salvará somente a chave pública da passkey no D1. Nos acessos seguintes, o
+login exige e-mail, senha e a confirmação biométrica.
+
+A sessão é mantida em cookie `HttpOnly`, `Secure` e `SameSite=Strict`, com
+validade de oito horas. A senha e o token da sessão não são salvos no
+`localStorage` ou `sessionStorage`.
+
+### 4. Variável de ambiente de implantação inicial
 
 Adicione uma variavel de ambiente no Worker:
 
 - `ADMIN_PASSWORD`
 
-Ela deve ser a senha em texto puro usada para publicar pelo `admin.html`.
+Ela autoriza somente o cadastro inicial do primeiro usuário e da primeira
+passkey. Depois da configuração, as APIs administrativas aceitam apenas a sessão
+segura. Não configure `ALLOW_LEGACY_ADMIN_AUTH` em produção.
 
 ## Endpoints
 

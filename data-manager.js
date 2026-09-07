@@ -239,8 +239,7 @@ async function loadLatestPublishedBackupSiteData(adminPassword) {
   const response = await fetch(ADMIN_LATEST_BACKUP_API_PATH, {
     method: "GET",
     headers: {
-      Accept: "application/xml, text/xml, text/plain, application/json",
-      "x-admin-password": adminPassword
+      Accept: "application/xml, text/xml, text/plain, application/json"
     },
     cache: "no-store"
   });
@@ -381,8 +380,7 @@ async function savePublishedSiteData(data, adminPassword) {
     method: "POST",
     headers: {
       "Content-Type": "application/xml; charset=UTF-8",
-      Accept: "application/json",
-      "x-admin-password": adminPassword
+      Accept: "application/json"
     },
     body: xml
   });

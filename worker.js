@@ -1,5 +1,6 @@
 import { handleFinance } from './finance-api.mjs';
 import { handleCreditCard } from './credit-card-api.mjs';
+import { handleAdminAuthentication, requireAdminSession } from './admin-auth.mjs';
 
 function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -60,8 +61,6 @@ async function handleGetContent(env) {
 
 async function handlePostContent(request, env) {
   const database = env.CONTENT_DB;
-  const adminPassword = env.ADMIN_PASSWORD;
-  const providedPassword = request.headers.get("x-admin-password");
 
   if (!database) {
     return jsonResponse(
@@ -70,15 +69,8 @@ async function handlePostContent(request, env) {
     );
   }
 
-  if (!adminPassword) {
-    return jsonResponse(
-      { error: "Variavel ADMIN_PASSWORD nao configurada no Cloudflare Workers." },
-      503
-    );
-  }
-
-  if (!providedPassword || providedPassword !== adminPassword) {
-    return jsonResponse({ error: "Senha administrativa invalida." }, 401);
+  if (!await requireAdminSession(request, env)) {
+    return jsonResponse({ error: "Sessao administrativa invalida." }, 401);
   }
 
   const xmlText = await request.text();
@@ -132,8 +124,6 @@ async function handlePostContent(request, env) {
 
 async function handleGetLatestBackup(request, env) {
   const database = env.CONTENT_DB;
-  const adminPassword = env.ADMIN_PASSWORD;
-  const providedPassword = request.headers.get("x-admin-password");
 
   if (!database) {
     return jsonResponse(
@@ -142,15 +132,8 @@ async function handleGetLatestBackup(request, env) {
     );
   }
 
-  if (!adminPassword) {
-    return jsonResponse(
-      { error: "Variavel ADMIN_PASSWORD nao configurada no Cloudflare Workers." },
-      503
-    );
-  }
-
-  if (!providedPassword || providedPassword !== adminPassword) {
-    return jsonResponse({ error: "Senha administrativa invalida." }, 401);
+  if (!await requireAdminSession(request, env)) {
+    return jsonResponse({ error: "Sessao administrativa invalida." }, 401);
   }
 
   const latestBackup = await database
@@ -169,23 +152,6 @@ async function handleGetLatestBackup(request, env) {
   return xmlResponse(latestBackup.xml_content);
 }
 
-async function handleAdminAuth(request, env) {
-  const adminPassword = env.ADMIN_PASSWORD;
-  const providedPassword = request.headers.get("x-admin-password");
-
-  if (!adminPassword) {
-    return jsonResponse(
-      { error: "Variavel ADMIN_PASSWORD nao configurada no Cloudflare Workers." },
-      503
-    );
-  }
-
-  if (!providedPassword || providedPassword !== adminPassword) {
-    return jsonResponse({ error: "Senha administrativa invalida." }, 401);
-  }
-
-  return jsonResponse({ ok: true, message: "Autenticacao validada." });
-}
 
 export default {
   async fetch(request, env) {
@@ -211,8 +177,8 @@ export default {
       return handleGetLatestBackup(request, env);
     }
 
-    if (url.pathname === "/api/admin/auth" && request.method === "POST") {
-      return handleAdminAuth(request, env);
+    if (url.pathname.startsWith("/api/admin/auth/") && ["GET", "POST"].includes(request.method)) {
+      return handleAdminAuthentication(request, env, url.pathname);
     }
 
     return env.ASSETS.fetch(request);

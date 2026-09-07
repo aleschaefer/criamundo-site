@@ -1,5 +1,6 @@
 import { calculateYields } from './finance-yield.mjs';
 import { validateAction } from './finance-model.mjs';
+import { requireAdminSession } from './admin-auth.mjs';
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 async function overview(db) {
   // Um batch fornece uma visão consistente das duas tabelas.
@@ -10,8 +11,7 @@ async function overview(db) {
   return { assets: assets.results.map(asset => ({ ...asset, ...calculateYields(asset.currentIncome, asset.currentPrice, asset.averagePrice) })), transactions: transactions.results, total: assets.results.reduce((sum, asset) => sum + Math.round(asset.total * 100), 0) / 100 };
 }
 export async function handleFinance(request, env) {
-  if (!env.ADMIN_PASSWORD) return reply({ error: 'Acesso administrativo não configurado.' }, 503);
-  if (request.headers.get('x-admin-password') !== env.ADMIN_PASSWORD) return reply({ error: 'Sessão inválida. Entre novamente.' }, 401);
+  if (!await requireAdminSession(request, env)) return reply({ error: 'Sessão inválida. Entre novamente.' }, 401);
   if (!['GET', 'POST'].includes(request.method)) return reply({ error: 'Método não permitido.' }, 405);
   if (!env.CONTENT_DB) return reply({ error: 'Banco de dados não configurado.' }, 503);
   try {
