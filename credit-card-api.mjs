@@ -32,8 +32,11 @@ const seriesName = name => normalizeImportText(name).replace(/\bPARC\s*\d{1,3}\s
 async function importTransactions(db, action) {
   const period = await db.prepare('SELECT id,month,year,end_date AS endDate FROM credit_card_periods WHERE id=?1').bind(action.periodId).first();
   if (!period) return reply({ error: 'A fatura selecionada não existe mais. Atualize os dados.' }, 409);
+  const previousImport = await db.prepare('SELECT period_id AS periodId FROM credit_card_imports WHERE file_hash=?1').bind(action.fileHash).first();
+  if (previousImport && previousImport.periodId !== action.periodId) return reply({ error: 'Este PDF já foi importado em outra fatura.' }, 409);
   const keys = await Promise.all(action.items.map(item => hexDigest(`${seriesName(item.name)}|${item.purchaseDate}|${item.value.toFixed(2)}|${item.installmentCount}`)));
   const statements = [
+    db.prepare('DELETE FROM credit_card_imports WHERE file_hash=?1 AND period_id=?2').bind(action.fileHash,action.periodId),
     db.prepare(`UPDATE credit_card_transactions
       SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
           updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1
@@ -166,7 +169,7 @@ export async function handleCreditCard(request, env) {
     }
     return reply(await overview(db));
   } catch (error) {
-    if (/UNIQUE constraint/i.test(error.message)) return reply({ error: action?.type === 'period' ? 'Já existe uma fatura para esse mês/ano.' : action?.type === 'import' ? 'Este PDF ou uma de suas linhas já foi importado.' : action?.type === 'transaction' ? 'Já existe uma parcela com este número na mesma compra.' : 'Já existe um grupo com esse nome.' }, 409);
+    if (/UNIQUE constraint/i.test(error.message)) return reply({ error: action?.type === 'period' ? 'Já existe uma fatura para esse mês/ano.' : action?.type === 'import' ? 'Não foi possível substituir o histórico desta importação.' : action?.type === 'transaction' ? 'Já existe uma parcela com este número na mesma compra.' : 'Já existe um grupo com esse nome.' }, 409);
     if (/sobrepõe/i.test(error.message)) return reply({ error: 'Este período sobrepõe as datas de outra fatura.' }, 409);
     if (/FOREIGN KEY|CHECK constraint/i.test(error.message)) return reply({ error: 'Os dados não atendem às regras de Cartão de Crédito.' }, 400);
     console.error('Credit card database error', error);
