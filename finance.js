@@ -18,6 +18,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
   let assetRequestId = crypto.randomUUID();
   let transactionRequestId = crypto.randomUUID();
   let selectedAssetType = null;
+  let selectedOwner = '';
   let editingAsset = null;
   let editingTransaction = null;
   let data = null;
@@ -128,7 +129,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     fields.averageDy.value = yieldPercent(yields.averageDy);
   }
   function renderAllocation() {
-    const allocation = assetAllocation(data?.assets || []);
+    const allocation = assetAllocation((data?.assets || []).filter(asset => !selectedOwner || asset.owner === selectedOwner));
     const colors = ['#c89b5b', '#71b6aa', '#879dd8'];
     const hasValue = allocation.some(item => item.amount > 0);
     $('#finance-pie-content').hidden = !hasValue;
@@ -165,13 +166,16 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
   }
   function render() {
     renderAllocation();
-    $('#finance-total').textContent = money(data.total);
-    $('#finance-count').textContent = data.assets.length;
-    const assets = selectedAssetType === null ? data.assets : data.assets.filter(asset => asset.assetType === selectedAssetType);
-    const transactions = selectedAssetType === null ? data.transactions : data.transactions.filter(item => item.assetType === selectedAssetType);
+    const ownerAssets = data.assets.filter(asset => !selectedOwner || asset.owner === selectedOwner);
+    const ownerTransactions = data.transactions.filter(item => !selectedOwner || item.owner === selectedOwner);
+    $('#finance-total').textContent = money(ownerAssets.reduce((sum, asset) => sum + Math.round(asset.total * 100), 0) / 100);
+    $('#finance-count').textContent = ownerAssets.length;
+    const assets = selectedAssetType === null ? ownerAssets : ownerAssets.filter(asset => asset.assetType === selectedAssetType);
+    const transactions = selectedAssetType === null ? ownerTransactions : ownerTransactions.filter(item => item.assetType === selectedAssetType);
+    const ownerLabel = selectedOwner || 'Todos os proprietários';
     $('#finance-filter-status').textContent = selectedAssetType === null
-      ? 'Exibindo todos os tipos de ativos.'
-      : `Filtro: ${types[selectedAssetType]} — ${assets.length} ativo(s) e ${transactions.length} transação(ões). O gráfico e os totais acima continuam mostrando a carteira completa.`;
+      ? `Proprietário: ${ownerLabel}. Exibindo todos os tipos de ativos.`
+      : `Proprietário: ${ownerLabel}. Filtro: ${types[selectedAssetType]} — ${assets.length} ativo(s) e ${transactions.length} transação(ões).`;
     $('#finance-filter-clear').hidden = selectedAssetType === null;
     $('#finance-empty').textContent = selectedAssetType === null ? 'Nenhum ativo cadastrado. Comece em “Incluir ativo”.' : `Nenhum ativo do tipo ${types[selectedAssetType]}.`;
     $('#finance-history-empty').textContent = selectedAssetType === null ? 'Nenhuma transação registrada.' : `Nenhuma transação do tipo ${types[selectedAssetType]}.`;
@@ -179,7 +183,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     $('#finance-history-empty').hidden = transactions.length > 0;
     $('#finance-assets').replaceChildren();
     $('#finance-history').replaceChildren();
-    data.assets.forEach(asset => {
+    ownerAssets.forEach(asset => {
       if (selectedAssetType === null || asset.assetType === selectedAssetType) row($('#finance-assets'), [asset.owner, asset.symbol || '—', asset.name, types[asset.assetType], subtypes[asset.subType], quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
     });
     updateTransactionAssets();
@@ -302,6 +306,10 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     selectedAssetType = null; render();
     if (previousType !== null) $(`[data-filter-type="${previousType}"]`)?.focus();
   });
+  $('#finance-owner-filter').addEventListener('change', event => {
+    if (busy || !data) return;
+    selectedOwner = event.target.value; render();
+  });
   $('#show-finance').addEventListener('click', () => area(true));
   $('#show-content').addEventListener('click', () => area(false));
   $('#finance-refresh').addEventListener('click', () => request());
@@ -377,7 +385,8 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     if (await request({ type: 'asset-import', items })) { clearAssetImport(); view('overview'); message(`${items.length} ativo(s) importado(s) com sucesso.`); }
   });
   $('#logout-admin').addEventListener('click', () => {
-    generation++; busy = false; data = null; selectedAssetType = null;
+    generation++; busy = false; data = null; selectedAssetType = null; selectedOwner = '';
+    $('#finance-owner-filter').value = '';
     $('#finance-filter-status').textContent = 'Exibindo todos os tipos de ativos.';
     $('#finance-filter-clear').hidden = true;
     clearEdit('asset'); clearEdit('transaction');
