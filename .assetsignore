@@ -14,6 +14,8 @@ migrations
 migrations/**
 tests
 tests/**
+tmp
+tmp/**
 .dev.vars
 .dev.vars.*
 .env
