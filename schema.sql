@@ -17,7 +17,7 @@ ON site_content_backups(created_at DESC);
 
 -- Finanças: aplicar antes de publicar o código novo.
 -- Tipos: 1=Renda Variável, 2=Renda Fixa, 3=Outro.
--- Subtipos: 1=Ações, 2=FII, 3=BDR, 4=CBD, 5=LCA, 6=LCI, 7=Outro.
+-- Subtipos: 1=Ações, 2=FII, 3=BDR, 4=CDB, 5=LCA, 6=LCI, 7=Outro.
 -- SQLite/D1 não impõe CHAR/DECIMAL: os CHECKs abaixo validam os limites.
 CREATE TABLE IF NOT EXISTS finance_assets (
   id TEXT PRIMARY KEY NOT NULL,

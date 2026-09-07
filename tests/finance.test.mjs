@@ -71,6 +71,18 @@ test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', 
   assert.equal(saved.transactions.length, 1);
   assert.equal(saved.total, 500);
 });
+test('importação B3 inclui ativos e atualiza apenas a mesma combinação de sigla e nome', async () => {
+  const env = envFor();
+  const imported = (id, name, quantity, total) => ({ id, symbol: 'CDB', name, assetType: 2, subType: 4, quantity, currentPrice: total / quantity, total });
+  let response = await handleFinance(request({ type: 'asset-import', items: [imported('one', 'BANCO A', 2, 200), imported('two', 'BANCO B', 3, 300)] }), env);
+  assert.equal(response.status, 200);
+  let data = await response.json(); assert.equal(data.assets.length, 2);
+  response = await handleFinance(request({ type: 'asset-import', items: [imported('retry', 'BANCO A', 4, 440)] }), env);
+  assert.equal(response.status, 200); data = await response.json();
+  assert.equal(data.assets.length, 2);
+  const updated = data.assets.find(asset => asset.name === 'BANCO A');
+  assert.equal(updated.quantity, 4); assert.equal(updated.averagePrice, 110); assert.equal(updated.currentPrice, 110); assert.equal(updated.total, 440);
+});
 test('média arredondada não perde centavos no custo acumulado', async () => {
   const env = envFor(); const a = asset({ quantity: 0, averagePrice: 0 });
   await handleFinance(request(a), env);

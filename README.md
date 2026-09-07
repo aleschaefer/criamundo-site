@@ -129,9 +129,9 @@ Nesta versão as transações são entradas (compras); vendas não fazem parte d
 - `finance_transactions`: `id`, `asset_id`, `name CHAR(30)`, `type SMALLINT`, `subtype SMALLINT`,
   `quantity INTEGER`, `value DECIMAL(10,2)`, `transaction_date` e `created_at` automático.
 - Tipo: **1 = Renda Variável, 2 = Renda Fixa, 3 = Outro**.
-- Subtipo: **1 = Ações, 2 = FII, 3 = BDR, 4 = CBD, 5 = LCA, 6 = LCI, 7 = Outro**.
+- Subtipo: **1 = Ações, 2 = FII, 3 = BDR, 4 = CDB, 5 = LCA, 6 = LCI, 7 = Outro**.
 - Renda Variável aceita subtipos 1/2/3; Renda Fixa aceita 4/5/6/7; Outro usa 7.
-  A grafia CBD foi mantida conforme solicitada. O subtipo é selecionável no cadastro;
+  O subtipo é selecionável no cadastro;
   para tipo Outro o campo fica oculto e seu valor é Outro automaticamente.
 - Nome, tipo e subtipo da transação são herdados do ativo. A chave estrangeira
   composta impede associar uma transação a um ativo com classificação diferente.

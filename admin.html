@@ -115,6 +115,7 @@
         <div class="finance-actions" aria-label="Ações de Finanças">
           <button type="button" class="button button-secondary" data-finance-view="asset">Incluir ativo</button>
           <button type="button" class="button button-secondary" data-finance-view="transaction">Incluir transações</button>
+          <button type="button" class="button button-secondary" data-finance-view="import-assets">Importar ativos</button>
           <button type="button" class="button button-primary" data-finance-view="overview" aria-pressed="true">Visão geral</button>
           <button type="button" class="button button-secondary" id="finance-refresh">Atualizar dados</button>
         </div>
@@ -151,6 +152,19 @@
           </div>
           <div class="finance-actions"><button class="button button-primary" type="submit">Salvar transação</button><button class="button button-secondary" type="button" id="finance-transaction-cancel" hidden>Cancelar edição</button></div>
           <footer class="finance-record-footer" aria-live="polite">Última atualização: <span id="finance-transaction-updated">Ainda não salvo</span><small>Horário de Brasília</small></footer>
+        </form>
+        <form id="finance-asset-import" class="finance-form" hidden>
+          <h3>Importar ativos</h3>
+          <p class="draft-note">O PDF é lido neste navegador. Confira os dados reconhecidos antes de salvar. Se a sigla já estiver cadastrada, o ativo será atualizado.</p>
+          <label>Extrato de posição da B3 (PDF)<input name="statement" type="file" accept=".pdf,application/pdf" required /></label>
+          <div class="finance-actions">
+            <button class="button button-secondary" id="finance-asset-import-read" type="button">Ler PDF e conferir</button>
+            <button class="button button-primary" id="finance-asset-import-confirm" type="submit" hidden>Importar selecionados</button>
+            <button class="button button-secondary" id="finance-asset-import-clear" type="button">Limpar</button>
+          </div>
+          <div class="card-import-progress" id="finance-asset-import-progress" hidden><progress max="100" value="0"></progress><span role="status" aria-live="polite"></span></div>
+          <p id="finance-asset-import-empty" class="intro">Selecione o extrato em PDF para iniciar.</p>
+          <div class="finance-table-wrap" id="finance-asset-import-preview" hidden><table><caption class="sr-only">Ativos reconhecidos no PDF</caption><thead><tr><th>Importar</th><th>Página</th><th>Sigla</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor atual</th><th>Valor total</th><th>Ação</th></tr></thead><tbody id="finance-asset-import-items"></tbody></table></div>
         </form>
         <div id="finance-overview">
           <div class="grid grid-2 finance-summary">
@@ -380,7 +394,7 @@
     <script src="content.js"></script>
     <script src="data-manager.js?v=2"></script>
     <script src="admin.js?v=2"></script>
-    <script type="module" src="finance.js?v=3"></script>
+    <script type="module" src="finance.js?v=4"></script>
   <script type="module" src="credit-card.js?v=22"></script>
   </body>
 </html>

@@ -2,12 +2,14 @@ import { ASSET_TYPES as types, ASSET_SUBTYPES as subtypes, SUBTYPES_BY_TYPE, has
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
+import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
 
 (() => {
   const $ = (selector) => document.querySelector(selector);
   const section = $('#finance-section');
   const assetForm = $('#finance-asset');
   const transactionForm = $('#finance-transaction');
+  const assetImportForm = $('#finance-asset-import');
   const status = $('#finance-status');
   const money = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   const yieldPercent = value => Number.isFinite(value) ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 }).format(value) + '%' : '—';
@@ -21,12 +23,13 @@ import { assetAllocation } from './finance-allocation.mjs';
   let data = null;
   let busy = false;
   let generation = 0;
+  let importedAssets = [];
   function message(text, error = false) {
     status.textContent = text;
     status.className = `save-status${error ? ' is-error' : ''}`;
   }
   function controls() {
-    [assetForm, transactionForm].forEach(form => {
+    [assetForm, transactionForm, assetImportForm].forEach(form => {
       for (const input of form.elements) input.disabled = busy || !data;
     });
     marketFields();
@@ -38,8 +41,38 @@ import { assetAllocation } from './finance-allocation.mjs';
   function view(name) {
     assetForm.hidden = name !== 'asset';
     transactionForm.hidden = name !== 'transaction';
+    assetImportForm.hidden = name !== 'import-assets';
     $('#finance-overview').hidden = name !== 'overview';
     document.querySelectorAll('[data-finance-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.financeView === name)));
+  }
+  function clearAssetImport() {
+    importedAssets = [];
+    assetImportForm.reset();
+    $('#finance-asset-import-items').replaceChildren();
+    $('#finance-asset-import-preview').hidden = true;
+    $('#finance-asset-import-confirm').hidden = true;
+    $('#finance-asset-import-progress').hidden = true;
+    $('#finance-asset-import-empty').hidden = false;
+    $('#finance-asset-import-empty').textContent = 'Selecione o extrato em PDF para iniciar.';
+  }
+  function importInput(type, value, field, attributes = {}) {
+    const input = document.createElement('input'); input.type = type; input.value = value; input.dataset.field = field;
+    Object.entries(attributes).forEach(([key, item]) => input.setAttribute(key, item));
+    return input;
+  }
+  function renderAssetImport() {
+    const body = $('#finance-asset-import-items'); body.replaceChildren();
+    for (const [index, item] of importedAssets.entries()) {
+      const tr = document.createElement('tr'); tr.dataset.index = index;
+      const selected = importInput('checkbox', '', 'selected'); selected.checked = true;
+      const existing = data?.assets.some(asset => asset.symbol === item.symbol && asset.name === item.name);
+      const cells = [selected, String(item.page), importInput('text', item.symbol, 'symbol', { maxlength: '7', required: '' }), importInput('text', item.name, 'name', { maxlength: '30', required: '' }), types[item.assetType], subtypes[item.subType], importInput('number', item.quantity, 'quantity', { min: '0', max: '2147483647', step: '1', required: '' }), importInput('number', item.currentPrice.toFixed(2), 'currentPrice', { min: '0', max: '999999.99', step: '0.01', required: '' }), importInput('number', item.total.toFixed(2), 'total', { min: '0', max: '99999999.99', step: '0.01', required: '' }), existing ? 'Atualizar' : 'Novo'];
+      for (const value of cells) { const td = document.createElement('td'); value instanceof Node ? td.append(value) : td.textContent = value; tr.append(td); }
+      body.append(tr);
+    }
+    $('#finance-asset-import-preview').hidden = !importedAssets.length;
+    $('#finance-asset-import-confirm').hidden = !importedAssets.length;
+    $('#finance-asset-import-empty').hidden = Boolean(importedAssets.length);
   }
   function row(target, values, kind, record) {
     const tr = document.createElement('tr');
@@ -270,7 +303,7 @@ import { assetAllocation } from './finance-allocation.mjs';
   $('#show-finance').addEventListener('click', () => area(true));
   $('#show-content').addEventListener('click', () => area(false));
   $('#finance-refresh').addEventListener('click', () => request());
-  document.querySelectorAll('[data-finance-view]').forEach(button => button.addEventListener('click', () => { const target = button.dataset.financeView; if (target !== 'overview') clearEdit(target); view(target); }));
+  document.querySelectorAll('[data-finance-view]').forEach(button => button.addEventListener('click', () => { const target = button.dataset.financeView; if (target === 'asset' || target === 'transaction') clearEdit(target); view(target); }));
   function total(form, price, output = 'total') {
     const value = Number(form.elements.quantity.value) * Math.round(Number(form.elements[price].value) * 100) / 100;
     form.elements[output].value = Number.isFinite(value) ? money(value) : 'Valor inválido';
@@ -316,11 +349,36 @@ import { assetAllocation } from './finance-allocation.mjs';
       clearEdit('transaction'); view('overview');
     }
   });
+  $('#finance-asset-import-read').addEventListener('click', async () => {
+    if (busy || !data) return;
+    const file = assetImportForm.elements.statement.files[0];
+    const progress = $('#finance-asset-import-progress'); const bar = progress.querySelector('progress'); const label = progress.querySelector('span');
+    try {
+      busy = true; controls(); progress.hidden = false; bar.value = 0; label.textContent = 'Preparando leitura…'; message('');
+      importedAssets = await readB3AssetsPdf(file, (value, text) => { bar.value = value; label.textContent = text; });
+      renderAssetImport();
+      if (!importedAssets.length) throw new Error('Nenhum ativo reconhecido. Confira se o PDF contém o extrato de posição da B3.');
+    } catch (error) { importedAssets = []; renderAssetImport(); message(error.message || 'Não foi possível ler o PDF.', true); }
+    finally { busy = false; controls(); }
+  });
+  $('#finance-asset-import-clear').addEventListener('click', () => { if (!busy) { clearAssetImport(); message(''); } });
+  assetImportForm.addEventListener('submit', async event => {
+    event.preventDefault(); if (busy || !data) return;
+    const items = [...$('#finance-asset-import-items').rows].filter(tr => tr.querySelector('[data-field="selected"]').checked).map(tr => {
+      const original = importedAssets[Number(tr.dataset.index)];
+      const value = field => tr.querySelector(`[data-field="${field}"]`).value;
+      return { ...original, id: crypto.randomUUID(), symbol: value('symbol').trim().toUpperCase(), name: value('name').trim(), quantity: Number(value('quantity')), currentPrice: Number(value('currentPrice')), total: Number(value('total')) };
+    });
+    if (!items.length) { message('Selecione ao menos um ativo para importar.', true); return; }
+    if (new Set(items.map(item => `${item.symbol}\u0000${item.name}`)).size !== items.length) { message('Há ativos repetidos na seleção. Mantenha apenas uma linha para cada combinação de sigla e nome.', true); return; }
+    if (await request({ type: 'asset-import', items })) { clearAssetImport(); view('overview'); message(`${items.length} ativo(s) importado(s) com sucesso.`); }
+  });
   $('#logout-admin').addEventListener('click', () => {
     generation++; busy = false; data = null; selectedAssetType = null;
     $('#finance-filter-status').textContent = 'Exibindo todos os tipos de ativos.';
     $('#finance-filter-clear').hidden = true;
     clearEdit('asset'); clearEdit('transaction');
+    clearAssetImport();
     $('#finance-assets').replaceChildren(); $('#finance-history').replaceChildren();
     transactionForm.elements.assetId.replaceChildren();
     $('#finance-total').textContent = '—'; $('#finance-count').textContent = '—';

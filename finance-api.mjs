@@ -1,6 +1,7 @@
 import { calculateYields } from './finance-yield.mjs';
 import { validateAction } from './finance-model.mjs';
 import { requireAdminSession } from './admin-auth.mjs';
+import { validateAssetImport } from './finance-asset-import-model.mjs';
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 async function overview(db) {
   // Um batch fornece uma visão consistente das duas tabelas.
@@ -18,7 +19,17 @@ export async function handleFinance(request, env) {
     const db = env.CONTENT_DB;
     if (request.method === 'GET') return reply(await overview(db));
     let action;
-    try { action = validateAction(await request.json()); } catch (error) { return reply({ error: error.message }, 400); }
+    try { const body=await request.json();action=body?.type==='asset-import'?validateAssetImport(body):validateAction(body); } catch (error) { return reply({ error: error.message }, 400); }
+    if(action.type==='asset-import'){
+      const statements=[];
+      for(const item of action.items){
+        const averagePrice=item.quantity?Math.round(item.total/item.quantity*100)/100:0;
+        const existing=await db.prepare('SELECT id FROM finance_assets WHERE symbol=?1 AND name=?2 LIMIT 1').bind(item.symbol,item.name).first();
+        if(existing)statements.push(db.prepare(`UPDATE finance_assets SET name=?1,type=?2,subtype=?3,quantity=?4,average_price=?5,value=?6,current_price=?7,current_income=0,current_dy=0,revision=revision+1 WHERE id=?8`).bind(item.name,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice,existing.id));
+        else statements.push(db.prepare(`INSERT INTO finance_assets(id,name,symbol,type,subtype,quantity,average_price,value,current_price,current_income,current_dy) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,0,0)`).bind(item.id,item.name,item.symbol,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice));
+      }
+      await db.batch(statements);return reply(await overview(db));
+    }
     const operation = action.operation || 'create';
     if (operation === 'delete') {
       const table = action.type === 'asset' ? 'finance_assets' : 'finance_transactions';
