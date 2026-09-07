@@ -201,7 +201,7 @@
             <label data-installment-field hidden>Qtde. parcelas<input name="installmentCount" type="number" min="1" max="999" step="1" /></label>
           </div><p id="card-installment-summary" class="draft-note"></p>
           <div class="finance-actions"><button class="button button-primary" type="submit">Salvar transação</button><button class="button button-secondary" id="card-transaction-cancel" type="button" hidden>Cancelar edição</button></div>
-          <div class="panel-heading"><h3>Transações cadastradas</h3><button type="button" class="button button-danger" id="card-transactions-delete-all">Excluir tudo</button></div>
+          <div class="panel-heading"><h3>Transações cadastradas</h3><button type="button" class="button button-danger" id="card-transactions-delete-all">Excluir registros exibidos</button></div>
           <label class="card-transaction-period-filter">Período da fatura<select id="card-transaction-period-filter"></select></label>
           <p id="card-transactions-list-empty" class="intro">Nenhuma transação cadastrada para o período selecionado.</p>
           <div class="finance-table-wrap"><table><caption class="sr-only">Transações cadastradas por ordem de inclusão</caption><thead><tr><th>Data da compra</th><th>Nome</th><th>Grupo</th><th>Pagamento</th><th>Parcela</th><th>Valor</th><th>Ações</th></tr></thead><tbody id="card-transactions-list"></tbody></table></div>
@@ -364,6 +364,6 @@
     <script src="data-manager.js"></script>
     <script src="admin.js"></script>
     <script type="module" src="finance.js"></script>
-    <script type="module" src="credit-card.js?v=15"></script>
+    <script type="module" src="credit-card.js?v=17"></script>
   </body>
 </html>

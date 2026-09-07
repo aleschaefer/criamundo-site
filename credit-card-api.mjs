@@ -33,17 +33,28 @@ async function importTransactions(db, action) {
   const period = await db.prepare('SELECT id,month,year,end_date AS endDate FROM credit_card_periods WHERE id=?1').bind(action.periodId).first();
   if (!period) return reply({ error: 'A fatura selecionada não existe mais. Atualize os dados.' }, 409);
   const keys = await Promise.all(action.items.map(item => hexDigest(`${seriesName(item.name)}|${item.purchaseDate}|${item.value.toFixed(2)}|${item.installmentCount}`)));
-  const matches = await db.batch(action.items.map((item,index)=>db.prepare(`SELECT t.id,t.series_id AS seriesId,m.source_series_key AS sourceSeriesKey FROM credit_card_transactions t
-    JOIN credit_card_transaction_meta m ON m.transaction_id=t.id
-    WHERE m.is_projected=1 AND t.deleted_at IS NULL AND t.installment_number=?2
-      AND (m.source_series_key=?1 OR (m.purchase_date=?3 AND t.value=?4 AND t.installment_count=?5))`)
-    .bind(keys[index],item.currentInstallment,item.purchaseDate,item.value,item.installmentCount)));
-  const statements = [db.prepare(`INSERT INTO credit_card_imports(id,file_hash,file_name,period_id,item_count)
-    VALUES(?1,?2,?3,?4,?5)`).bind(action.id,action.fileHash,action.fileName,action.periodId,action.items.length)];
+  const statements = [
+    db.prepare(`UPDATE credit_card_transactions
+      SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
+          updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1
+      WHERE deleted_at IS NULL AND (
+        period_id=?1 OR (
+          payment=2 AND (
+            period_id IN (
+              SELECT id FROM credit_card_periods
+              WHERE year>?3 OR (year=?3 AND month>?2)
+            ) OR id IN (
+              SELECT transaction_id FROM credit_card_transaction_meta
+              WHERE billing_year>?3 OR (billing_year=?3 AND billing_month>?2)
+            )
+          )
+        )
+      )`).bind(period.id,period.month,period.year),
+    db.prepare(`INSERT INTO credit_card_imports(id,file_hash,file_name,period_id,item_count)
+      VALUES(?1,?2,?3,?4,?5)`).bind(action.id,action.fileHash,action.fileName,action.periodId,action.items.length)
+  ];
   action.items.forEach((item,index)=>{
-    const candidates = matches[index].results;
-    const exact = candidates.find(candidate=>candidate.sourceSeriesKey===keys[index]);
-    const projected = exact || (candidates.length===1 ? candidates[0] : null);
+    const projected = null;
     const transactionId = projected?.id || item.id, seriesId = projected?.seriesId || item.id;
     if (projected) {
       statements.push(db.prepare(`UPDATE credit_card_transactions SET transaction_date=?1,name=?2,value=?3,group_id=?4,payment=?5,
@@ -96,6 +107,25 @@ export async function handleCreditCard(request, env) {
     if (action.type === 'transaction' && action.operation === 'delete-all') {
       await db.prepare(`UPDATE credit_card_transactions SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
         updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE deleted_at IS NULL`).run();
+    } else if (action.type === 'transaction' && action.operation === 'delete-period-forward') {
+      const period = await db.prepare('SELECT id,month,year FROM credit_card_periods WHERE id=?1').bind(action.periodId).first();
+      if (!period) return reply({ error: 'O período selecionado não existe mais. Atualize os dados.' }, 409);
+      await db.prepare(`UPDATE credit_card_transactions
+        SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
+            updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1
+        WHERE deleted_at IS NULL AND (
+          period_id=?1 OR (
+            payment=2 AND (
+              period_id IN (
+                SELECT id FROM credit_card_periods
+                WHERE year>?3 OR (year=?3 AND month>?2)
+              ) OR id IN (
+                SELECT transaction_id FROM credit_card_transaction_meta
+                WHERE billing_year>?3 OR (billing_year=?3 AND billing_month>?2)
+              )
+            )
+          )
+        )`).bind(period.id,period.month,period.year).run();
     } else if (action.type === 'transaction' && action.operation === 'delete') {
       const result=await db.prepare(`UPDATE credit_card_transactions SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
         updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE id=?1 AND revision=?2 AND deleted_at IS NULL`).bind(action.id,action.revision).run();
