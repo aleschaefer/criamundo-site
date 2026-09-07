@@ -1,5 +1,5 @@
 import { calculateYields } from './finance-yield.mjs';
-import { validateAction } from './finance-model.mjs';
+import { validateAction, validateAssetIncomeBatch } from './finance-model.mjs';
 import { requireAdminSession } from './admin-auth.mjs';
 import { validateAssetImport } from './finance-asset-import-model.mjs';
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
@@ -19,7 +19,7 @@ export async function handleFinance(request, env) {
     const db = env.CONTENT_DB;
     if (request.method === 'GET') return reply(await overview(db));
     let action;
-    try { const body=await request.json();action=body?.type==='asset-import'?validateAssetImport(body):validateAction(body); } catch (error) { return reply({ error: error.message }, 400); }
+    try { const body=await request.json();action=body?.type==='asset-import'?validateAssetImport(body):body?.type==='asset-income-batch'?validateAssetIncomeBatch(body):validateAction(body); } catch (error) { return reply({ error: error.message }, 400); }
     if(action.type==='asset-import'){
       const statements=[];
       for(const item of action.items){
@@ -32,6 +32,12 @@ export async function handleFinance(request, env) {
         else statements.push(db.prepare(`INSERT INTO finance_assets(id,owner,name,symbol,type,subtype,quantity,average_price,value,current_price,current_income,current_dy) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,0,0)`).bind(item.id,item.owner,item.name,item.symbol,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice));
       }
       await db.batch(statements);return reply(await overview(db));
+    }
+    if(action.type==='asset-income-batch'){
+      const results=await db.batch(action.items.map(item=>db.prepare(`UPDATE finance_assets SET current_income=?1,current_dy=0,revision=revision+1
+        WHERE id=?2 AND revision=?3 AND type=1 AND subtype IN (1,2) RETURNING id`).bind(item.currentIncome,item.id,item.revision)));
+      if(results.some(result=>!result.results?.length))return reply({error:'Um dos ativos foi alterado ou não aceita rendimento. Atualize os dados e tente novamente.'},409);
+      return reply(await overview(db));
     }
     const operation = action.operation || 'create';
     if (operation === 'delete') {

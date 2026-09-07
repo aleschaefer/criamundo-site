@@ -6,6 +6,17 @@ export function moneyCents(value, max, label) {
   }
   return Math.round(value * 100);
 }
+export function validateAssetIncomeBatch(action) {
+  if (action?.type !== 'asset-income-batch' || !Array.isArray(action.items) || !action.items.length || action.items.length > 100) throw new Error('Nenhum rendimento válido foi informado.');
+  const ids = new Set();
+  return { type: action.type, items: action.items.map((item, index) => {
+    if (typeof item.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(item.id) || ids.has(item.id)) throw new Error(`Ativo inválido na posição ${index + 1}.`);
+    ids.add(item.id);
+    if (!Number.isSafeInteger(item.revision) || item.revision < 0) throw new Error(`Versão inválida no ativo ${index + 1}.`);
+    if (typeof item.currentIncome !== 'number' || !Number.isFinite(item.currentIncome) || item.currentIncome < 0 || item.currentIncome > 99.99999 || Math.abs(item.currentIncome * 100000 - Math.round(item.currentIncome * 100000)) > 0.000001) throw new Error(`Rendimento inválido no ativo ${index + 1}.`);
+    return { id: item.id, revision: item.revision, currentIncome: Math.round(item.currentIncome * 100000) / 100000 };
+  }) };
+}
 export function validateAction(action) {
   if (!action || !['asset', 'transaction'].includes(action.type)) throw new Error('Ação inválida.');
   const operation = action.operation || 'create';

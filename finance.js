@@ -37,7 +37,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
     assetForm.elements.subType.disabled = busy || !data || assetForm.elements.assetType.value === '3';
     transactionControls();
     $('#finance-refresh').disabled = busy;
-    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], #finance-filter-clear').forEach(button => { button.disabled = busy; });
+    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, #finance-filter-clear').forEach(button => { button.disabled = busy; });
   }
   function view(name) {
     assetForm.hidden = name !== 'asset';
@@ -104,7 +104,35 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
     for (const group of groups.values()) {
       const details = document.createElement('details'); details.className = 'finance-asset-group'; details.open = true;
       const summary = document.createElement('summary');
-      summary.textContent = `${group.owner} · ${types[group.assetType]} · ${subtypes[group.subType]} (${group.assets.length})`;
+      const summaryLabel = document.createElement('span'); summaryLabel.textContent = `${group.owner} · ${types[group.assetType]} · ${subtypes[group.subType]} (${group.assets.length})`;
+      summary.append(summaryLabel);
+      if (group.assetType === 1 && [1, 2].includes(group.subType)) {
+        const fetchAll = document.createElement('button'); fetchAll.type = 'button'; fetchAll.className = 'button button-secondary finance-income-batch'; fetchAll.textContent = 'Obter todos rendimentos';
+        fetchAll.addEventListener('click', async event => {
+          event.preventDefault(); event.stopPropagation();
+          if (busy) return;
+          busy = true; controls(); const updates = [], failures = []; const category = group.subType === 1 ? 'stock' : 'fii';
+          try {
+            for (const [index, asset] of group.assets.entries()) {
+              fetchAll.textContent = `Consultando ${index + 1}/${group.assets.length}…`;
+              try {
+                const response = await fetch(`/api/admin/finance/income?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
+                const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
+                updates.push({ id: asset.id, revision: asset.revision, currentIncome: Number(result.value) });
+              } catch { failures.push(asset.symbol || asset.name); }
+            }
+            if (updates.length) {
+              fetchAll.textContent = `Salvando ${updates.length}…`;
+              const response = await fetch('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-income-batch', items: updates }) });
+              const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os rendimentos.');
+              data = result; render();
+            }
+            message(`${updates.length} rendimento(s) atualizado(s)${failures.length ? `. Não encontrados: ${failures.join(', ')}.` : '.'}`, Boolean(failures.length));
+          } catch (error) { message(error.message || 'Não foi possível atualizar os rendimentos.', true); }
+          finally { busy = false; controls(); }
+        });
+        summary.append(fetchAll);
+      }
       const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap';
       const table = document.createElement('table');
       const caption = document.createElement('caption'); caption.className = 'sr-only'; caption.textContent = `Ativos de ${group.owner}, ${types[group.assetType]}, ${subtypes[group.subType]}`;

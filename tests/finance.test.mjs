@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { validateAction } from '../finance-model.mjs';
+import { validateAction, validateAssetIncomeBatch } from '../finance-model.mjs';
 import { handleFinance } from '../finance-api.mjs';
 import { todayInSaoPaulo, validTransactionDate, formatTransactionDate } from '../finance-date.mjs';
 import { calculateYields } from '../finance-yield.mjs';
@@ -75,6 +75,19 @@ test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', 
   const saved = await (await handleFinance(request(), env)).json();
   assert.equal(saved.transactions.length, 1);
   assert.equal(saved.total, 500);
+});
+test('atualiza em lote os rendimentos de ações e FIIs', async () => {
+  const env = envFor();
+  const action = asset({ id: 'action', name: 'BANCO', symbol: 'BBAS3', assetType: 1, subType: 1 });
+  const fii = asset({ id: 'fii', name: 'FUNDO', symbol: 'BCRI11', assetType: 1, subType: 2 });
+  await handleFinance(request(action), env); await handleFinance(request(fii), env);
+  const batch = { type: 'asset-income-batch', items: [{ id: 'action', revision: 0, currentIncome: 0.14 }, { id: 'fii', revision: 0, currentIncome: 0.75 }] };
+  assert.equal(validateAssetIncomeBatch(batch).items.length, 2);
+  assert.throws(() => validateAssetIncomeBatch({ ...batch, items: [batch.items[0], batch.items[0]] }));
+  const response = await handleFinance(request(batch), env); assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.assets.find(item => item.id === 'action').currentIncome, 0.14);
+  assert.equal(data.assets.find(item => item.id === 'fii').currentIncome, 0.75);
 });
 test('importação B3 permite mesmo nome com siglas diferentes e atualiza a combinação exata', async () => {
   const env = envFor();
