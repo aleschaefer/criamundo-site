@@ -24,8 +24,11 @@ export async function handleFinance(request, env) {
       const statements=[];
       for(const item of action.items){
         const averagePrice=item.quantity?Math.round(item.total/item.quantity*100)/100:0;
-        const existing=await db.prepare('SELECT id FROM finance_assets WHERE symbol=?1 AND name=?2 LIMIT 1').bind(item.symbol,item.name).first();
-        if(existing)statements.push(db.prepare(`UPDATE finance_assets SET name=?1,type=?2,subtype=?3,quantity=?4,average_price=?5,value=?6,current_price=?7,current_income=0,current_dy=0,revision=revision+1 WHERE id=?8`).bind(item.name,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice,existing.id));
+        const existing=await db.prepare(`SELECT id FROM finance_assets
+          WHERE (symbol=?1 AND name=?2) OR (name=?2 AND type=?3 AND subtype=?4)
+          ORDER BY CASE WHEN symbol=?1 THEN 0 ELSE 1 END LIMIT 1`)
+          .bind(item.symbol,item.name,item.assetType,item.subType).first();
+        if(existing)statements.push(db.prepare(`UPDATE finance_assets SET name=?1,symbol=?2,type=?3,subtype=?4,quantity=?5,average_price=?6,value=?7,current_price=?8,current_income=0,current_dy=0,revision=revision+1 WHERE id=?9`).bind(item.name,item.symbol,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice,existing.id));
         else statements.push(db.prepare(`INSERT INTO finance_assets(id,name,symbol,type,subtype,quantity,average_price,value,current_price,current_income,current_dy) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,0,0)`).bind(item.id,item.name,item.symbol,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice));
       }
       await db.batch(statements);return reply(await overview(db));
@@ -69,7 +72,7 @@ export async function handleFinance(request, env) {
     return reply(await overview(db));
   } catch (error) {
     if (/FOREIGN KEY constraint/i.test(error.message)) return reply({ error: 'Este ativo possui transações. Exclua as transações vinculadas antes de excluir o ativo.' }, 409);
-    if (/UNIQUE constraint/i.test(error.message)) return reply({ error: 'Já existe um ativo com este nome, tipo e subtipo.' }, 409);
+    if (/UNIQUE constraint/i.test(error.message)) return reply({ error: 'Já existe um ativo com esta sigla, nome, tipo e subtipo.' }, 409);
     if (/CHECK constraint/i.test(error.message)) return reply({ error: 'A operação excede os limites de quantidade, preço médio ou valor do ativo.' }, 400);
     console.error('Finance database error', error);
     return reply({ error: 'Não foi possível acessar Finanças. Verifique a conexão e se as migrações 0001 a 0008 e 0017 foram aplicadas no banco.' }, 503);

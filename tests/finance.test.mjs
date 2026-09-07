@@ -83,6 +83,14 @@ test('importação B3 inclui ativos e atualiza apenas a mesma combinação de si
   const updated = data.assets.find(asset => asset.name === 'BANCO A');
   assert.equal(updated.quantity, 4); assert.equal(updated.averagePrice, 110); assert.equal(updated.currentPrice, 110); assert.equal(updated.total, 440);
 });
+test('importação B3 reconhece ativo legado sem sigla e completa seu cadastro', async () => {
+  const env = envFor();
+  env.CONTENT_DB.sql.exec("INSERT INTO finance_assets(id,name,type,subtype,quantity,average_price,value,current_price) VALUES('legacy','BCO BRASIL S.A.',1,1,1,10,10,10)");
+  const response = await handleFinance(request({ type: 'asset-import', items: [{ id: 'new', symbol: 'BBAS3', name: 'BCO BRASIL S.A.', assetType: 1, subType: 1, quantity: 505, currentPrice: 22.52, total: 11372.6 }] }), env);
+  assert.equal(response.status, 200);
+  const data = await response.json(); assert.equal(data.assets.length, 1);
+  assert.equal(data.assets[0].id, 'legacy'); assert.equal(data.assets[0].symbol, 'BBAS3'); assert.equal(data.assets[0].quantity, 505);
+});
 test('média arredondada não perde centavos no custo acumulado', async () => {
   const env = envFor(); const a = asset({ quantity: 0, averagePrice: 0 });
   await handleFinance(request(a), env);
