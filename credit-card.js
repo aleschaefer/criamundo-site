@@ -1,5 +1,6 @@
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { readCreditCardPdf, fileSha256 } from './credit-card-import.js?v=11';
+import { suggestTransactionGroup } from './credit-card-group-suggestion.mjs?v=1';
 const $ = selector => document.querySelector(selector);
 const section = $('#credit-card-section');
 const forms = { group: $('#card-group-form'), period: $('#card-period-form'), transaction: $('#card-transaction-form'), import: $('#card-import-form') };
@@ -49,8 +50,7 @@ forms.group.addEventListener('submit',async event=>{event.preventDefault();if(aw
 forms.period.addEventListener('submit',async event=>{event.preventDefault();const f=forms.period.elements;if(await request({type:'period',operation:editingPeriod?'update':'create',id:editingPeriod?.id||requestId,revision:editingPeriod?.revision,month:Number(f.month.value),year:Number(f.year.value),startDate:f.startDate.value,endDate:f.endDate.value})){clearPeriodEdit();view('period');}});
 forms.transaction.addEventListener('submit',async event=>{event.preventDefault();const f=forms.transaction.elements;if(await request({type:'transaction',operation:editingTransaction?'update':'create',id:editingTransaction?.id||requestId,revision:editingTransaction?.revision,transactionDate:f.transactionDate.value,name:f.name.value,value:Number(f.value.value),groupId:f.groupId.value,payment:Number(f.payment.value),currentInstallment:Number(f.currentInstallment.value),installmentCount:Number(f.installmentCount.value)})){clearTransactionEdit();view('transaction');}});
 
-const importKey=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\bPARC\s*\d+\s*\/\s*\d+\b/ig,'').replace(/[^a-zA-Z0-9]/g,'').toLocaleLowerCase('pt-BR');
-function suggestedGroup(item){const category=importKey(item.category);let group=data.groups.find(record=>importKey(record.name)===category);if(!group){const old=data.transactions.find(record=>importKey(record.name)===importKey(item.name));group=old&&data.groups.find(record=>record.id===old.groupId);}if(!group)group=data.groups.find(record=>['outro','outros'].includes(importKey(record.name)));return group?.id||'';}
+function suggestedGroup(item){return suggestTransactionGroup({name:item.name,category:item.category,periodId:forms.import.elements.periodId.value,periods:data.periods,transactions:data.transactions,groups:data.groups});}
 function optionSelect(values,selected){const select=document.createElement('select');values.forEach(([label,value])=>select.add(new Option(label,value)));select.value=String(selected);return select;}
 function renderImportPreview(){const body=$('#card-import-items');body.replaceChildren();$('#card-import-preview').hidden=!importRows.length;$('#card-import-empty').hidden=Boolean(importRows.length);$('#card-import-confirm').hidden=!importRows.some(item=>item.include&&!item.reason);$('#card-import-clear').hidden=!importRows.length;
   importRows.forEach((item,index)=>{const tr=document.createElement('tr');tr.dataset.index=index;
