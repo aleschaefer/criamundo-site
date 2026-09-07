@@ -108,11 +108,73 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
       const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap';
       const table = document.createElement('table');
       const caption = document.createElement('caption'); caption.className = 'sr-only'; caption.textContent = `Ativos de ${group.owner}, ${types[group.assetType]}, ${subtypes[group.subType]}`;
-      const head = document.createElement('thead'); head.innerHTML = '<tr><th>Sigla</th><th>Nome</th><th>Quantidade</th><th>Preço médio</th><th>Valor atual</th><th>Rendimento atual (R$)</th><th>DY atual (%)</th><th>DY médio (%)</th><th>Valor total</th><th>Ações</th></tr>';
+      const variable = group.assetType === 1;
+      const fixed = group.assetType === 2;
+      const headers = variable
+        ? ['Sigla', 'Quantidade', 'Preço médio', 'Valor atual', 'Rendimento atual (R$)', 'DY atual (%)', 'DY médio (%)', 'Valor total', 'Ações']
+        : fixed
+          ? ['Sigla', 'Nome', 'Quantidade', 'Valor de compra', 'Valor atual', 'Valor total', 'Ações']
+          : ['Sigla', 'Nome', 'Quantidade', 'Preço médio', 'Valor total', 'Ações'];
+      const head = document.createElement('thead'); const headerRow = document.createElement('tr');
+      for (const label of headers) { const th = document.createElement('th'); th.textContent = label; headerRow.append(th); }
+      head.append(headerRow);
       const body = document.createElement('tbody');
-      for (const asset of group.assets) row(body, [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)], 'asset', asset);
+      for (const asset of group.assets) {
+        const values = variable
+          ? [asset.symbol || '—', quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)]
+          : fixed
+            ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.currentPrice), money(asset.total)]
+            : [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)];
+        row(body, values, 'asset', asset);
+      }
       table.append(caption, head, body); wrap.append(table); details.append(summary, wrap); container.append(details);
     }
+  }
+  function inlineField(label, name, value, options = {}) {
+    const wrapper = document.createElement('label'); wrapper.textContent = label;
+    let input;
+    if (options.choices) {
+      input = document.createElement('select');
+      for (const [choiceValue, choiceLabel] of options.choices) input.add(new Option(choiceLabel, choiceValue));
+    } else {
+      input = document.createElement('input'); input.type = options.type || 'text';
+      for (const [key, item] of Object.entries(options.attributes || {})) input.setAttribute(key, item);
+    }
+    input.name = name; input.value = value ?? ''; wrapper.append(input); return wrapper;
+  }
+  function startInlineAssetEdit(record, sourceRow) {
+    const td = document.createElement('td'); td.colSpan = sourceRow.children.length; const form = document.createElement('form'); form.className = 'finance-inline-edit';
+    const typeChoices = Object.entries(types); const ownerChoices = [['Ale', 'Ale'], ['Ana', 'Ana']];
+    const owner = inlineField('Proprietário', 'owner', record.owner, { choices: ownerChoices });
+    const type = inlineField('Tipo', 'assetType', record.assetType, { choices: typeChoices });
+    const subtype = inlineField('Subtipo', 'subType', record.subType, { choices: (SUBTYPES_BY_TYPE[record.assetType] || []).map(value => [value, subtypes[value]]) });
+    const name = inlineField('Nome', 'name', record.name, { attributes: { maxlength: '30', required: '' } });
+    const symbol = inlineField('Sigla', 'symbol', record.symbol, { attributes: { maxlength: '7', required: '' } });
+    const amount = inlineField('Quantidade', 'quantity', record.quantity, { type: 'number', attributes: { min: '0', step: '1', required: '' } });
+    const average = inlineField('Preço médio / Valor de compra', 'averagePrice', record.averagePrice, { type: 'number', attributes: { min: '0', step: '0.01', required: '' } });
+    const current = inlineField('Valor atual', 'currentPrice', record.priceIsDefault ? '' : record.currentPrice, { type: 'number', attributes: { min: '0', step: '0.01' } });
+    const income = inlineField('Rendimento atual', 'currentIncome', record.currentIncome, { type: 'number', attributes: { min: '0', step: '0.00001' } });
+    const fields = document.createElement('div'); fields.className = 'finance-inline-fields'; fields.append(owner, type, subtype, name, symbol, amount, average, current, income);
+    const actions = document.createElement('div'); actions.className = 'finance-row-actions';
+    const save = document.createElement('button'); save.type = 'submit'; save.className = 'button button-primary'; save.textContent = 'Salvar';
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'button button-secondary'; cancel.textContent = 'Cancelar';
+    actions.append(save, cancel); form.append(fields, actions); td.append(form); sourceRow.replaceChildren(td);
+    const updateInlineFields = () => {
+      const selectedType = Number(form.elements.assetType.value); const choices = SUBTYPES_BY_TYPE[selectedType] || [];
+      const previous = Number(form.elements.subType.value); form.elements.subType.replaceChildren(...choices.map(value => new Option(subtypes[value], value)));
+      form.elements.subType.value = choices.includes(previous) ? previous : choices[0];
+      const classification = { assetType: selectedType, subType: Number(form.elements.subType.value) };
+      current.hidden = !hasCurrentPrice(classification); income.hidden = !hasIncome(classification);
+    };
+    type.querySelector('select').addEventListener('change', updateInlineFields); subtype.querySelector('select').addEventListener('change', updateInlineFields); updateInlineFields();
+    if (record.transactionCount) { form.elements.quantity.readOnly = true; form.elements.averagePrice.readOnly = true; }
+    cancel.addEventListener('click', () => render());
+    form.addEventListener('submit', async event => {
+      event.preventDefault(); const f = form.elements;
+      const ok = await request({ type: 'asset', operation: 'update', id: record.id, revision: record.revision, owner: f.owner.value, assetType: Number(f.assetType.value), subType: Number(f.subType.value), name: f.name.value, symbol: f.symbol.value, quantity: Number(f.quantity.value), averagePrice: Number(f.averagePrice.value), currentPrice: f.currentPrice.value === '' ? null : Number(f.currentPrice.value), currentIncome: f.currentIncome.value === '' ? null : Number(f.currentIncome.value) });
+      if (ok) message('Ativo atualizado com sucesso.');
+    });
+    form.elements.name.focus();
   }
   function updateSubtypes(selection = assetForm.elements.subType.value) {
     const type = Number(assetForm.elements.assetType.value);
@@ -263,8 +325,9 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
       transactionForm.querySelector('[type="submit"]').textContent = 'Salvar transação'; updateTransactionAssets();
     }
   }
-  function editRecord(kind, record) {
+  function editRecord(kind, record, sourceRow) {
     message('');
+    if (kind === 'asset') { startInlineAssetEdit(record, sourceRow); return; }
     if (kind === 'asset') {
       clearEdit(kind); editingAsset = { ...record };
       const fields = assetForm.elements;
@@ -298,7 +361,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=1';
     const { kind, id, recordAction } = button.dataset;
     const record = (kind === 'asset' ? data.assets : data.transactions).find(item => item.id === id);
     if (!record) return;
-    if (recordAction === 'edit') { editRecord(kind, record); return; }
+    if (recordAction === 'edit') { editRecord(kind, record, button.closest('tr')); return; }
     if (kind === 'asset' && record.transactionCount > 0) {
       message('Este ativo possui transações. Exclua primeiro as transações vinculadas no histórico.', true); return;
     }
