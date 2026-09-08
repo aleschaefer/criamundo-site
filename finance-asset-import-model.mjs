@@ -9,20 +9,22 @@ const brNumber=value=>{const matches=String(value||'').match(/\d+(?:\.\d{3})*(?:
 
 export function classifyB3Section(title){const text=normalize(title);return sectionTypes.find(([pattern])=>pattern.test(text))?.[1]||null;}
 
-export function parseB3PositionItems(items,page=1){
+export function parseB3PositionPage(items,page=1,initialClassification=null){
   const rows=[];for(const item of items||[]){const y=Math.round((item.transform?.[5]||0)*2)/2,x=item.transform?.[4]||0;let row=rows.find(entry=>Math.abs(entry.y-y)<=2);if(!row){row={y,items:[]};rows.push(row);}row.items.push({x,text:String(item.str||'').trim()});}
   rows.sort((a,b)=>b.y-a.y).forEach(row=>row.items.sort((a,b)=>a.x-b.x));
-  let classification=null,active=false,current=null;const output=[];
-  const finish=()=>{if(!current)return;const product=current.product.join(' ').replace(/\s+/g,' ').replace(/\b(?:ON|PN|PNB|Cotas?|Direito|Fundo)\b.*$/i,'').trim();const match=product.match(/^([^\s]+)\s*-\s*(.+)$/);const quantity=Math.trunc(brNumber(current.quantity.join(' '))),currentPrice=brNumber(current.price.join(' ')),total=brNumber(current.total.join(' '));if(match&&classification&&Number.isInteger(quantity)&&quantity>=0&&Number.isFinite(currentPrice)&&Number.isFinite(total)){output.push({page,symbol:match[1].slice(0,7).toUpperCase(),name:match[2].slice(0,30).trim(),...classification,quantity,currentPrice:Math.round(currentPrice*100)/100,total:Math.round(total*100)/100});}current=null;};
+  let classification=initialClassification,active=Boolean(initialClassification),current=null;const output=[];
+  const finish=()=>{if(!current)return;const product=current.product.join(' ').replace(/\s+/g,' ').replace(/\b(?:ON|PN|PNB|Cotas?|Direito)\b.*$/i,'').trim();const match=product.match(/^([^\s]+)\s*-\s*(.+)$/);const quantity=Math.trunc(brNumber(current.quantity.join(' '))),currentPrice=brNumber(current.price.join(' ')),total=brNumber(current.total.join(' '));if(match&&classification&&Number.isInteger(quantity)&&quantity>=0&&Number.isFinite(currentPrice)&&Number.isFinite(total)){output.push({page,symbol:match[1].slice(0,7).toUpperCase(),name:match[2].slice(0,30).trim(),...classification,quantity,currentPrice:Math.round(currentPrice*100)/100,total:Math.round(total*100)/100});}current=null;};
   for(const row of rows){const text=normalize(row.items.map(item=>item.text).join(' '));const found=classifyB3Section(text);if(found){finish();classification=found;active=false;continue;}if(/^Produto\b/i.test(text)){finish();active=Boolean(classification);continue;}if(!active)continue;if(/^Total\b/i.test(text)||/A valorizacao dos ativos/i.test(text)||/^acesse /i.test(text)){finish();active=false;continue;}
     const left=normalize(row.items.filter(item=>item.x<250).map(item=>item.text).join(' '));const starts=/^[A-Z0-9.]{2,12}\s*-\s+/i.test(left);
     if(starts){finish();current={product:[],quantity:[],price:[],total:[]};}
     if(!current)continue;
-    const values={product:row.items.filter(item=>item.x<250),quantity:row.items.filter(item=>item.x>=350&&item.x<440),price:row.items.filter(item=>item.x>=440&&item.x<510),total:row.items.filter(item=>item.x>=510)};
+    const values={product:row.items.filter(item=>item.x<250),quantity:row.items.filter(item=>item.x>=320&&item.x<440),price:row.items.filter(item=>item.x>=440&&item.x<510),total:row.items.filter(item=>item.x>=510)};
     Object.entries(values).forEach(([key,list])=>current[key].push(...list.map(item=>item.text).filter(Boolean)));
   }
-  finish();return output;
+  finish();return{assets:output,classification};
 }
+
+export function parseB3PositionItems(items,page=1){return parseB3PositionPage(items,page).assets;}
 
 export function validateAssetImport(action){
   if(action?.type!=='asset-import'||!Array.isArray(action.items)||!action.items.length||action.items.length>500)throw new Error('Nenhum ativo válido foi selecionado.');

@@ -2,7 +2,7 @@ import { ASSET_TYPES as types, ASSET_SUBTYPES as subtypes, SUBTYPES_BY_TYPE, has
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
-import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
+import { readB3AssetsPdf } from './finance-asset-import.js?v=3';
 import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1';
 import { financeOverviewTotals } from './finance-overview.mjs?v=1';
 import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
