@@ -89,14 +89,14 @@ test('atualiza em lote os rendimentos de ações e FIIs', async () => {
   assert.equal(data.assets.find(item => item.id === 'action').currentIncome, 0.14);
   assert.equal(data.assets.find(item => item.id === 'fii').currentIncome, 0.75);
 });
-test('atualiza em lote os preços médios e recalcula o valor dos ativos', async () => {
-  const env = envFor(); const fii = asset({ id: 'fii-price', name: 'FUNDO', symbol: 'MCCI11', assetType: 1, subType: 2, quantity: 275, averagePrice: 90 });
+test('atualiza em lote os preços médios e o custo acumulado sem alterar a cotação atual', async () => {
+  const env = envFor(); const fii = asset({ id: 'fii-price', name: 'FUNDO', symbol: 'MCCI11', assetType: 1, subType: 2, quantity: 275, averagePrice: 90, currentPrice: 90 });
   await handleFinance(request(fii), env);
   const batch = { type: 'asset-average-price-batch', items: [{ id: fii.id, revision: 0, averagePrice: 91.82 }] };
   assert.equal(validateAssetAveragePriceBatch(batch).items[0].averagePrice, 91.82);
   assert.throws(() => validateAssetAveragePriceBatch({ ...batch, items: [{ ...batch.items[0], averagePrice: 1.001 }] }));
   const response = await handleFinance(request(batch), env); assert.equal(response.status, 200);
-  const updated = (await response.json()).assets[0]; assert.equal(updated.averagePrice, 91.82); assert.equal(updated.total, 25250.5);
+  const updated = (await response.json()).assets[0]; assert.equal(updated.averagePrice, 91.82); assert.equal(updated.total, 25250.5); assert.equal(updated.currentPrice, 90);
 });
 test('exclui em lote somente ativos sem transações vinculadas', async () => {
   const env = envFor(); const first = asset({ id: 'delete-one' }); const second = asset({ id: 'delete-two', name: 'OUTRO ATIVO', symbol: 'OUTRO' });

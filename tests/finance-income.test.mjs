@@ -13,6 +13,11 @@ test('em ações usa o próximo dividendo e aceita o último dividendo como fall
   assert.deepEqual(parseStatusInvestIncome('<section>Próximo Dividendo R$ 0,25</section><p>Último dividendo R$ 0,14</p>', 'stock'), { value: 0.25, source: 'Próximo Dividendo' });
 });
 
+test('em ações prioriza o rendimento anual publicado nos últimos 12 meses', () => {
+  const html = '<section>Dividend Yield 8,50% Últimos 12 meses R$ 4,3725</section><section>Último dividendo R$ 0,5000</section>';
+  assert.deepEqual(parseStatusInvestIncome(html, 'stock'), { value: 4.3725, source: 'Últimos 12 meses' });
+});
+
 test('endpoint valida sessão e sigla e devolve rendimento consultado', async () => {
   const env = { ADMIN_PASSWORD: 'test-password', ALLOW_LEGACY_ADMIN_AUTH: 'true' };
   const request = (symbol, password = 'test-password', category = 'fii') => new Request(`https://example.test/api/admin/finance/income?symbol=${symbol}&category=${category}`, { headers: { 'x-admin-password': password } });

@@ -18,6 +18,7 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
   const yieldPercent = value => Number.isFinite(value) ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 }).format(value) + '%' : '—';
   const incomeMoney = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 5, maximumFractionDigits: 5 }).format(value);
   const quantity = (value) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(value);
+  const currentAssetTotal = asset => Math.round(Number(asset.quantity) * Number(asset.currentPrice) * 100) / 100;
   let assetRequestId = crypto.randomUUID();
   let transactionRequestId = crypto.randomUUID();
   let selectedAssetType = null;
@@ -161,7 +162,11 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
             }
             message(`${updates.length} rendimento(s) atualizado(s)${failures.length ? `. Não encontrados: ${failures.join(', ')}.` : '.'}`, Boolean(failures.length));
           } catch (error) { message(error.message || 'Não foi possível atualizar os rendimentos.', true); }
-          finally { busy = false; controls(); }
+          finally {
+            busy = false;
+            if (fetchAll.isConnected) fetchAll.textContent = 'Obter todos rendimentos';
+            controls();
+          }
         });
         groupActions.append(importPrices, fetchAll, fileInput); summary.append(groupActions);
       }
@@ -181,9 +186,9 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
       const body = document.createElement('tbody');
       for (const asset of group.assets) {
         const values = variable
-          ? [asset.symbol || '—', quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(asset.total)]
+          ? [asset.symbol || '—', quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(currentAssetTotal(asset))]
           : fixed
-            ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.currentPrice), money(asset.total)]
+            ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.currentPrice), money(currentAssetTotal(asset))]
             : [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)];
         row(body, values, 'asset', asset);
       }
@@ -366,8 +371,8 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
     renderAllocation();
     const ownerAssets = data.assets.filter(asset => !selectedOwner || asset.owner === selectedOwner);
     const ownerTransactions = data.transactions.filter(item => !selectedOwner || item.owner === selectedOwner);
-    $('#finance-total').textContent = money(ownerAssets.reduce((sum, asset) => sum + Math.round(asset.total * 100), 0) / 100);
     const overviewTotals = financeOverviewTotals(ownerAssets);
+    $('#finance-total').textContent = money(overviewTotals.currentValue);
     $('#finance-average-total').textContent = money(overviewTotals.averageValue);
     $('#finance-income-total').textContent = money(overviewTotals.monthlyIncome);
     $('#finance-count').textContent = ownerAssets.length;

@@ -13,13 +13,13 @@ const moneyAfter = (text, label, stopLabels = []) => {
   const match = section.match(/R\$\s*([0-9]+(?:[.,][0-9]+)?)/i);
   if (!match) return null;
   const value = Number(match[1].replaceAll('.', '').replace(',', '.'));
-  return Number.isFinite(value) && value > 0 ? value : null;
+  return Number.isFinite(value) && value >= 0 ? value : null;
 };
 
 export function parseStatusInvestIncome(html, category = 'fii') {
   const text = textOnly(html);
   const labels = category === 'stock'
-    ? ['Próximo Dividendo', 'Próximo Rendimento', 'Último dividendo', 'Último rendimento']
+    ? ['Últimos 12 meses', 'Próximo Dividendo', 'Próximo Rendimento', 'Último dividendo', 'Último rendimento']
     : ['Próximo Rendimento', 'Último rendimento'];
   for (const label of labels) {
     const value = moneyAfter(text, label, labels.filter(item => item !== label));
