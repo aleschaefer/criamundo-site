@@ -179,6 +179,8 @@
           <label class="finance-owner-filter">Proprietário<select id="finance-owner-filter"><option value="">Todos</option><option value="Ale">Ale</option><option value="Ana">Ana</option></select></label>
           <div class="grid grid-2 finance-summary">
             <div class="group-shell"><p class="eyebrow">Valor total dos ativos</p><strong id="finance-total">—</strong><p class="draft-note">Custo acumulado, sem cotação de mercado. Preço médio arredondado a 2 casas.</p></div>
+            <div class="group-shell"><p class="eyebrow">Valor médio dos ativos</p><strong id="finance-average-total">—</strong><p class="draft-note">Soma da quantidade × preço médio de cada ativo.</p></div>
+            <div class="group-shell"><p class="eyebrow">Rendimentos mensais</p><strong id="finance-income-total">—</strong><p class="draft-note">FIIs: rendimento × quantidade. Ações: rendimento anual × quantidade ÷ 12.</p></div>
             <div class="group-shell"><p class="eyebrow">Ativos cadastrados</p><strong id="finance-count">—</strong></div>
           </div>
           <section class="finance-allocation group-shell" aria-labelledby="finance-allocation-title">
@@ -404,7 +406,7 @@
     <script src="content.js"></script>
     <script src="data-manager.js?v=2"></script>
     <script src="admin.js?v=2"></script>
-    <script type="module" src="finance.js?v=16"></script>
+    <script type="module" src="finance.js?v=17"></script>
   <script type="module" src="credit-card.js?v=22"></script>
   </body>
 </html>

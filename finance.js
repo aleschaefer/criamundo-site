@@ -4,6 +4,7 @@ import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
 import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
 import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1';
+import { financeOverviewTotals } from './finance-overview.mjs?v=1';
 
 (() => {
   const $ = (selector) => document.querySelector(selector);
@@ -368,6 +369,9 @@ import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1'
     const ownerAssets = data.assets.filter(asset => !selectedOwner || asset.owner === selectedOwner);
     const ownerTransactions = data.transactions.filter(item => !selectedOwner || item.owner === selectedOwner);
     $('#finance-total').textContent = money(ownerAssets.reduce((sum, asset) => sum + Math.round(asset.total * 100), 0) / 100);
+    const overviewTotals = financeOverviewTotals(ownerAssets);
+    $('#finance-average-total').textContent = money(overviewTotals.averageValue);
+    $('#finance-income-total').textContent = money(overviewTotals.monthlyIncome);
     $('#finance-count').textContent = ownerAssets.length;
     const assets = selectedAssetType === null ? ownerAssets : ownerAssets.filter(asset => asset.assetType === selectedAssetType);
     const transactions = selectedAssetType === null ? ownerTransactions : ownerTransactions.filter(item => item.assetType === selectedAssetType);
@@ -606,7 +610,7 @@ import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1'
     clearAssetImport();
     $('#finance-asset-groups').replaceChildren(); $('#finance-assets-groups').replaceChildren(); $('#finance-history').replaceChildren();
     transactionForm.elements.assetId.replaceChildren();
-    $('#finance-total').textContent = '—'; $('#finance-count').textContent = '—';
+    $('#finance-total').textContent = '—'; $('#finance-average-total').textContent = '—'; $('#finance-income-total').textContent = '—'; $('#finance-count').textContent = '—';
     renderAllocation(); message(''); controls(); area(false); view('overview');
   });
   transactionForm.elements.transactionDate.value = todayInSaoPaulo();
