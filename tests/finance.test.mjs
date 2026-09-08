@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { validateAction, validateAssetIncomeBatch, validateAssetAveragePriceBatch } from '../finance-model.mjs';
+import { validateAction, validateAssetIncomeBatch, validateAssetAveragePriceBatch, validateAssetDeleteBatch } from '../finance-model.mjs';
 import { handleFinance } from '../finance-api.mjs';
 import { todayInSaoPaulo, validTransactionDate, formatTransactionDate } from '../finance-date.mjs';
 import { calculateYields } from '../finance-yield.mjs';
@@ -97,6 +97,14 @@ test('atualiza em lote os preços médios e recalcula o valor dos ativos', async
   assert.throws(() => validateAssetAveragePriceBatch({ ...batch, items: [{ ...batch.items[0], averagePrice: 1.001 }] }));
   const response = await handleFinance(request(batch), env); assert.equal(response.status, 200);
   const updated = (await response.json()).assets[0]; assert.equal(updated.averagePrice, 91.82); assert.equal(updated.total, 25250.5);
+});
+test('exclui em lote somente ativos sem transações vinculadas', async () => {
+  const env = envFor(); const first = asset({ id: 'delete-one' }); const second = asset({ id: 'delete-two', name: 'OUTRO ATIVO', symbol: 'OUTRO' });
+  await handleFinance(request(first), env); await handleFinance(request(second), env);
+  const batch = { type: 'asset-delete-batch', items: [{ id: first.id, revision: 0 }, { id: second.id, revision: 0 }] };
+  assert.equal(validateAssetDeleteBatch(batch).items.length, 2);
+  assert.throws(() => validateAssetDeleteBatch({ ...batch, items: [batch.items[0], batch.items[0]] }));
+  const response = await handleFinance(request(batch), env); assert.equal(response.status, 200); assert.equal((await response.json()).assets.length, 0);
 });
 test('importação B3 permite mesmo nome com siglas diferentes e atualiza a combinação exata', async () => {
   const env = envFor();

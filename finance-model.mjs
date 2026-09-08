@@ -28,6 +28,16 @@ export function validateAssetAveragePriceBatch(action) {
     return { id: item.id, revision: item.revision, averagePrice: cents / 100 };
   }) };
 }
+export function validateAssetDeleteBatch(action) {
+  if (action?.type !== 'asset-delete-batch' || !Array.isArray(action.items) || !action.items.length || action.items.length > 500) throw new Error('Selecione ao menos um ativo para excluir.');
+  const ids = new Set();
+  return { type: action.type, items: action.items.map((item, index) => {
+    if (typeof item.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(item.id) || ids.has(item.id)) throw new Error(`Ativo inválido na posição ${index + 1}.`);
+    ids.add(item.id);
+    if (!Number.isSafeInteger(item.revision) || item.revision < 0) throw new Error(`Versão inválida no ativo ${index + 1}.`);
+    return { id: item.id, revision: item.revision };
+  }) };
+}
 export function validateAction(action) {
   if (!action || !['asset', 'transaction'].includes(action.type)) throw new Error('Ação inválida.');
   const operation = action.operation || 'create';

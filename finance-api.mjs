@@ -1,5 +1,5 @@
 import { calculateYields } from './finance-yield.mjs';
-import { validateAction, validateAssetIncomeBatch, validateAssetAveragePriceBatch } from './finance-model.mjs';
+import { validateAction, validateAssetIncomeBatch, validateAssetAveragePriceBatch, validateAssetDeleteBatch } from './finance-model.mjs';
 import { requireAdminSession } from './admin-auth.mjs';
 import { validateAssetImport } from './finance-asset-import-model.mjs';
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
@@ -19,7 +19,7 @@ export async function handleFinance(request, env) {
     const db = env.CONTENT_DB;
     if (request.method === 'GET') return reply(await overview(db));
     let action;
-    try { const body=await request.json();action=body?.type==='asset-import'?validateAssetImport(body):body?.type==='asset-income-batch'?validateAssetIncomeBatch(body):body?.type==='asset-average-price-batch'?validateAssetAveragePriceBatch(body):validateAction(body); } catch (error) { return reply({ error: error.message }, 400); }
+    try { const body=await request.json();action=body?.type==='asset-import'?validateAssetImport(body):body?.type==='asset-income-batch'?validateAssetIncomeBatch(body):body?.type==='asset-average-price-batch'?validateAssetAveragePriceBatch(body):body?.type==='asset-delete-batch'?validateAssetDeleteBatch(body):validateAction(body); } catch (error) { return reply({ error: error.message }, 400); }
     if(action.type==='asset-import'){
       const statements=[];
       for(const item of action.items){
@@ -43,6 +43,11 @@ export async function handleFinance(request, env) {
       const results=await db.batch(action.items.map(item=>db.prepare(`UPDATE finance_assets SET average_price=?1,value=ROUND(quantity*?1,2),revision=revision+1
         WHERE id=?2 AND revision=?3 AND type=1 AND subtype IN (1,2) RETURNING id`).bind(item.averagePrice,item.id,item.revision)));
       if(results.some(result=>!result.results?.length))return reply({error:'Um dos ativos foi alterado ou não aceita preço médio. Atualize os dados e tente novamente.'},409);
+      return reply(await overview(db));
+    }
+    if(action.type==='asset-delete-batch'){
+      const results=await db.batch(action.items.map(item=>db.prepare('DELETE FROM finance_assets WHERE id=?1 AND revision=?2 RETURNING id').bind(item.id,item.revision)));
+      if(results.some(result=>!result.results?.length))return reply({error:'Um dos ativos foi alterado ou excluído. Atualize os dados e tente novamente.'},409);
       return reply(await overview(db));
     }
     const operation = action.operation || 'create';

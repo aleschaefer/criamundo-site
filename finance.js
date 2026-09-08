@@ -46,12 +46,13 @@ import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1'
     assetForm.elements.subType.disabled = busy || !data || assetForm.elements.assetType.value === '3';
     transactionControls();
     $('#finance-refresh').disabled = busy;
-    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-average-price-import, #finance-filter-clear').forEach(button => { button.disabled = busy; });
+    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-average-price-import, #finance-filter-clear, #finance-assets-delete, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
   }
   function view(name) {
     assetForm.hidden = name !== 'asset';
     transactionForm.hidden = name !== 'transaction';
     assetImportForm.hidden = name !== 'import-assets';
+    $('#finance-assets-view').hidden = name !== 'assets';
     $('#finance-overview').hidden = name !== 'overview';
     document.querySelectorAll('[data-finance-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.financeView === name)));
   }
@@ -188,6 +189,34 @@ import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1'
         row(body, values, 'asset', asset);
       }
       table.append(caption, head, body); wrap.append(table); details.append(summary, wrap); container.append(details);
+    }
+  }
+  function renderAssetManagement(assets) {
+    const container = $('#finance-assets-groups'); container.replaceChildren(); $('#finance-assets-empty').hidden = Boolean(assets.length);
+    const groups = new Map();
+    for (const asset of assets) {
+      const key = `${asset.owner}\u0000${asset.assetType}\u0000${asset.subType}`;
+      if (!groups.has(key)) groups.set(key, { owner: asset.owner, assetType: asset.assetType, subType: asset.subType, assets: [] });
+      groups.get(key).assets.push(asset);
+    }
+    for (const group of groups.values()) {
+      const details = document.createElement('details'); details.className = 'finance-asset-group'; details.open = true;
+      const summary = document.createElement('summary'); summary.textContent = `${group.owner} · ${types[group.assetType]} · ${subtypes[group.subType]} (${group.assets.length})`;
+      const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap'; const table = document.createElement('table');
+      const head = document.createElement('thead'); const header = document.createElement('tr');
+      for (const label of ['Selecionar', 'Sigla', 'Nome', 'Quantidade', 'Preço médio / Valor de compra', 'Valor total']) { const th = document.createElement('th'); th.textContent = label; header.append(th); }
+      head.append(header); const body = document.createElement('tbody');
+      for (const asset of group.assets) {
+        const tr = document.createElement('tr'); const selectCell = document.createElement('td'); const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox'; checkbox.className = 'finance-asset-select'; checkbox.dataset.id = asset.id; checkbox.dataset.revision = asset.revision;
+        checkbox.dataset.locked = String(asset.transactionCount > 0); checkbox.disabled = busy || asset.transactionCount > 0;
+        checkbox.setAttribute('aria-label', asset.transactionCount ? `${asset.symbol}: possui transações e não pode ser excluído` : `Selecionar ${asset.symbol} para exclusão`);
+        if (asset.transactionCount) checkbox.title = 'Exclua primeiro as transações vinculadas.';
+        selectCell.append(checkbox); tr.append(selectCell);
+        for (const value of [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)]) { const td = document.createElement('td'); td.textContent = value; tr.append(td); }
+        body.append(tr);
+      }
+      table.append(head, body); wrap.append(table); details.append(summary, wrap); container.append(details);
     }
   }
   function inlineField(label, name, value, options = {}) {
@@ -344,6 +373,7 @@ import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1'
     $('#finance-asset-groups').replaceChildren();
     $('#finance-history').replaceChildren();
     renderAssetGroups(assets);
+    renderAssetManagement(data.assets);
     updateTransactionAssets();
     [...transactions].reverse().forEach(item => row($('#finance-history'), [item.owner, formatTransactionDate(item.transactionDate), new Date(item.createdAt).toLocaleString('pt-BR'), item.name, types[item.assetType], subtypes[item.subType], quantity(item.quantity), money(item.value)], 'transaction', item));
   }
@@ -469,6 +499,13 @@ import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1'
     if (busy || !data) return;
     selectedOwner = event.target.value; render();
   });
+  $('#finance-assets-delete').addEventListener('click', async () => {
+    if (busy || !data) return;
+    const items = [...document.querySelectorAll('.finance-asset-select:checked')].map(input => ({ id: input.dataset.id, revision: Number(input.dataset.revision) }));
+    if (!items.length) { message('Selecione ao menos um ativo para excluir.', true); return; }
+    if (!confirm(`Excluir ${items.length} ativo(s) selecionado(s)? Esta ação não pode ser desfeita.`)) return;
+    if (await request({ type: 'asset-delete-batch', items })) { view('assets'); message(`${items.length} ativo(s) excluído(s) com sucesso.`); }
+  });
   $('#show-finance').addEventListener('click', () => area(true));
   $('#show-content').addEventListener('click', () => area(false));
   $('#finance-refresh').addEventListener('click', () => request());
@@ -550,7 +587,7 @@ import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1'
     $('#finance-filter-clear').hidden = true;
     clearEdit('asset'); clearEdit('transaction');
     clearAssetImport();
-    $('#finance-asset-groups').replaceChildren(); $('#finance-history').replaceChildren();
+    $('#finance-asset-groups').replaceChildren(); $('#finance-assets-groups').replaceChildren(); $('#finance-history').replaceChildren();
     transactionForm.elements.assetId.replaceChildren();
     $('#finance-total').textContent = '—'; $('#finance-count').textContent = '—';
     renderAllocation(); message(''); controls(); area(false); view('overview');
