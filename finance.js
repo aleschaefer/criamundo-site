@@ -5,6 +5,7 @@ import { assetAllocation } from './finance-allocation.mjs';
 import { readB3AssetsPdf } from './finance-asset-import.js?v=2';
 import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1';
 import { financeOverviewTotals } from './finance-overview.mjs?v=1';
+import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
 
 (() => {
   const $ = (selector) => document.querySelector(selector);
@@ -27,14 +28,6 @@ import { financeOverviewTotals } from './finance-overview.mjs?v=1';
   let busy = false;
   let generation = 0;
   let importedAssets = [];
-  async function fetchJsonWithTimeout(url, options = {}, timeout = 15000) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-    try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      return { response, result: await response.json() };
-    } finally { clearTimeout(timer); }
-  }
   function message(text, error = false) {
     status.textContent = text;
     status.className = `save-status${error ? ' is-error' : ''}`;
@@ -147,14 +140,19 @@ import { financeOverviewTotals } from './finance-overview.mjs?v=1';
           if (busy) return;
           busy = true; controls(); const updates = [], failures = []; const category = group.subType === 1 ? 'stock' : 'fii';
           try {
-            for (const [index, asset] of group.assets.entries()) {
-              fetchAll.textContent = `Consultando ${index + 1}/${group.assets.length}…`;
-              try {
-                const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/income?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
-                if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
-                updates.push({ id: asset.id, revision: asset.revision, currentIncome: Number(result.value) });
-              } catch { failures.push(asset.symbol || asset.name); }
-            }
+            let next = 0, completed = 0; fetchAll.textContent = `Consultando 0/${group.assets.length}…`;
+            const worker = async () => {
+              while (next < group.assets.length) {
+                const asset = group.assets[next++];
+                try {
+                  const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/income?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
+                  if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
+                  updates.push({ id: asset.id, revision: asset.revision, currentIncome: Number(result.value) });
+                } catch { failures.push(asset.symbol || asset.name); }
+                completed++; fetchAll.textContent = `Consultando ${completed}/${group.assets.length}…`;
+              }
+            };
+            await Promise.all(Array.from({ length: Math.min(4, group.assets.length) }, worker));
             if (updates.length) {
               fetchAll.textContent = `Salvando ${updates.length}…`;
               const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-income-batch', items: updates }) });
