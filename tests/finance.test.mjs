@@ -18,6 +18,7 @@ const subtypeMigration = readFileSync(new URL('../migrations/0008_asset_subtypes
 const symbolMigration = readFileSync(new URL('../migrations/0017_finance_asset_symbol.sql', import.meta.url), 'utf8');
 const identityMigration = readFileSync(new URL('../migrations/0018_finance_asset_identity.sql', import.meta.url), 'utf8');
 const ownerMigration = readFileSync(new URL('../migrations/0019_finance_owner.sql', import.meta.url), 'utf8');
+const ownerIdentityMigration = readFileSync(new URL('../migrations/0020_finance_owner_identity.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
@@ -32,6 +33,7 @@ function database() {
   sql.exec(symbolMigration);
   sql.exec(identityMigration);
   sql.exec(ownerMigration);
+  sql.exec(ownerIdentityMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -117,11 +119,16 @@ test('importação B3 permite mesmo nome com siglas diferentes e atualiza a comb
   assert.equal(data.assets.length, 2);
   const updated = data.assets.find(asset => asset.symbol === 'HGRU11');
   assert.equal(updated.quantity, 4); assert.equal(updated.averagePrice, 110); assert.equal(updated.currentPrice, 110); assert.equal(updated.total, 440);
+  response = await handleFinance(request({ type: 'asset-import', items: [{ ...imported('ale', 'HGRU11', 5, 600), owner: 'Ale' }] }), env);
+  assert.equal(response.status, 200); data = await response.json();
+  assert.equal(data.assets.length, 3);
+  assert.equal(data.assets.find(asset => asset.owner === 'Ana' && asset.symbol === 'HGRU11').quantity, 4);
+  assert.equal(data.assets.find(asset => asset.owner === 'Ale' && asset.symbol === 'HGRU11').quantity, 5);
 });
 test('importação B3 reconhece ativo legado sem sigla e completa seu cadastro', async () => {
   const env = envFor();
   env.CONTENT_DB.sql.exec("INSERT INTO finance_assets(id,name,type,subtype,quantity,average_price,value,current_price) VALUES('legacy','BCO BRASIL S.A.',1,1,1,10,10,10)");
-  const response = await handleFinance(request({ type: 'asset-import', items: [{ id: 'new', owner: 'Ana', symbol: 'BBAS3', name: 'BCO BRASIL S.A.', assetType: 1, subType: 1, quantity: 505, currentPrice: 22.52, total: 11372.6 }] }), env);
+  const response = await handleFinance(request({ type: 'asset-import', items: [{ id: 'new', owner: 'Ale', symbol: 'BBAS3', name: 'BCO BRASIL S.A.', assetType: 1, subType: 1, quantity: 505, currentPrice: 22.52, total: 11372.6 }] }), env);
   assert.equal(response.status, 200);
   const data = await response.json(); assert.equal(data.assets.length, 1);
   assert.equal(data.assets[0].id, 'legacy'); assert.equal(data.assets[0].symbol, 'BBAS3'); assert.equal(data.assets[0].quantity, 505);
@@ -147,6 +154,19 @@ test('migração 0019 preserva dados, atribui Ale aos antigos e valida propriet�
   assert.equal(sql.prepare("SELECT owner FROM finance_transactions WHERE id='t'").get().owner, 'Ale');
   sql.exec("UPDATE finance_assets SET owner='Ana' WHERE id='a'");
   assert.throws(() => sql.exec("UPDATE finance_transactions SET owner='Outro' WHERE id='t'"));
+});
+test('migração 0020 separa a identidade do mesmo ativo por proprietário', () => {
+  const sql = new DatabaseSync(':memory:'); sql.exec('PRAGMA foreign_keys=ON');
+  for (const script of [migration, marketMigration, incomeMigration, editMigration, timestampMigration, dateMigration, fixedIncomeMigration, subtypeMigration, symbolMigration, identityMigration, ownerMigration]) sql.exec(script);
+  sql.exec("INSERT INTO finance_assets(id,owner,name,symbol,type,subtype,quantity,average_price,value,current_price) VALUES('ale','Ale','BANCO','BBAS3',1,1,1,10,10,10)");
+  sql.exec("INSERT INTO finance_transactions(id,owner,asset_id,name,type,subtype,quantity,value,transaction_date) VALUES('tx','Ale','ale','BANCO',1,1,1,10,'2026-09-01')");
+  sql.exec("UPDATE finance_assets SET owner='Ana' WHERE id='ale'");
+  sql.exec(ownerIdentityMigration);
+  assert.equal(sql.prepare("SELECT owner FROM finance_transactions WHERE id='tx'").get().owner, 'Ana');
+  sql.exec("INSERT INTO finance_assets(id,owner,name,symbol,type,subtype,quantity,average_price,value,current_price) VALUES('ale2','Ale','BANCO','BBAS3',1,1,2,10,20,10)");
+  assert.equal(sql.prepare("SELECT count(*) AS count FROM finance_assets WHERE symbol='BBAS3'").get().count, 2);
+  assert.throws(() => sql.exec("INSERT INTO finance_assets(id,owner,name,symbol,type,subtype,quantity,average_price,value,current_price) VALUES('ana2','Ana','BANCO','BBAS3',1,1,3,10,30,10)"));
+  assert.equal(sql.prepare('PRAGMA foreign_key_check').all().length, 0);
 });
 test('média arredondada não perde centavos no custo acumulado', async () => {
   const env = envFor(); const a = asset({ quantity: 0, averagePrice: 0 });

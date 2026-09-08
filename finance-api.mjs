@@ -25,9 +25,9 @@ export async function handleFinance(request, env) {
       for(const item of action.items){
         const averagePrice=item.quantity?Math.round(item.total/item.quantity*100)/100:0;
         const existing=await db.prepare(`SELECT id FROM finance_assets
-          WHERE (symbol=?1 AND name=?2) OR (name=?2 AND type=?3 AND subtype=?4)
+          WHERE owner=?5 AND ((symbol=?1 AND name=?2) OR (name=?2 AND type=?3 AND subtype=?4))
           ORDER BY CASE WHEN symbol=?1 THEN 0 ELSE 1 END LIMIT 1`)
-          .bind(item.symbol,item.name,item.assetType,item.subType).first();
+          .bind(item.symbol,item.name,item.assetType,item.subType,item.owner).first();
         if(existing)statements.push(db.prepare(`UPDATE finance_assets SET owner=?1,name=?2,symbol=?3,type=?4,subtype=?5,quantity=?6,average_price=?7,value=?8,current_price=?9,current_income=0,current_dy=0,revision=revision+1 WHERE id=?10`).bind(item.owner,item.name,item.symbol,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice,existing.id));
         else statements.push(db.prepare(`INSERT INTO finance_assets(id,owner,name,symbol,type,subtype,quantity,average_price,value,current_price,current_income,current_dy) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,0,0)`).bind(item.id,item.owner,item.name,item.symbol,item.assetType,item.subType,item.quantity,averagePrice,item.total,item.currentPrice));
       }
@@ -89,9 +89,9 @@ export async function handleFinance(request, env) {
     return reply(await overview(db));
   } catch (error) {
     if (/FOREIGN KEY constraint/i.test(error.message)) return reply({ error: 'Este ativo possui transações. Exclua as transações vinculadas antes de excluir o ativo.' }, 409);
-    if (/UNIQUE constraint/i.test(error.message)) return reply({ error: 'Já existe um ativo com esta sigla, nome, tipo e subtipo.' }, 409);
+    if (/UNIQUE constraint/i.test(error.message)) return reply({ error: 'Já existe um ativo deste proprietário com esta sigla, nome, tipo e subtipo.' }, 409);
     if (/CHECK constraint/i.test(error.message)) return reply({ error: 'A operação excede os limites de quantidade, preço médio ou valor do ativo.' }, 400);
     console.error('Finance database error', error);
-    return reply({ error: 'Não foi possível acessar Finanças. Verifique a conexão e se as migrações de Finanças até 0019 foram aplicadas no banco.' }, 503);
+    return reply({ error: 'Não foi possível acessar Finanças. Verifique a conexão e se as migrações de Finanças até 0020 foram aplicadas no banco.' }, 503);
   }
 }

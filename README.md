@@ -412,3 +412,14 @@ npx wrangler d1 execute criamundo-content --remote --file=migrations/0019_financ
 
 Os registros anteriores recebem `Ale`. Novos registros e importações exigem a escolha
 entre `Ale` e `Ana`.
+
+Para permitir que Ale e Ana tenham o mesmo ativo sem uma importação substituir a
+carteira do outro proprietário, aplique:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0020_finance_owner_identity.sql
+```
+
+A migração 0020 preserva os registros e transações existentes e passa a incluir o
+proprietário na identidade única do ativo. Se uma importação feita antes desta correção
+trocou ativos do Ale para Ana, reaplique o extrato do Ale uma vez após a migração.

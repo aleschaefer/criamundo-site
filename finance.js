@@ -72,8 +72,8 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
       const tr = document.createElement('tr'); tr.dataset.index = index;
       const selected = importInput('checkbox', '', 'selected'); selected.checked = true;
       const existing = data?.assets.some(asset =>
-        (asset.symbol === item.symbol && asset.name === item.name) ||
-        (asset.name === item.name && asset.assetType === item.assetType && asset.subType === item.subType));
+        asset.owner === assetImportForm.elements.owner.value && ((asset.symbol === item.symbol && asset.name === item.name) ||
+        (asset.name === item.name && asset.assetType === item.assetType && asset.subType === item.subType)));
       const cells = [selected, String(item.page), assetImportForm.elements.owner.value, importInput('text', item.symbol, 'symbol', { maxlength: '7', required: '' }), importInput('text', item.name, 'name', { maxlength: '30', required: '' }), types[item.assetType], subtypes[item.subType], importInput('number', item.quantity, 'quantity', { min: '0', max: '2147483647', step: '1', required: '' }), importInput('number', item.currentPrice.toFixed(2), 'currentPrice', { min: '0', max: '999999.99', step: '0.01', required: '' }), importInput('number', item.total.toFixed(2), 'total', { min: '0', max: '99999999.99', step: '0.01', required: '' }), existing ? 'Atualizar' : 'Novo'];
       for (const value of cells) { const td = document.createElement('td'); value instanceof Node ? td.append(value) : td.textContent = value; tr.append(td); }
       body.append(tr);
