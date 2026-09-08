@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="admin.css?v=10" />
+    <link rel="stylesheet" href="admin.css?v=11" />
   </head>
   <body class="admin-page is-locked">
     <main class="auth-shell" id="auth-shell">
@@ -171,7 +171,7 @@
           <div class="finance-table-wrap" id="finance-asset-import-preview" hidden><table><caption class="sr-only">Ativos reconhecidos no PDF</caption><thead><tr><th>Importar</th><th>Página</th><th>Proprietário</th><th>Sigla</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor atual</th><th>Valor total</th><th>Ação</th></tr></thead><tbody id="finance-asset-import-items"></tbody></table></div>
         </form>
         <div id="finance-assets-view" hidden>
-          <div class="finance-list-heading"><div><h3>Ativos cadastrados</h3><p class="draft-note">Selecione os ativos que deseja excluir. Ativos vinculados a transações ficam protegidos.</p></div><button id="finance-assets-delete" type="button" class="button button-danger">Excluir ativos</button></div>
+          <div class="finance-list-heading"><div><h3>Ativos cadastrados</h3><p class="draft-note">Selecione os ativos que deseja excluir. Ativos vinculados a transações ficam protegidos.</p></div><div class="finance-bulk-actions"><label><input id="finance-assets-select-all" type="checkbox" /> Selecionar todos</label><button id="finance-assets-delete" type="button" class="button button-danger">Excluir ativos</button></div></div>
           <p id="finance-assets-empty" class="intro">Nenhum ativo cadastrado.</p>
           <div id="finance-assets-groups" class="finance-asset-groups"></div>
         </div>
@@ -404,7 +404,7 @@
     <script src="content.js"></script>
     <script src="data-manager.js?v=2"></script>
     <script src="admin.js?v=2"></script>
-    <script type="module" src="finance.js?v=15"></script>
+    <script type="module" src="finance.js?v=16"></script>
   <script type="module" src="credit-card.js?v=22"></script>
   </body>
 </html>

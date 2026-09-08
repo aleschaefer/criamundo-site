@@ -390,6 +390,9 @@ textarea {
 .finance-asset-groups { display: grid; gap: 12px; margin: 16px 0 28px; }
 .finance-list-heading { display: flex; align-items: start; justify-content: space-between; gap: 18px; margin-bottom: 16px; }
 .finance-list-heading h3 { margin-bottom: 6px; }
+.finance-bulk-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.finance-bulk-actions label { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.finance-bulk-actions input { width: 18px; height: 18px; accent-color: var(--gold); }
 .finance-asset-select { width: 18px; height: 18px; accent-color: var(--gold); }
 .finance-asset-group { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .finance-asset-group > summary { cursor: pointer; padding: 15px 18px; color: var(--gold); font-weight: 700; background: rgba(255,255,255,.025); }

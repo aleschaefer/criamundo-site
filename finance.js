@@ -46,7 +46,7 @@ import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1'
     assetForm.elements.subType.disabled = busy || !data || assetForm.elements.assetType.value === '3';
     transactionControls();
     $('#finance-refresh').disabled = busy;
-    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-average-price-import, #finance-filter-clear, #finance-assets-delete, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
+    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-average-price-import, #finance-filter-clear, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
   }
   function view(name) {
     assetForm.hidden = name !== 'asset';
@@ -218,6 +218,16 @@ import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1'
       }
       table.append(head, body); wrap.append(table); details.append(summary, wrap); container.append(details);
     }
+    updateAssetSelectAllState();
+  }
+  function updateAssetSelectAllState() {
+    const master = $('#finance-assets-select-all');
+    const eligible = [...document.querySelectorAll('.finance-asset-select[data-locked="false"]')];
+    const selected = eligible.filter(input => input.checked).length;
+    master.checked = Boolean(eligible.length) && selected === eligible.length;
+    master.indeterminate = selected > 0 && selected < eligible.length;
+    master.dataset.locked = String(!eligible.length);
+    master.disabled = busy || !eligible.length;
   }
   function inlineField(label, name, value, options = {}) {
     const wrapper = document.createElement('label'); wrapper.textContent = label;
@@ -505,6 +515,13 @@ import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1'
     if (!items.length) { message('Selecione ao menos um ativo para excluir.', true); return; }
     if (!confirm(`Excluir ${items.length} ativo(s) selecionado(s)? Esta ação não pode ser desfeita.`)) return;
     if (await request({ type: 'asset-delete-batch', items })) { view('assets'); message(`${items.length} ativo(s) excluído(s) com sucesso.`); }
+  });
+  $('#finance-assets-select-all').addEventListener('change', event => {
+    document.querySelectorAll('.finance-asset-select[data-locked="false"]').forEach(input => { input.checked = event.target.checked; });
+    updateAssetSelectAllState();
+  });
+  $('#finance-assets-groups').addEventListener('change', event => {
+    if (event.target.matches('.finance-asset-select')) updateAssetSelectAllState();
   });
   $('#show-finance').addEventListener('click', () => area(true));
   $('#show-content').addEventListener('click', () => area(false));
