@@ -26,6 +26,23 @@ export function parseB3PositionPage(items,page=1,initialClassification=null){
 
 export function parseB3PositionItems(items,page=1){return parseB3PositionPage(items,page).assets;}
 
+const symbolBase=value=>normalize(value).toUpperCase().replace(/\d{1,2}$/,'');
+export function fillSimilarCurrentPrices(assets){
+  const sourceByIdentity=new Map();
+  for(const asset of assets||[]){
+    if(!(Number(asset.currentPrice)>0))continue;
+    const key=`${asset.assetType}\u0000${asset.subType}\u0000${symbolBase(asset.symbol)}\u0000${normalize(asset.name).toUpperCase()}`;
+    const current=sourceByIdentity.get(key);
+    if(!current||String(asset.symbol).endsWith('11'))sourceByIdentity.set(key,asset);
+  }
+  return(assets||[]).map(asset=>{
+    if(Number(asset.currentPrice)>0)return asset;
+    const key=`${asset.assetType}\u0000${asset.subType}\u0000${symbolBase(asset.symbol)}\u0000${normalize(asset.name).toUpperCase()}`;
+    const source=sourceByIdentity.get(key);
+    return source?{...asset,currentPrice:source.currentPrice}:asset;
+  });
+}
+
 export function validateAssetImport(action){
   if(action?.type!=='asset-import'||!Array.isArray(action.items)||!action.items.length||action.items.length>500)throw new Error('Nenhum ativo válido foi selecionado.');
   return{type:'asset-import',items:action.items.map((item,index)=>{const id=String(item.id||''),symbol=String(item.symbol||'').trim().toUpperCase(),name=String(item.name||'').trim();if(!['Ale','Ana'].includes(item.owner))throw new Error('Selecione quem é o proprietário dos ativos.');if(!/^[a-zA-Z0-9-]{1,64}$/.test(id)||!/^[^\s]{1,7}$/.test(symbol)||!name||[...name].length>30)throw new Error(`Revise a sigla e o nome do ativo ${index+1}.`);if(!Number.isInteger(item.assetType)||![[1,1],[1,2],[2,4],[2,5]].some(pair=>pair[0]===item.assetType&&pair[1]===item.subType))throw new Error(`Classificação inválida no ativo ${index+1}.`);if(!Number.isInteger(item.quantity)||item.quantity<0||item.quantity>2147483647)throw new Error(`Quantidade inválida no ativo ${index+1}.`);for(const key of ['currentPrice','total']){const max=key==='currentPrice'?999999.99:99999999.99;if(typeof item[key]!=='number'||!Number.isFinite(item[key])||item[key]<0||item[key]>max||Math.abs(item[key]*100-Math.round(item[key]*100))>0.000001)throw new Error(`Valor inválido no ativo ${index+1}.`);}if(item.quantity===0&&item.total!==0)throw new Error(`Quantidade incompatível com o valor total no ativo ${index+1}.`);if(item.quantity&&item.total/item.quantity>999999.99)throw new Error(`Preço médio calculado acima do limite no ativo ${index+1}.`);return{...item,id,symbol,name};})};

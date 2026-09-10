@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyB3Section, parseB3PositionItems, parseB3PositionPage, validateAssetImport } from '../finance-asset-import-model.mjs';
+import { classifyB3Section, fillSimilarCurrentPrices, parseB3PositionItems, parseB3PositionPage, validateAssetImport } from '../finance-asset-import-model.mjs';
 
 const item = (str, x, y) => ({ str, transform: [1, 0, 0, 1, x, y] });
 
@@ -60,6 +60,18 @@ test('mantém o agrupamento quando os ativos continuam na página seguinte', () 
     item('Total', 540, 100)
   ], 2, first.classification);
   assert.deepEqual(second.assets, [{ page: 2, symbol: 'BCRI11', name: 'BANESTES RECEBIVEIS IMOBILIARI', assetType: 1, subType: 2, quantity: 192, currentPrice: 55.09, total: 10577.28 }]);
+});
+
+test('preenche o preço atual de um direito com o ativo de mesma raiz e mesmo nome', () => {
+  const assets=[
+    {symbol:'HGRU11',name:'PATRIA RENDA URBANA - FII',assetType:1,subType:2,currentPrice:115.10,total:16114,quantity:140},
+    {symbol:'HGRU12',name:'PATRIA RENDA URBANA - FII',assetType:1,subType:2,currentPrice:0,total:0,quantity:46},
+    {symbol:'OUTR12',name:'OUTRO ATIVO',assetType:1,subType:2,currentPrice:0,total:0,quantity:1}
+  ];
+  const completed=fillSimilarCurrentPrices(assets);
+  assert.equal(completed[1].currentPrice,115.10);
+  assert.equal(completed[1].total,0);
+  assert.equal(completed[2].currentPrice,0);
 });
 
 test('valida os ativos selecionados e mantém CDBs de nomes diferentes', () => {
