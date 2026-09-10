@@ -1,4 +1,4 @@
-import { parseRicoAveragePrices } from './finance-average-price-import-model.mjs?v=1';
+import { parseRicoAveragePrices, parseClearAveragePrices } from './finance-average-price-import-model.mjs?v=2';
 const MAX_BYTES = 15 * 1024 * 1024, MAX_PAGES = 30;
 
 export async function readRicoAveragePricesPdf(file) {
@@ -12,7 +12,8 @@ export async function readRicoAveragePricesPdf(file) {
   const prices = [];
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
     const page = await pdf.getPage(pageNumber);
-    prices.push(...parseRicoAveragePrices((await page.getTextContent()).items, pageNumber));
+    const items = (await page.getTextContent()).items;
+    prices.push(...parseRicoAveragePrices(items, pageNumber), ...parseClearAveragePrices(items, pageNumber));
   }
   return prices;
 }

@@ -25,3 +25,25 @@ export function parseRicoAveragePrices(items, page = 1) {
   }
   return output;
 }
+
+export function parseClearAveragePrices(items, page = 1) {
+  const rows = [];
+  for (const item of items || []) {
+    const y = Math.round((item.transform?.[5] || 0) * 2) / 2;
+    const x = item.transform?.[4] || 0;
+    let row = rows.find(entry => Math.abs(entry.y - y) <= 2);
+    if (!row) { row = { y, items: [] }; rows.push(row); }
+    row.items.push({ x, text: String(item.str || '').trim() });
+  }
+  const output = [];
+  for (const row of rows) {
+    row.items.sort((a, b) => a.x - b.x);
+    const text = normalize(row.items.map(item => item.text).join(' '));
+    const symbol = text.match(/^([A-Z]{4}\d{1,2})\b/)?.[1]?.toUpperCase();
+    if (!symbol) continue;
+    const prices = [...text.matchAll(/R\$\s*(\d+(?:\.\d{3})*,\d{2})/gi)].map(match => brMoney(match[1]));
+    // Clear: Saldo, Preço médio e Último preço, nesta ordem.
+    if (prices.length >= 3 && Number.isFinite(prices[1])) output.push({ page, symbol, averagePrice: Math.round(prices[1] * 100) / 100 });
+  }
+  return output;
+}
