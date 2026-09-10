@@ -25,3 +25,9 @@ test('extrai preços médios da tabela de carteira da Clear', () => {
     { page: 1, symbol: 'GRND3', averagePrice: 6.98 }
   ]);
 });
+
+test('extrai tabela da Clear mesmo quando as células da linha têm alturas diferentes', () => {
+  const values = ['PETR4', 'R$ 15.270,40', '25,3%', '79,3%', 'R$ 26,61', 'R$ 47,72', '320'];
+  const prices = parseClearAveragePrices(values.map((value, index) => item(value, 30 + index * 80, 700 - index * 4)), 1);
+  assert.deepEqual(prices, [{ page: 1, symbol: 'PETR4', averagePrice: 26.61 }]);
+});

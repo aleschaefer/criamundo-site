@@ -35,7 +35,11 @@ export function parseClearAveragePrices(items, page = 1) {
     if (!row) { row = { y, items: [] }; rows.push(row); }
     row.items.push({ x, text: String(item.str || '').trim() });
   }
-  const output = [];
+  const output = [], found = new Set();
+  const add = (symbol, averagePrice) => {
+    if (!symbol || found.has(symbol) || !Number.isFinite(averagePrice)) return;
+    found.add(symbol); output.push({ page, symbol, averagePrice: Math.round(averagePrice * 100) / 100 });
+  };
   for (const row of rows) {
     row.items.sort((a, b) => a.x - b.x);
     const text = normalize(row.items.map(item => item.text).join(' '));
@@ -43,7 +47,14 @@ export function parseClearAveragePrices(items, page = 1) {
     if (!symbol) continue;
     const prices = [...text.matchAll(/R\$\s*(\d+(?:\.\d{3})*,\d{2})/gi)].map(match => brMoney(match[1]));
     // Clear: Saldo, Preço médio e Último preço, nesta ordem.
-    if (prices.length >= 3 && Number.isFinite(prices[1])) output.push({ page, symbol, averagePrice: Math.round(prices[1] * 100) / 100 });
+    if (prices.length >= 3) add(symbol, prices[1]);
   }
+  // Em alguns PDFs da Clear, o PDF.js atribui alturas diferentes às células da
+  // mesma linha. Nesse caso, reconhece a sequência: sigla, saldo, dois
+  // percentuais, preço médio, último preço e quantidade.
+  const stream = normalize((items || []).map(item => item.str).join(' '));
+  const money = '\\d+(?:\\.\\d{3})*,\\d{2}', percent = '[+-]?\\d+(?:,\\d+)?%';
+  const pattern = new RegExp(`\\b([A-Z]{4}\\d{1,2})\\s+R\\$\\s*${money}\\s+${percent}\\s+${percent}\\s+R\\$\\s*(${money})\\s+R\\$\\s*${money}\\s+[\\d.]+\\b`, 'gi');
+  for (const match of stream.matchAll(pattern)) add(match[1].toUpperCase(), brMoney(match[2]));
   return output;
 }

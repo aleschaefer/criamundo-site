@@ -3,7 +3,7 @@ import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
 import { readB3AssetsPdf } from './finance-asset-import.js?v=5';
-import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=2';
+import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=3';
 import { financeOverviewTotals } from './finance-overview.mjs?v=1';
 import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
 import { preferredSimilarAssets, valuesForSimilarAssets } from './finance-similar-assets.mjs?v=1';
