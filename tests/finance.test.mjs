@@ -100,6 +100,14 @@ test('atualiza em lote os preços médios e o custo acumulado sem alterar a cota
   const response = await handleFinance(request(batch), env); assert.equal(response.status, 200);
   const updated = (await response.json()).assets[0]; assert.equal(updated.averagePrice, 91.82); assert.equal(updated.total, 25250.5); assert.equal(updated.currentPrice, 90);
 });
+test('atualiza em lote os preços atuais sem alterar o preço médio nem o custo acumulado', async () => {
+  const env = envFor(); const fii = asset({ id: 'fii-current-price', name: 'FUNDO', symbol: 'MXRF11', assetType: 1, subType: 2, quantity: 100, averagePrice: 8.5, currentPrice: 8.5 });
+  await handleFinance(request(fii), env);
+  const batch = { type: 'asset-current-price-batch', items: [{ id: fii.id, revision: 0, currentPrice: 9.15 }] };
+  const response = await handleFinance(request(batch), env); assert.equal(response.status, 200);
+  const updated = (await response.json()).assets[0];
+  assert.equal(updated.currentPrice, 9.15); assert.equal(updated.averagePrice, 8.5); assert.equal(updated.total, 850);
+});
 test('exclui em lote somente ativos sem transações vinculadas', async () => {
   const env = envFor(); const first = asset({ id: 'delete-one' }); const second = asset({ id: 'delete-two', name: 'OUTRO ATIVO', symbol: 'OUTRO' });
   await handleFinance(request(first), env); await handleFinance(request(second), env);

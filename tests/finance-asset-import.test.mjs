@@ -62,7 +62,7 @@ test('mantém o agrupamento quando os ativos continuam na página seguinte', () 
   assert.deepEqual(second.assets, [{ page: 2, symbol: 'BCRI11', name: 'BANESTES RECEBIVEIS IMOBILIARI', assetType: 1, subType: 2, quantity: 192, currentPrice: 55.09, total: 10577.28 }]);
 });
 
-test('preenche o preço atual de um direito com o ativo de mesma raiz e mesmo nome', () => {
+test('preenche preço atual, preço médio e valor de um direito com o ativo semelhante', () => {
   const assets=[
     {symbol:'HGRU11',name:'PATRIA RENDA URBANA - FII',assetType:1,subType:2,currentPrice:115.10,total:16114,quantity:140},
     {symbol:'HGRU12',name:'PATRIA RENDA URBANA - FII',assetType:1,subType:2,currentPrice:0,total:0,quantity:46},
@@ -70,7 +70,8 @@ test('preenche o preço atual de um direito com o ativo de mesma raiz e mesmo no
   ];
   const completed=fillSimilarCurrentPrices(assets);
   assert.equal(completed[1].currentPrice,115.10);
-  assert.equal(completed[1].total,0);
+  assert.equal(completed[1].total,5294.60);
+  assert.equal(Math.round(completed[1].total/completed[1].quantity*100)/100,115.10);
   assert.equal(completed[2].currentPrice,0);
 });
 

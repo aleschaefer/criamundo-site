@@ -28,24 +28,44 @@ export function parseStatusInvestIncome(html, category = 'fii') {
   throw new Error('O Status Invest não informou um rendimento para este ativo.');
 }
 
-export async function handleFinanceIncome(request, env, fetcher = fetch) {
+export function parseStatusInvestCurrentPrice(html) {
+  const text = textOnly(html);
+  const value = moneyAfter(text, 'Valor atual', ['Min. 52 semanas', 'Mín. 52 semanas', 'Máx. 52 semanas', 'Dividend Yield', 'Valorização']);
+  if (value === null || value <= 0) throw new Error('O Status Invest não informou o preço atual deste ativo.');
+  return { value, source: 'Valor atual' };
+}
+
+const statusInvestUrl = (symbol, category) => {
+  const paths = { fii: 'fundos-imobiliarios', stock: 'acoes' };
+  const path = category === 'fii' && symbol === 'dcra11' ? 'fiagros' : paths[category];
+  return path ? `https://statusinvest.com.br/${path}/${encodeURIComponent(symbol)}` : '';
+};
+
+async function readStatusInvest(request, env, fetcher, parser, unavailableMessage) {
   if (request.method !== 'GET') return reply({ error: 'Método não permitido.' }, 405);
   if (!await requireAdminSession(request, env)) return reply({ error: 'Sessão inválida. Entre novamente.' }, 401);
   const params = new URL(request.url).searchParams;
   const symbol = params.get('symbol')?.trim().toLowerCase() || '';
   const category = params.get('category') || '';
-  const paths = { fii: 'fundos-imobiliarios', stock: 'acoes' };
   if (!/^[a-z0-9]{4,7}$/.test(symbol)) return reply({ error: 'Sigla do ativo inválida.' }, 400);
-  if (!paths[category]) return reply({ error: 'Categoria do ativo inválida.' }, 400);
+  const url = statusInvestUrl(symbol, category);
+  if (!url) return reply({ error: 'Categoria do ativo inválida.' }, 400);
   try {
-    const statusInvestPath = category === 'fii' && symbol === 'dcra11' ? 'fiagros' : paths[category];
-    const response = await fetcher(`https://statusinvest.com.br/${statusInvestPath}/${encodeURIComponent(symbol)}`, {
+    const response = await fetcher(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CriamundoFinance/1.0)', Accept: 'text/html' },
       signal: AbortSignal.timeout(10000)
     });
     if (!response.ok) throw new Error(`Status Invest respondeu ${response.status}.`);
-    return reply({ symbol: symbol.toUpperCase(), category, ...parseStatusInvestIncome(await response.text(), category) });
+    return reply({ symbol: symbol.toUpperCase(), category, ...parser(await response.text(), category) });
   } catch (error) {
-    return reply({ error: error.message || 'Não foi possível consultar o rendimento.' }, 502);
+    return reply({ error: error.message || unavailableMessage }, 502);
   }
+}
+
+export async function handleFinanceIncome(request, env, fetcher = fetch) {
+  return readStatusInvest(request, env, fetcher, parseStatusInvestIncome, 'Não foi possível consultar o rendimento.');
+}
+
+export async function handleFinanceCurrentPrice(request, env, fetcher = fetch) {
+  return readStatusInvest(request, env, fetcher, parseStatusInvestCurrentPrice, 'Não foi possível consultar o preço atual.');
 }

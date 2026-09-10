@@ -1,6 +1,6 @@
 import { handleFinance } from './finance-api.mjs';
 import { handleCreditCard } from './credit-card-api.mjs';
-import { handleFinanceIncome } from './finance-income-api.mjs';
+import { handleFinanceIncome, handleFinanceCurrentPrice } from './finance-income-api.mjs';
 import { handleAdminAuthentication, requireAdminSession } from './admin-auth.mjs';
 
 function jsonResponse(payload, status = 200) {
@@ -164,6 +164,10 @@ export default {
 
     if (url.pathname === "/api/admin/finance/income") {
       return handleFinanceIncome(request, env);
+    }
+
+    if (url.pathname === "/api/admin/finance/current-price") {
+      return handleFinanceCurrentPrice(request, env);
     }
 
     if (url.pathname === "/api/admin/credit-card") {

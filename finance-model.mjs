@@ -28,6 +28,18 @@ export function validateAssetAveragePriceBatch(action) {
     return { id: item.id, revision: item.revision, averagePrice: cents / 100 };
   }) };
 }
+export function validateAssetCurrentPriceBatch(action) {
+  if (action?.type !== 'asset-current-price-batch' || !Array.isArray(action.items) || !action.items.length || action.items.length > 100) throw new Error('Nenhum preço atual válido foi informado.');
+  const ids = new Set();
+  return { type: action.type, items: action.items.map((item, index) => {
+    if (typeof item.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(item.id) || ids.has(item.id)) throw new Error(`Ativo inválido na posição ${index + 1}.`);
+    ids.add(item.id);
+    if (!Number.isSafeInteger(item.revision) || item.revision < 0) throw new Error(`Versão inválida no ativo ${index + 1}.`);
+    const cents = moneyCents(item.currentPrice, 999999.99, `Preço atual do ativo ${index + 1}`);
+    if (!cents) throw new Error(`Preço atual do ativo ${index + 1}: informe um valor maior que zero.`);
+    return { id: item.id, revision: item.revision, currentPrice: cents / 100 };
+  }) };
+}
 export function validateAssetDeleteBatch(action) {
   if (action?.type !== 'asset-delete-batch' || !Array.isArray(action.items) || !action.items.length || action.items.length > 500) throw new Error('Selecione ao menos um ativo para excluir.');
   const ids = new Set();

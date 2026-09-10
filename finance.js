@@ -2,7 +2,7 @@ import { ASSET_TYPES as types, ASSET_SUBTYPES as subtypes, SUBTYPES_BY_TYPE, has
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
-import { readB3AssetsPdf } from './finance-asset-import.js?v=4';
+import { readB3AssetsPdf } from './finance-asset-import.js?v=5';
 import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1';
 import { financeOverviewTotals } from './finance-overview.mjs?v=1';
 import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
@@ -41,7 +41,7 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
     assetForm.elements.subType.disabled = busy || !data || assetForm.elements.assetType.value === '3';
     transactionControls();
     $('#finance-refresh').disabled = busy;
-    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-average-price-import, #finance-filter-clear, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
+    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-current-price-batch, .finance-average-price-import, #finance-filter-clear, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
   }
   function view(name) {
     assetForm.hidden = name !== 'asset';
@@ -135,6 +135,39 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
           } catch (error) { message(error.message || 'Não foi possível importar os preços médios.', true); }
           finally { fileInput.value = ''; busy = false; controls(); importPrices.textContent = 'Importar preços médios'; }
         });
+        const fetchCurrentPrices = document.createElement('button'); fetchCurrentPrices.type = 'button'; fetchCurrentPrices.className = 'button button-secondary finance-current-price-batch'; fetchCurrentPrices.textContent = 'Importar preços atuais';
+        fetchCurrentPrices.addEventListener('click', async event => {
+          event.preventDefault(); event.stopPropagation();
+          if (busy) return;
+          busy = true; controls(); const updates = [], failures = []; const category = group.subType === 1 ? 'stock' : 'fii';
+          try {
+            let next = 0, completed = 0; fetchCurrentPrices.textContent = `Consultando preços 0/${group.assets.length}…`;
+            const worker = async () => {
+              while (next < group.assets.length) {
+                const asset = group.assets[next++];
+                try {
+                  const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/current-price?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
+                  if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
+                  updates.push({ id: asset.id, revision: asset.revision, currentPrice: Number(result.value) });
+                } catch { failures.push(asset.symbol || asset.name); }
+                completed++; fetchCurrentPrices.textContent = `Consultando preços ${completed}/${group.assets.length}…`;
+              }
+            };
+            await Promise.all(Array.from({ length: Math.min(4, group.assets.length) }, worker));
+            if (updates.length) {
+              fetchCurrentPrices.textContent = `Salvando ${updates.length}…`;
+              const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-current-price-batch', items: updates }) });
+              if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os preços atuais.');
+              data = result; render();
+            }
+            message(`${updates.length} preço(s) atual(is) atualizado(s)${failures.length ? `. Não encontrados: ${failures.join(', ')}.` : '.'}`, Boolean(failures.length));
+          } catch (error) { message(error.message || 'Não foi possível atualizar os preços atuais.', true); }
+          finally {
+            busy = false;
+            if (fetchCurrentPrices.isConnected) fetchCurrentPrices.textContent = 'Importar preços atuais';
+            controls();
+          }
+        });
         const fetchAll = document.createElement('button'); fetchAll.type = 'button'; fetchAll.className = 'button button-secondary finance-income-batch'; fetchAll.textContent = 'Obter todos rendimentos';
         fetchAll.addEventListener('click', async event => {
           event.preventDefault(); event.stopPropagation();
@@ -168,7 +201,7 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
             controls();
           }
         });
-        groupActions.append(importPrices, fetchAll, fileInput); summary.append(groupActions);
+        groupActions.append(importPrices, fetchCurrentPrices, fetchAll, fileInput); summary.append(groupActions);
       }
       const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap';
       const table = document.createElement('table');

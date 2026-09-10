@@ -39,7 +39,7 @@ export function fillSimilarCurrentPrices(assets){
     if(Number(asset.currentPrice)>0)return asset;
     const key=`${asset.assetType}\u0000${asset.subType}\u0000${symbolBase(asset.symbol)}\u0000${normalize(asset.name).toUpperCase()}`;
     const source=sourceByIdentity.get(key);
-    return source?{...asset,currentPrice:source.currentPrice}:asset;
+    return source?{...asset,currentPrice:source.currentPrice,total:Math.round(Number(asset.quantity)*Number(source.currentPrice)*100)/100}:asset;
   });
 }
 

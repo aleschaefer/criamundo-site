@@ -1,6 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseStatusInvestIncome, handleFinanceIncome } from '../finance-income-api.mjs';
+import { parseStatusInvestIncome, parseStatusInvestCurrentPrice, handleFinanceIncome, handleFinanceCurrentPrice } from '../finance-income-api.mjs';
+
+test('extrai o preço atual das páginas de FII e ações', () => {
+  assert.deepEqual(parseStatusInvestCurrentPrice('<section>VALOR ATUAL R$ 9,15 Min. 52 semanas R$ 8,59</section>'), { value: 9.15, source: 'Valor atual' });
+  assert.deepEqual(parseStatusInvestCurrentPrice('<section>Valor atual R$ 49,17 Dividend Yield 7,46%</section>'), { value: 49.17, source: 'Valor atual' });
+  assert.throws(() => parseStatusInvestCurrentPrice('<section>Valor atual -</section>'));
+});
+
+test('endpoint de preço atual usa a página correspondente ao tipo do ativo', async () => {
+  const env = { ADMIN_PASSWORD: 'test-password', ALLOW_LEGACY_ADMIN_AUTH: 'true' };
+  const request = new Request('https://example.test/api/admin/finance/current-price?symbol=PETR4&category=stock', { headers: { 'x-admin-password': 'test-password' } });
+  const fetcher = async url => { assert.equal(url, 'https://statusinvest.com.br/acoes/petr4'); return new Response('<div>VALOR ATUAL R$ 49,17</div>'); };
+  const response = await handleFinanceCurrentPrice(request, env, fetcher);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { symbol: 'PETR4', category: 'stock', value: 49.17, source: 'Valor atual' });
+});
 
 test('prioriza próximo rendimento e usa último quando o próximo está vazio', () => {
   assert.deepEqual(parseStatusInvestIncome('<section>Último rendimento R$ 0,8000</section><section>Próximo Rendimento R$ 0,7500</section>'), { value: 0.75, source: 'Próximo Rendimento' });
