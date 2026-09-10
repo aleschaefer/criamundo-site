@@ -6,6 +6,7 @@ import { readB3AssetsPdf } from './finance-asset-import.js?v=5';
 import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=1';
 import { financeOverviewTotals } from './finance-overview.mjs?v=1';
 import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
+import { preferredSimilarAssets, valuesForSimilarAssets } from './finance-similar-assets.mjs?v=1';
 
 (() => {
   const $ = (selector) => document.querySelector(selector);
@@ -123,7 +124,8 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
           try {
             const recognized = await readRicoAveragePricesPdf(file);
             const bySymbol = new Map(recognized.map(item => [item.symbol, item.averagePrice]));
-            const updates = group.assets.filter(asset => bySymbol.has(asset.symbol)).map(asset => ({ id: asset.id, revision: asset.revision, averagePrice: bySymbol.get(asset.symbol) }));
+            const byAsset = valuesForSimilarAssets(group.assets, bySymbol);
+            const updates = group.assets.filter(asset => byAsset.has(asset.id)).map(asset => ({ id: asset.id, revision: asset.revision, averagePrice: byAsset.get(asset.id) }));
             if (!updates.length) throw new Error(`Nenhum preço médio do PDF corresponde aos ativos de ${group.owner} · ${subtypes[group.subType]}.`);
             const ignored = group.assets.length - updates.length;
             const question = `${updates.length} preço(s) médio(s) encontrado(s) para este agrupamento${ignored ? `; ${ignored} ativo(s) sem preço médio correspondente serão mantidos.` : '.'}\n\nDeseja importar?`;
@@ -139,21 +141,23 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
         fetchCurrentPrices.addEventListener('click', async event => {
           event.preventDefault(); event.stopPropagation();
           if (busy) return;
-          busy = true; controls(); const updates = [], failures = []; const category = group.subType === 1 ? 'stock' : 'fii';
+          busy = true; controls(); const pricesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const sources = preferredSimilarAssets(group.assets);
           try {
-            let next = 0, completed = 0; fetchCurrentPrices.textContent = `Consultando preços 0/${group.assets.length}…`;
+            let next = 0, completed = 0; fetchCurrentPrices.textContent = `Consultando preços 0/${sources.length}…`;
             const worker = async () => {
-              while (next < group.assets.length) {
-                const asset = group.assets[next++];
+              while (next < sources.length) {
+                const asset = sources[next++];
                 try {
                   const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/current-price?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
                   if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
-                  updates.push({ id: asset.id, revision: asset.revision, currentPrice: Number(result.value) });
+                  pricesBySymbol.set(asset.symbol, Number(result.value));
                 } catch { failures.push(asset.symbol || asset.name); }
-                completed++; fetchCurrentPrices.textContent = `Consultando preços ${completed}/${group.assets.length}…`;
+                completed++; fetchCurrentPrices.textContent = `Consultando preços ${completed}/${sources.length}…`;
               }
             };
-            await Promise.all(Array.from({ length: Math.min(4, group.assets.length) }, worker));
+            await Promise.all(Array.from({ length: Math.min(4, sources.length) }, worker));
+            const byAsset = valuesForSimilarAssets(group.assets, pricesBySymbol);
+            const updates = group.assets.filter(asset => byAsset.has(asset.id)).map(asset => ({ id: asset.id, revision: asset.revision, currentPrice: byAsset.get(asset.id) }));
             if (updates.length) {
               fetchCurrentPrices.textContent = `Salvando ${updates.length}…`;
               const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-current-price-batch', items: updates }) });
@@ -172,21 +176,23 @@ import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
         fetchAll.addEventListener('click', async event => {
           event.preventDefault(); event.stopPropagation();
           if (busy) return;
-          busy = true; controls(); const updates = [], failures = []; const category = group.subType === 1 ? 'stock' : 'fii';
+          busy = true; controls(); const incomesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const sources = preferredSimilarAssets(group.assets);
           try {
-            let next = 0, completed = 0; fetchAll.textContent = `Consultando 0/${group.assets.length}…`;
+            let next = 0, completed = 0; fetchAll.textContent = `Consultando 0/${sources.length}…`;
             const worker = async () => {
-              while (next < group.assets.length) {
-                const asset = group.assets[next++];
+              while (next < sources.length) {
+                const asset = sources[next++];
                 try {
                   const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/income?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
                   if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
-                  updates.push({ id: asset.id, revision: asset.revision, currentIncome: Number(result.value) });
+                  incomesBySymbol.set(asset.symbol, Number(result.value));
                 } catch { failures.push(asset.symbol || asset.name); }
-                completed++; fetchAll.textContent = `Consultando ${completed}/${group.assets.length}…`;
+                completed++; fetchAll.textContent = `Consultando ${completed}/${sources.length}…`;
               }
             };
-            await Promise.all(Array.from({ length: Math.min(4, group.assets.length) }, worker));
+            await Promise.all(Array.from({ length: Math.min(4, sources.length) }, worker));
+            const byAsset = valuesForSimilarAssets(group.assets, incomesBySymbol);
+            const updates = group.assets.filter(asset => byAsset.has(asset.id)).map(asset => ({ id: asset.id, revision: asset.revision, currentIncome: byAsset.get(asset.id) }));
             if (updates.length) {
               fetchAll.textContent = `Salvando ${updates.length}…`;
               const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-income-batch', items: updates }) });
