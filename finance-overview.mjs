@@ -1,12 +1,35 @@
 export function financeOverviewTotals(assets = []) {
-  let currentValueCents = 0, averageValueCents = 0, monthlyIncome = 0;
+  let currentValueCents = 0, averageValueCents = 0, stockMonthlyIncome = 0, fiiMonthlyIncome = 0;
+  const currentByCategoryCents = { stocks: 0, fiis: 0, fixed: 0 };
+  const averageByCategoryCents = { stocks: 0, fiis: 0, fixed: 0 };
+  const countByCategory = { stocks: 0, fiis: 0, fixed: 0 };
   for (const asset of assets) {
     const quantity = Number(asset.quantity), averagePrice = Number(asset.averagePrice), currentPrice = Number(asset.currentPrice), income = Number(asset.currentIncome);
-    if (Number.isFinite(quantity) && Number.isFinite(currentPrice)) currentValueCents += Math.round(quantity * currentPrice * 100);
-    if (Number.isFinite(quantity) && Number.isFinite(averagePrice)) averageValueCents += Math.round(quantity * averagePrice * 100);
+    const category = asset.assetType === 1 && asset.subType === 1 ? 'stocks' : asset.assetType === 1 && asset.subType === 2 ? 'fiis' : asset.assetType === 2 ? 'fixed' : '';
+    if (category) countByCategory[category]++;
+    if (Number.isFinite(quantity) && Number.isFinite(currentPrice)) {
+      const cents = Math.round(quantity * currentPrice * 100); currentValueCents += cents;
+      if (category) currentByCategoryCents[category] += cents;
+    }
+    if (Number.isFinite(quantity) && Number.isFinite(averagePrice)) {
+      const cents = Math.round(quantity * averagePrice * 100); averageValueCents += cents;
+      if (category) averageByCategoryCents[category] += cents;
+    }
     if (asset.assetType === 1 && [1, 2].includes(asset.subType) && Number.isFinite(quantity) && Number.isFinite(income)) {
-      monthlyIncome += quantity * income / (asset.subType === 1 ? 12 : 1);
+      if (asset.subType === 1) stockMonthlyIncome += quantity * income / 12;
+      else fiiMonthlyIncome += quantity * income;
     }
   }
-  return { currentValue: currentValueCents / 100, averageValue: averageValueCents / 100, monthlyIncome: Math.round(monthlyIncome * 100) / 100 };
+  stockMonthlyIncome = Math.round(stockMonthlyIncome * 100) / 100;
+  fiiMonthlyIncome = Math.round(fiiMonthlyIncome * 100) / 100;
+  return {
+    currentValue: currentValueCents / 100,
+    averageValue: averageValueCents / 100,
+    monthlyIncome: Math.round((stockMonthlyIncome + fiiMonthlyIncome) * 100) / 100,
+    stockMonthlyIncome,
+    fiiMonthlyIncome,
+    currentByCategory: Object.fromEntries(Object.entries(currentByCategoryCents).map(([key, cents]) => [key, cents / 100])),
+    averageByCategory: Object.fromEntries(Object.entries(averageByCategoryCents).map(([key, cents]) => [key, cents / 100])),
+    countByCategory
+  };
 }

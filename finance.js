@@ -412,9 +412,13 @@ import { preferredSimilarAssets, valuesForSimilarAssets } from './finance-simila
     const ownerTransactions = data.transactions.filter(item => !selectedOwner || item.owner === selectedOwner);
     const overviewTotals = financeOverviewTotals(ownerAssets);
     $('#finance-total').textContent = money(overviewTotals.currentValue);
+    $('#finance-total-breakdown').textContent = `(Ações: ${money(overviewTotals.currentByCategory.stocks)} - FIIs: ${money(overviewTotals.currentByCategory.fiis)} - Renda Fixa: ${money(overviewTotals.currentByCategory.fixed)})`;
     $('#finance-average-total').textContent = money(overviewTotals.averageValue);
+    $('#finance-average-breakdown').textContent = `(Ações: ${money(overviewTotals.averageByCategory.stocks)} - FIIs: ${money(overviewTotals.averageByCategory.fiis)} - Renda Fixa: ${money(overviewTotals.averageByCategory.fixed)})`;
     $('#finance-income-total').textContent = money(overviewTotals.monthlyIncome);
+    $('#finance-income-breakdown').textContent = `(Ações: ${money(overviewTotals.stockMonthlyIncome)} - FIIs: ${money(overviewTotals.fiiMonthlyIncome)})`;
     $('#finance-count').textContent = ownerAssets.length;
+    $('#finance-count-breakdown').textContent = `(Ações: ${overviewTotals.countByCategory.stocks} - FIIs: ${overviewTotals.countByCategory.fiis} - Renda Fixa: ${overviewTotals.countByCategory.fixed})`;
     const assets = selectedAssetType === null ? ownerAssets : ownerAssets.filter(asset => asset.assetType === selectedAssetType);
     const transactions = selectedAssetType === null ? ownerTransactions : ownerTransactions.filter(item => item.assetType === selectedAssetType);
     const ownerLabel = selectedOwner || 'Todos os proprietários';

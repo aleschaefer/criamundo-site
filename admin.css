@@ -291,6 +291,18 @@ textarea {
   padding: 20px;
 }
 
+.finance-income-values {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.finance-income-values small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .group-body {
   display: grid;
   gap: 16px;

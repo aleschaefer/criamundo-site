@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="admin.css?v=11" />
+    <link rel="stylesheet" href="admin.css?v=12" />
   </head>
   <body class="admin-page is-locked">
     <main class="auth-shell" id="auth-shell">
@@ -178,10 +178,10 @@
         <div id="finance-overview">
           <label class="finance-owner-filter">Proprietário<select id="finance-owner-filter"><option value="">Todos</option><option value="Ale">Ale</option><option value="Ana">Ana</option></select></label>
           <div class="grid grid-2 finance-summary">
-            <div class="group-shell"><p class="eyebrow">Valor total dos ativos</p><strong id="finance-total">—</strong><p class="draft-note">Soma da quantidade × valor atual de cada ativo.</p></div>
-            <div class="group-shell"><p class="eyebrow">Valor médio dos ativos</p><strong id="finance-average-total">—</strong><p class="draft-note">Soma da quantidade × preço médio de cada ativo.</p></div>
-            <div class="group-shell"><p class="eyebrow">Rendimentos mensais</p><strong id="finance-income-total">—</strong><p class="draft-note">FIIs: rendimento × quantidade. Ações: rendimento anual × quantidade ÷ 12.</p></div>
-            <div class="group-shell"><p class="eyebrow">Ativos cadastrados</p><strong id="finance-count">—</strong></div>
+            <div class="group-shell"><p class="eyebrow">Valor total dos ativos</p><div class="finance-income-values"><strong id="finance-total">—</strong><small id="finance-total-breakdown">(Ações: — - FIIs: — - Renda Fixa: —)</small></div><p class="draft-note">Soma da quantidade × valor atual de cada ativo.</p></div>
+            <div class="group-shell"><p class="eyebrow">Valor médio dos ativos</p><div class="finance-income-values"><strong id="finance-average-total">—</strong><small id="finance-average-breakdown">(Ações: — - FIIs: — - Renda Fixa: —)</small></div><p class="draft-note">Soma da quantidade × preço médio de cada ativo.</p></div>
+            <div class="group-shell"><p class="eyebrow">Rendimentos mensais</p><div class="finance-income-values"><strong id="finance-income-total">—</strong><small id="finance-income-breakdown">(Ações: — - FIIs: —)</small></div><p class="draft-note">FIIs: rendimento × quantidade. Ações: rendimento anual × quantidade ÷ 12.</p></div>
+            <div class="group-shell"><p class="eyebrow">Ativos cadastrados</p><div class="finance-income-values"><strong id="finance-count">—</strong><small id="finance-count-breakdown">(Ações: — - FIIs: — - Renda Fixa: —)</small></div></div>
           </div>
           <section class="finance-allocation group-shell" aria-labelledby="finance-allocation-title">
             <h3 id="finance-allocation-title">Distribuição por tipo de ativo</h3>
@@ -406,7 +406,7 @@
     <script src="content.js"></script>
     <script src="data-manager.js?v=2"></script>
     <script src="admin.js?v=2"></script>
-    <script type="module" src="finance.js?v=27"></script>
+    <script type="module" src="finance.js?v=29"></script>
   <script type="module" src="credit-card.js?v=22"></script>
   </body>
 </html>
