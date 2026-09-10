@@ -2,13 +2,18 @@ const normalizedSymbol = value => String(value || '').trim().toUpperCase();
 
 export const similarSymbolKey = value => normalizedSymbol(value).replace(/\d{1,2}$/, '');
 
-export function preferredSimilarAssets(assets) {
+export function preferredSimilarAssets(assets, candidates = assets) {
+  const requestedFamilies = new Set((assets || []).map(asset => similarSymbolKey(asset.symbol)).filter(Boolean));
   const byFamily = new Map();
-  for (const asset of assets || []) {
+  for (const asset of candidates || []) {
     const key = similarSymbolKey(asset.symbol);
-    if (!key) continue;
+    if (!key || !requestedFamilies.has(key)) continue;
     const current = byFamily.get(key);
     if (!current || normalizedSymbol(asset.symbol).endsWith('11')) byFamily.set(key, asset);
+  }
+  for (const asset of assets || []) {
+    const key = similarSymbolKey(asset.symbol);
+    if (key && !byFamily.has(key)) byFamily.set(key, asset);
   }
   return [...byFamily.values()];
 }

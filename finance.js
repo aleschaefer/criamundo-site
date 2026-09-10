@@ -141,7 +141,7 @@ import { preferredSimilarAssets, valuesForSimilarAssets } from './finance-simila
         fetchCurrentPrices.addEventListener('click', async event => {
           event.preventDefault(); event.stopPropagation();
           if (busy) return;
-          busy = true; controls(); const pricesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const sources = preferredSimilarAssets(group.assets);
+          busy = true; controls(); const pricesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const candidates = data.assets.filter(asset => asset.assetType === group.assetType && asset.subType === group.subType); const sources = preferredSimilarAssets(group.assets, candidates);
           try {
             let next = 0, completed = 0; fetchCurrentPrices.textContent = `Consultando preços 0/${sources.length}…`;
             const worker = async () => {
@@ -176,7 +176,7 @@ import { preferredSimilarAssets, valuesForSimilarAssets } from './finance-simila
         fetchAll.addEventListener('click', async event => {
           event.preventDefault(); event.stopPropagation();
           if (busy) return;
-          busy = true; controls(); const incomesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const sources = preferredSimilarAssets(group.assets);
+          busy = true; controls(); const incomesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const candidates = data.assets.filter(asset => asset.assetType === group.assetType && asset.subType === group.subType); const sources = preferredSimilarAssets(group.assets, candidates);
           try {
             let next = 0, completed = 0; fetchAll.textContent = `Consultando 0/${sources.length}…`;
             const worker = async () => {

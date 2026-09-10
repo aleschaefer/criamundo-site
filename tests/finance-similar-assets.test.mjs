@@ -15,3 +15,11 @@ test('replica preço ou rendimento do código 11 para todos os ativos semelhante
   assert.equal(values.get('right'), 79.13);
   assert.equal(values.get('other'), 9.15);
 });
+
+test('encontra o código 11 equivalente mesmo quando pertence a outro proprietário', () => {
+  const targets = [{ id: 'ana-right', owner: 'Ana', symbol: 'RECR12' }];
+  const allAssets = [...targets, { id: 'ale-main', owner: 'Ale', symbol: 'RECR11' }, { id: 'unrelated', owner: 'Ale', symbol: 'MXRF11' }];
+  assert.deepEqual(preferredSimilarAssets(targets, allAssets).map(asset => asset.id), ['ale-main']);
+  const values = valuesForSimilarAssets(targets, new Map([['RECR11', 0.85]]));
+  assert.equal(values.get('ana-right'), 0.85);
+});
