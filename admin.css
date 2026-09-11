@@ -426,6 +426,7 @@ textarea {
 .finance-table-wrap th { color: var(--muted); font-size: .85rem; white-space: nowrap; }
 .finance-table-wrap td:not(:first-child) { white-space: nowrap; }
 .finance-table-wrap td:first-child { overflow-wrap: anywhere; min-width: 120px; }
+.finance-table-wrap td.finance-value-undefined { color: var(--danger, #ef7b72); background: rgba(214, 78, 70, .14); font-weight: 700; }
 select { font: inherit; width: 100%; padding: 13px 14px; color: var(--text); background: var(--panel-soft); border: 1px solid var(--line); border-radius: var(--radius-sm); }
 button:disabled { opacity: .5; cursor: wait; transform: none; }
 input[readonly] { color: var(--gold); background: var(--gold-soft); }

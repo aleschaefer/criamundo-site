@@ -10,7 +10,18 @@ test('extrai o preço médio pelo código do ativo no PDF da Rico', () => {
     item('MXRF11 Último preço Variação Preço Médio Rentabilidade Quantidade Posição', 30, 650),
     item('R$ 9,19 0,00% Indefinido Indefinida 2.035 R$ 18.701,65', 150, 630)
   ], 1);
-  assert.deepEqual(prices, [{ page: 1, symbol: 'MCCI11', averagePrice: 91.82 }]);
+  assert.deepEqual(prices, [
+    { page: 1, symbol: 'MCCI11', averagePrice: 91.82 },
+    { page: 1, symbol: 'MXRF11', averagePrice: null, undefined: true }
+  ]);
+});
+
+test('preserva a sigla cujo preço médio está indefinido para destacá-la na tela', () => {
+  const prices = parseRicoAveragePrices([
+    item('RECR12', 30, 700), item('Último preço', 150, 700), item('Preço Médio', 300, 700),
+    item('R$ 79,13', 150, 680), item('Indefinido', 300, 680), item('40', 500, 680)
+  ], 2);
+  assert.deepEqual(prices, [{ page: 2, symbol: 'RECR12', averagePrice: null, undefined: true }]);
 });
 
 test('extrai preços médios da tabela de carteira da Clear', () => {

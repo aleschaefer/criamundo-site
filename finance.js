@@ -3,10 +3,10 @@ import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
 import { readB3AssetsPdf } from './finance-asset-import.js?v=5';
-import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=3';
+import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=4';
 import { financeOverviewTotals } from './finance-overview.mjs?v=1';
 import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
-import { preferredSimilarAssets, valuesForSimilarAssets } from './finance-similar-assets.mjs?v=1';
+import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from './finance-similar-assets.mjs?v=1';
 
 (() => {
   const $ = (selector) => document.querySelector(selector);
@@ -30,6 +30,7 @@ import { preferredSimilarAssets, valuesForSimilarAssets } from './finance-simila
   let busy = false;
   let generation = 0;
   let importedAssets = [];
+  const undefinedAveragePriceAssetIds = new Set();
   function message(text, error = false) {
     status.textContent = text;
     status.className = `save-status${error ? ' is-error' : ''}`;
@@ -123,12 +124,19 @@ import { preferredSimilarAssets, valuesForSimilarAssets } from './finance-simila
           busy = true; controls(); importPrices.textContent = 'Lendo PDF…';
           try {
             const recognized = await readRicoAveragePricesPdf(file);
-            const bySymbol = new Map(recognized.map(item => [item.symbol, item.averagePrice]));
+            const bySymbol = new Map(recognized.filter(item => Number.isFinite(item.averagePrice)).map(item => [item.symbol, item.averagePrice]));
             const byAsset = valuesForSimilarAssets(group.assets, bySymbol);
             const updates = group.assets.filter(asset => byAsset.has(asset.id)).map(asset => ({ id: asset.id, revision: asset.revision, averagePrice: byAsset.get(asset.id) }));
+            const undefinedFamilies = new Set(recognized.filter(item => item.undefined).map(item => similarSymbolKey(item.symbol)));
+            group.assets.forEach(asset => {
+              undefinedAveragePriceAssetIds.delete(asset.id);
+              if (undefinedFamilies.has(similarSymbolKey(asset.symbol))) undefinedAveragePriceAssetIds.add(asset.id);
+            });
+            render();
             if (!updates.length) throw new Error(`Nenhum preço médio do PDF corresponde aos ativos de ${group.owner} · ${subtypes[group.subType]}.`);
+            const undefinedCount = group.assets.filter(asset => undefinedAveragePriceAssetIds.has(asset.id)).length;
             const ignored = group.assets.length - updates.length;
-            const question = `${updates.length} preço(s) médio(s) encontrado(s) para este agrupamento${ignored ? `; ${ignored} ativo(s) sem preço médio correspondente serão mantidos.` : '.'}\n\nDeseja importar?`;
+            const question = `${updates.length} preço(s) médio(s) encontrado(s) para este agrupamento${ignored ? `; ${ignored} ativo(s) sem preço médio correspondente serão mantidos.` : '.'}${undefinedCount ? `\n${undefinedCount} ativo(s) com preço médio indefinido foram destacados em vermelho.` : ''}\n\nDeseja importar?`;
             if (!confirm(question)) { message('Importação de preços médios cancelada.'); return; }
             importPrices.textContent = `Salvando ${updates.length}…`;
             const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-average-price-batch', items: updates }) });
@@ -230,6 +238,10 @@ import { preferredSimilarAssets, valuesForSimilarAssets } from './finance-simila
             ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.currentPrice), money(currentAssetTotal(asset))]
             : [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)];
         row(body, values, 'asset', asset);
+        if (undefinedAveragePriceAssetIds.has(asset.id)) {
+          const averageCell = body.lastElementChild?.cells[2];
+          if (averageCell) { averageCell.classList.add('finance-value-undefined'); averageCell.title = 'Preço médio indefinido no PDF importado'; }
+        }
       }
       table.append(caption, head, body); wrap.append(table); details.append(summary, wrap); container.append(details);
     }
@@ -649,6 +661,7 @@ import { preferredSimilarAssets, valuesForSimilarAssets } from './finance-simila
   });
   $('#logout-admin').addEventListener('click', () => {
     generation++; busy = false; data = null; selectedAssetType = null; selectedOwner = '';
+    undefinedAveragePriceAssetIds.clear();
     $('#finance-owner-filter').value = '';
     $('#finance-filter-status').textContent = 'Exibindo todos os tipos de ativos.';
     $('#finance-filter-clear').hidden = true;

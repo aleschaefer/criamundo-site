@@ -1,4 +1,4 @@
-import { parseRicoAveragePrices, parseClearAveragePrices } from './finance-average-price-import-model.mjs?v=3';
+import { parseRicoAveragePrices, parseClearAveragePrices } from './finance-average-price-import-model.mjs?v=4';
 const MAX_BYTES = 15 * 1024 * 1024, MAX_PAGES = 30;
 
 export async function readRicoAveragePricesPdf(file) {

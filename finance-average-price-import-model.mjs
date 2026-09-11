@@ -17,7 +17,7 @@ export function parseRicoAveragePrices(items, page = 1) {
     const header = text.match(/^([A-Z0-9]{4,7})\s+Ultimo preco\b/i);
     if (header) { symbol = header[1].toUpperCase(); continue; }
     if (!symbol) continue;
-    if (/\bIndefinido\b/i.test(text)) { symbol = ''; continue; }
+    if (/\bIndefinido\b/i.test(text)) { output.push({ page, symbol, averagePrice: null, undefined: true }); symbol = ''; continue; }
     const prices = [...text.matchAll(/R\$\s*(\d+(?:\.\d{3})*,\d{2})/gi)].map(match => brMoney(match[1]));
     if (prices.length >= 2 && Number.isFinite(prices[1])) {
       output.push({ page, symbol, averagePrice: Math.round(prices[1] * 100) / 100 }); symbol = '';
