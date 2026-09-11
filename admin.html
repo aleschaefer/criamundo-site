@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="admin.css?v=12" />
+    <link rel="stylesheet" href="admin.css?v=13" />
   </head>
   <body class="admin-page is-locked">
     <main class="auth-shell" id="auth-shell">
@@ -176,7 +176,7 @@
           <div id="finance-assets-groups" class="finance-asset-groups"></div>
         </div>
         <div id="finance-overview">
-          <label class="finance-owner-filter">Proprietário<select id="finance-owner-filter"><option value="">Todos</option><option value="Ale">Ale</option><option value="Ana">Ana</option></select></label>
+          <div class="finance-owner-actions"><label class="finance-owner-filter">Proprietário<select id="finance-owner-filter"><option value="">Todos</option><option value="Ale">Ale</option><option value="Ana">Ana</option></select></label><button id="finance-print-pdf" type="button" class="button button-secondary">Imprimir em PDF</button></div>
           <div class="grid grid-2 finance-summary">
             <div class="group-shell"><p class="eyebrow">Valor total dos ativos</p><div class="finance-income-values"><strong id="finance-total">—</strong><small id="finance-total-breakdown">(Ações: — - FIIs: — - Renda Fixa: —)</small></div><p class="draft-note">Soma da quantidade × valor atual de cada ativo.</p></div>
             <div class="group-shell"><p class="eyebrow">Valor médio dos ativos</p><div class="finance-income-values"><strong id="finance-average-total">—</strong><small id="finance-average-breakdown">(Ações: — - FIIs: — - Renda Fixa: —)</small></div><p class="draft-note">Soma da quantidade × preço médio de cada ativo.</p></div>
@@ -198,8 +198,8 @@
           </div>
           <h3>Ativos</h3><p id="finance-empty" class="intro">Carregue os dados para consultar seus ativos.</p>
           <div id="finance-asset-groups" class="finance-asset-groups"></div>
-          <h3>Histórico de transações</h3><p id="finance-history-empty" class="intro">Nenhuma transação registrada.</p>
-          <div class="finance-table-wrap"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Proprietário</th><th>Data da transação</th><th>Registro</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
+          <h3 class="finance-history-section">Histórico de transações</h3><p id="finance-history-empty" class="intro finance-history-section">Nenhuma transação registrada.</p>
+          <div class="finance-table-wrap finance-history-section"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Proprietário</th><th>Data da transação</th><th>Registro</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
         </div>
       </section>
 
@@ -406,7 +406,7 @@
     <script src="content.js"></script>
     <script src="data-manager.js?v=2"></script>
     <script src="admin.js?v=2"></script>
-    <script type="module" src="finance.js?v=32"></script>
+    <script type="module" src="finance.js?v=33"></script>
   <script type="module" src="credit-card.js?v=22"></script>
   </body>
 </html>

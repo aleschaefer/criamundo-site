@@ -43,7 +43,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     assetForm.elements.subType.disabled = busy || !data || assetForm.elements.assetType.value === '3';
     transactionControls();
     $('#finance-refresh').disabled = busy;
-    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-current-price-batch, .finance-average-price-import, #finance-filter-clear, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
+    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-current-price-batch, .finance-average-price-import, #finance-filter-clear, #finance-print-pdf, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
   }
   function view(name) {
     assetForm.hidden = name !== 'asset';
@@ -570,6 +570,24 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
   $('#finance-owner-filter').addEventListener('change', event => {
     if (busy || !data) return;
     selectedOwner = event.target.value; render();
+  });
+  $('#finance-print-pdf').addEventListener('click', () => {
+    if (busy || !data) return;
+    const previousType = selectedAssetType;
+    const openGroups = [...$('#finance-asset-groups').querySelectorAll('details')].map(details => details.open);
+    selectedAssetType = null;
+    render();
+    const printableGroups = [...$('#finance-asset-groups').querySelectorAll('details')];
+    printableGroups.forEach(details => { details.open = true; });
+    document.body.classList.add('finance-printing');
+    let restored = false;
+    const restore = () => {
+      if (restored) return;
+      restored = true; document.body.classList.remove('finance-printing'); selectedAssetType = previousType; render();
+      [...$('#finance-asset-groups').querySelectorAll('details')].forEach((details, index) => { details.open = openGroups[index] ?? true; });
+    };
+    window.addEventListener('afterprint', restore, { once: true });
+    requestAnimationFrame(() => requestAnimationFrame(() => { window.print(); setTimeout(restore, 1000); }));
   });
   $('#finance-assets-delete').addEventListener('click', async () => {
     if (busy || !data) return;
