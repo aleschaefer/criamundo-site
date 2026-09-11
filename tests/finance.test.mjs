@@ -19,6 +19,7 @@ const symbolMigration = readFileSync(new URL('../migrations/0017_finance_asset_s
 const identityMigration = readFileSync(new URL('../migrations/0018_finance_asset_identity.sql', import.meta.url), 'utf8');
 const ownerMigration = readFileSync(new URL('../migrations/0019_finance_owner.sql', import.meta.url), 'utf8');
 const ownerIdentityMigration = readFileSync(new URL('../migrations/0020_finance_owner_identity.sql', import.meta.url), 'utf8');
+const independentTotalsMigration = readFileSync(new URL('../migrations/0021_finance_independent_import_totals.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
@@ -34,6 +35,7 @@ function database() {
   sql.exec(identityMigration);
   sql.exec(ownerMigration);
   sql.exec(ownerIdentityMigration);
+  sql.exec(independentTotalsMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -126,20 +128,42 @@ test('importação B3 permite mesmo nome com siglas diferentes e atualiza a comb
   assert.equal(response.status, 200); data = await response.json();
   assert.equal(data.assets.length, 2);
   const updated = data.assets.find(asset => asset.symbol === 'HGRU11');
-  assert.equal(updated.quantity, 4); assert.equal(updated.averagePrice, 110); assert.equal(updated.currentPrice, 110); assert.equal(updated.total, 440);
+  assert.equal(updated.quantity, 4); assert.equal(updated.averagePrice, 100); assert.equal(updated.currentPrice, 100); assert.equal(updated.total, 400);
   response = await handleFinance(request({ type: 'asset-import', items: [{ ...imported('ale', 'HGRU11', 5, 600), owner: 'Ale' }] }), env);
   assert.equal(response.status, 200); data = await response.json();
   assert.equal(data.assets.length, 3);
   assert.equal(data.assets.find(asset => asset.owner === 'Ana' && asset.symbol === 'HGRU11').quantity, 4);
   assert.equal(data.assets.find(asset => asset.owner === 'Ale' && asset.symbol === 'HGRU11').quantity, 5);
 });
-test('importação B3 reconhece ativo legado sem sigla e completa seu cadastro', async () => {
+test('reimportação B3 atualiza somente a quantidade e recalcula o valor da renda variável', async () => {
+  const env = envFor();
+  const original = asset({ id: 'variable', owner: 'Ale', name: 'Nome cadastrado', symbol: 'PETR4', assetType: 1, subType: 1, quantity: 10, averagePrice: 20, currentPrice: 30, currentIncome: 4 });
+  await handleFinance(request(original), env);
+  const imported = { type: 'asset-import', items: [{ id: 'ignored', owner: 'Ale', name: 'Nome cadastrado', symbol: 'PETR4', assetType: 1, subType: 1, quantity: 25, currentPrice: 99, total: 1250 }] };
+  const response = await handleFinance(request(imported), env); assert.equal(response.status, 200);
+  const updated = (await response.json()).assets[0];
+  assert.equal(updated.quantity, 25); assert.equal(updated.total, 750);
+  assert.equal(updated.averagePrice, 20); assert.equal(updated.currentPrice, 30); assert.equal(updated.currentIncome, 4);
+  assert.equal(updated.name, 'Nome cadastrado'); assert.equal(updated.symbol, 'PETR4'); assert.equal(updated.assetType, 1); assert.equal(updated.subType, 1);
+});
+test('reimportação B3 atualiza somente saldos e preços de renda fixa', async () => {
+  const env = envFor();
+  const original = asset({ id: 'fixed', owner: 'Ana', name: 'CDB cadastrado', symbol: 'CDB', assetType: 2, subType: 4, quantity: 2, averagePrice: 100, currentPrice: 110, currentIncome: 7 });
+  await handleFinance(request(original), env);
+  const imported = { type: 'asset-import', items: [{ id: 'ignored', owner: 'Ana', name: 'CDB cadastrado', symbol: 'CDB', assetType: 2, subType: 4, quantity: 5, currentPrice: 220, total: 1000 }] };
+  const response = await handleFinance(request(imported), env); assert.equal(response.status, 200);
+  const updated = (await response.json()).assets[0];
+  assert.equal(updated.quantity, 5); assert.equal(updated.averagePrice, 200); assert.equal(updated.currentPrice, 220); assert.equal(updated.total, 1000);
+  assert.equal(updated.currentIncome, 0); assert.equal(updated.name, 'CDB cadastrado'); assert.equal(updated.owner, 'Ana');
+  assert.equal(updated.symbol, 'CDB'); assert.equal(updated.assetType, 2); assert.equal(updated.subType, 4);
+});
+test('importação B3 reconhece ativo legado sem sigla e preserva seus dados cadastrais', async () => {
   const env = envFor();
   env.CONTENT_DB.sql.exec("INSERT INTO finance_assets(id,name,type,subtype,quantity,average_price,value,current_price) VALUES('legacy','BCO BRASIL S.A.',1,1,1,10,10,10)");
   const response = await handleFinance(request({ type: 'asset-import', items: [{ id: 'new', owner: 'Ale', symbol: 'BBAS3', name: 'BCO BRASIL S.A.', assetType: 1, subType: 1, quantity: 505, currentPrice: 22.52, total: 11372.6 }] }), env);
   assert.equal(response.status, 200);
   const data = await response.json(); assert.equal(data.assets.length, 1);
-  assert.equal(data.assets[0].id, 'legacy'); assert.equal(data.assets[0].symbol, 'BBAS3'); assert.equal(data.assets[0].quantity, 505);
+  assert.equal(data.assets[0].id, 'legacy'); assert.equal(data.assets[0].symbol, null); assert.equal(data.assets[0].quantity, 505); assert.equal(data.assets[0].averagePrice, 10); assert.equal(data.assets[0].currentPrice, 10); assert.equal(data.assets[0].total, 5050);
 });
 test('migração 0018 inclui a sigla na unicidade e preserva ativos e transações', () => {
   const sql = new DatabaseSync(':memory:'); sql.exec('PRAGMA foreign_keys=ON');

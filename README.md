@@ -423,3 +423,13 @@ npx wrangler d1 execute criamundo-content --remote --file=migrations/0020_financ
 A migração 0020 preserva os registros e transações existentes e passa a incluir o
 proprietário na identidade única do ativo. Se uma importação feita antes desta correção
 trocou ativos do Ale para Ana, reaplique o extrato do Ale uma vez após a migração.
+
+Para atualizar a quantidade e recalcular o valor sem sobrescrever o preço médio cadastrado em Renda Variável,
+aplique uma vez após a 0020:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0021_finance_independent_import_totals.sql
+```
+
+A migração 0021 preserva ativos e transações e permite recalcular o valor pela
+quantidade e pelo valor atual, independentemente do preço médio.

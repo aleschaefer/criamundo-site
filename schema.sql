@@ -39,8 +39,6 @@ CREATE TABLE IF NOT EXISTS finance_assets (
   created_at TEXT,
   updated_at TEXT,
   current_income DECIMAL(7,5) NOT NULL DEFAULT 0 CHECK (current_income BETWEEN 0 AND 99.99999 AND current_income = round(current_income, 5) AND ((type = 1 AND subtype IN (1, 2)) OR current_income = 0)),
-  CHECK ((quantity = 0 AND value = 0 AND average_price = 0) OR
-    (quantity > 0 AND average_price = round(value * 1.0 / quantity, 2))),
   UNIQUE (owner, symbol, name, type, subtype),
   UNIQUE (id, owner, name, type, subtype)
 );
