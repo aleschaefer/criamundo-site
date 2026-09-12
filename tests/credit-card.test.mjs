@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { addMonthsClamped, expandInstallments, validateCreditAction } from '../credit-card-model.mjs';
 import { handleCreditCard } from '../credit-card-api.mjs';
 import { inferPurchaseDate, parseOcrText, validateImportAction } from '../credit-card-import-model.mjs';
+import { textPortions } from '../credit-card-pdf-text.mjs';
 const importMigration=readFileSync(new URL('../migrations/0011_credit_card_import.sql',import.meta.url),'utf8');
 const transactionEditMigration=readFileSync(new URL('../migrations/0012_credit_card_transaction_edit.sql',import.meta.url),'utf8');
 const futurePeriodsMigration=readFileSync(new URL('../migrations/0013_credit_card_future_periods.sql',import.meta.url),'utf8');
@@ -16,6 +17,25 @@ function database(){const sql=new DatabaseSync(':memory:');sql.exec('PRAGMA fore
 const req=body=>new Request('https://x/api/admin/credit-card',{method:body?'POST':'GET',headers:{'x-admin-password':'pw','Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
 const env=()=>({ADMIN_PASSWORD:'pw',ALLOW_LEGACY_ADMIN_AUTH:'true',CONTENT_DB:database()});
 const id=()=>crypto.randomUUID();
+
+test('texto digital em duas colunas não mistura transações da mesma altura',()=>{
+  const item=(str,x,y)=>({str,transform:[1,0,0,1,x,y]});
+  const content={items:[
+    item('05/09',31,700),item('JIM.COM BARBEARIA VIP BR',51,700),item('R$',260,700),item('52,00',278,700),
+    item('18/12',311,700),item('CLINICA PARC 09/12 BR',340,700),item('R$',530,700),item('290,00',552,700),
+    item('20/08',31,680),item('UBER SAO PAULO BR',51,680),item('R$',260,680),item('21,27',278,680),
+    item('07/09',311,680),item('CASASBAHI PARC 05/10 BR',340,680),item('R$',530,680),item('225,91',552,680)
+  ]};
+  const portions=textPortions(content,595);
+  assert.equal(portions.length,2);
+  assert.match(portions[0],/JIM\.COM BARBEARIA VIP BR R\$ 52,00/);
+  assert.doesNotMatch(portions[0],/CLINICA/);
+  const rows=parseOcrText(portions.join('\n'),{page:1,periodEnd:'2026-09-21',confidence:100});
+  assert.deepEqual(rows.map(row=>[row.name,row.value,row.payment,row.currentInstallment]),[
+    ['JIM.COM BARBEARIA VIP BR',52,1,1],['UBER SAO PAULO BR',21.27,1,1],
+    ['CLINICA PARC 09/12 BR',290,2,9],['CASASBAHI PARC 05/10 BR',225.91,2,5]
+  ]);
+});
 test('grupo valida 30 caracteres e período valida datas',()=>{assert.equal(validateCreditAction({type:'group',id:id(),name:' SAÚDE '}).name,'SAÚDE');assert.throws(()=>validateCreditAction({type:'group',id:id(),name:'x'.repeat(31)}));assert.throws(()=>validateCreditAction({type:'period',id:id(),month:2,year:2026,startDate:'2026-02-30',endDate:'2026-03-01'}));assert.throws(()=>validateCreditAction({type:'period',id:id(),month:2,year:2026,startDate:'2026-03-02',endDate:'2026-03-01'}));});
 test('nome da transação aceita até 50 caracteres',()=>{const base={type:'transaction',id:id(),transactionDate:'2026-08-01',name:'x'.repeat(50),value:1,groupId:id(),payment:1};assert.equal(validateCreditAction(base).name.length,50);assert.throws(()=>validateCreditAction({...base,name:'x'.repeat(51)}));});
 test('parcela 5 de 10 gera a atual e as próximas cinco, ajustando fim do mês',()=>{const rows=expandInstallments({type:'transaction',id:id(),transactionDate:'2026-01-31',name:'Compra',value:12.34,groupId:id(),payment:2,currentInstallment:5,installmentCount:10});assert.deepEqual(rows.map(x=>x.installmentNumber),[5,6,7,8,9,10]);assert.deepEqual(rows.map(x=>x.transactionDate),['2026-01-31','2026-02-28','2026-03-31','2026-04-30','2026-05-31','2026-06-30']);assert.equal(new Set(rows.map(x=>x.seriesId)).size,1);});

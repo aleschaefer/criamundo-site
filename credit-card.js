@@ -1,5 +1,5 @@
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
-import { readCreditCardPdf, fileSha256 } from './credit-card-import.js?v=11';
+import { readCreditCardPdf, fileSha256 } from './credit-card-import.js?v=12';
 import { suggestTransactionGroup } from './credit-card-group-suggestion.mjs?v=1';
 const $ = selector => document.querySelector(selector);
 const section = $('#credit-card-section');

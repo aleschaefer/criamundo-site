@@ -1,4 +1,5 @@
 import { parseOcrText } from './credit-card-import-model.mjs?v=5';
+import { textPortions } from './credit-card-pdf-text.mjs?v=1';
 
 const PDF_MAX_BYTES = 15 * 1024 * 1024, PDF_MAX_PAGES = 30;
 let librariesPromise;
@@ -17,17 +18,6 @@ async function libraries() {
     loadScript('/vendor/tesseract/tesseract.min.js')
   ]).then(([pdfjs])=>{pdfjs.GlobalWorkerOptions.workerSrc='/vendor/pdfjs/pdf.worker.min.mjs';return pdfjs;});
   return librariesPromise;
-}
-
-function textLines(content) {
-  const rows=[];
-  for(const item of content.items || []){
-    const y=Math.round(item.transform?.[5] || 0), x=item.transform?.[4] || 0;
-    let row=rows.find(entry=>Math.abs(entry.y-y)<=2);
-    if(!row){row={y,items:[]};rows.push(row);}
-    row.items.push({x,text:item.str});
-  }
-  return rows.sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(item=>item.text).join(' ')).join('\n');
 }
 
 function croppedCanvas(source, start, width) {
@@ -50,7 +40,7 @@ export async function readCreditCardPdf(file, periodEnd, onProgress=()=>{}) {
       const page=await pdf.getPage(pageNumber), content=await page.getTextContent();
       let portions=[];
       if((content.items || []).map(item=>item.str).join('').trim().length>80){
-        portions=[{text:textLines(content),confidence:100}];
+        portions=textPortions(content,page.getViewport({scale:1}).width).map(text=>({text,confidence:100}));
       }else{
         if(!worker){
           onProgress(5,'Preparando o reconhecimento em português…');
