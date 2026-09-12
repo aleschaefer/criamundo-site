@@ -80,7 +80,12 @@ export function validateAction(action) {
     if (typeof currentIncome !== 'number' || !Number.isFinite(currentIncome) || currentIncome < 0 || currentIncome > 99.99999 || Math.abs(currentIncome * 100000 - Math.round(currentIncome * 100000)) > 0.000001) {
       throw new Error('Rendimento atual: informe um valor entre 0 e 99,99999, com até 5 casas decimais.');
     }
-    return { ...action, name, symbol, currentPrice, currentIncome: Math.round(currentIncome * 100000) / 100000, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
+    const entryDate = action.assetType === 2 && !blank(action.entryDate) ? action.entryDate : null;
+    const exitDate = action.assetType === 2 && !blank(action.exitDate) ? action.exitDate : null;
+    if (entryDate && !validTransactionDate(entryDate)) throw new Error('Informe uma data de entrada válida.');
+    if (exitDate && !validTransactionDate(exitDate)) throw new Error('Informe uma data de retirada válida.');
+    if (exitDate && (!entryDate || exitDate < entryDate)) throw new Error('A data de retirada deve ser igual ou posterior à data de entrada.');
+    return { ...action, name, symbol, currentPrice, currentIncome: Math.round(currentIncome * 100000) / 100000, entryDate, exitDate, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
   }
   if (!validTransactionDate(action.transactionDate)) throw new Error('Informe uma data da transação válida.');
   if (typeof action.assetId !== 'string' || !action.assetId) throw new Error('Selecione um ativo.');

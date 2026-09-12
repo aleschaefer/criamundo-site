@@ -20,6 +20,7 @@ const identityMigration = readFileSync(new URL('../migrations/0018_finance_asset
 const ownerMigration = readFileSync(new URL('../migrations/0019_finance_owner.sql', import.meta.url), 'utf8');
 const ownerIdentityMigration = readFileSync(new URL('../migrations/0020_finance_owner_identity.sql', import.meta.url), 'utf8');
 const independentTotalsMigration = readFileSync(new URL('../migrations/0021_finance_independent_import_totals.sql', import.meta.url), 'utf8');
+const fixedIncomeDatesMigration = readFileSync(new URL('../migrations/0022_finance_fixed_income_dates.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
@@ -36,6 +37,7 @@ function database() {
   sql.exec(ownerMigration);
   sql.exec(ownerIdentityMigration);
   sql.exec(independentTotalsMigration);
+  sql.exec(fixedIncomeDatesMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -60,6 +62,17 @@ test('valida nomes, enum, quantidades inteiras e precisão decimal', () => {
   assert.equal(validateAction(asset({symbol:'petr4'})).symbol,'PETR4');
   for (const values of [{ owner: 'Outro' }, { name: 'a'.repeat(31) }, { name: ' ' }, { symbol: '' }, { symbol: 'ABCDEFGH' }, { assetType: 0 }, { assetType: '1' }, { quantity: 1.5 }, { quantity: -1 }, { averagePrice: 1.001 }, { averagePrice: 1000000 }, { quantity: 1000, averagePrice: 999999.99 }]) assert.throws(() => validateAction(asset(values)));
   for (const values of [{ quantity: 0 }, { quantity: 1.1 }, { unitPrice: 1.001 }, { unitPrice: -1 }, { unitPrice: Infinity }, { unitPrice: 1000000 }, { unitPrice: undefined }, { quantity: 1000, unitPrice: 999999.99 }]) assert.throws(() => validateAction(transaction('id', values)));
+});
+test('valida e persiste datas opcionais somente em ativos de renda fixa', async () => {
+  const env = envFor();
+  const fixed = asset({ id: 'fixed-dates', owner: 'Ana', name: 'CDB COM PRAZO', symbol: 'CDB', assetType: 2, subType: 4, entryDate: '2026-09-12', exitDate: '2028-09-12' });
+  const response = await handleFinance(request(fixed), env); assert.equal(response.status, 200);
+  const saved = (await response.json()).assets[0];
+  assert.equal(saved.entryDate, '2026-09-12'); assert.equal(saved.exitDate, '2028-09-12');
+  assert.throws(() => validateAction({ ...fixed, exitDate: '2025-01-01' }));
+  assert.throws(() => validateAction({ ...fixed, entryDate: null, exitDate: '2028-09-12' }));
+  const variable = validateAction({ ...fixed, id: 'stock-dates', assetType: 1, subType: 1 });
+  assert.equal(variable.entryDate, null); assert.equal(variable.exitDate, null);
 });
 test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', async () => {
   const env = envFor(); const a = asset();

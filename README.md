@@ -433,3 +433,13 @@ npx wrangler d1 execute criamundo-content --remote --file=migrations/0021_financ
 
 A migração 0021 preserva ativos e transações e permite recalcular o valor pela
 quantidade e pelo valor atual, independentemente do preço médio.
+
+Para cadastrar as datas de entrada e retirada dos ativos de Renda Fixa, aplique uma
+vez após a 0021:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0022_finance_fixed_income_dates.sql
+```
+
+A migração 0022 preserva os registros existentes. As datas são opcionais, mas a data
+de retirada, quando informada, exige uma data de entrada igual ou anterior.

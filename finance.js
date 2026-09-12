@@ -233,7 +233,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       const headers = variable
         ? ['Sigla', 'Quantidade', 'Preço médio', 'Valor atual', 'Rendimento atual (R$)', 'DY atual (%)', 'DY médio (%)', 'Valor total', 'Ações']
         : fixed
-          ? ['Sigla', 'Nome', 'Quantidade', 'Valor de compra', 'Valor atual', 'Valor total', 'Ações']
+          ? ['Sigla', 'Nome', 'Quantidade', 'Valor de compra', 'Valor atual', 'Data de entrada', 'Data de retirada', 'Valor total', 'Ações']
           : ['Sigla', 'Nome', 'Quantidade', 'Preço médio', 'Valor total', 'Ações'];
       const head = document.createElement('thead'); const headerRow = document.createElement('tr');
       for (const label of headers) { const th = document.createElement('th'); th.textContent = label; headerRow.append(th); }
@@ -243,7 +243,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
         const values = variable
           ? [asset.symbol || '—', quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(currentAssetTotal(asset))]
           : fixed
-            ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.currentPrice), money(currentAssetTotal(asset))]
+            ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.currentPrice), formatTransactionDate(asset.entryDate), formatTransactionDate(asset.exitDate), money(currentAssetTotal(asset))]
             : [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)];
         row(body, values, 'asset', asset);
         if (undefinedAveragePriceAssetIds.has(asset.id)) {
@@ -267,7 +267,10 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       const summary = document.createElement('summary'); summary.textContent = `${group.owner} · ${types[group.assetType]} · ${subtypes[group.subType]} (${group.assets.length})`;
       const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap'; const table = document.createElement('table');
       const head = document.createElement('thead'); const header = document.createElement('tr');
-      for (const label of ['Selecionar', 'Sigla', 'Nome', 'Quantidade', 'Preço médio / Valor de compra', 'Valor total']) { const th = document.createElement('th'); th.textContent = label; header.append(th); }
+      const managementHeaders = group.assetType === 2
+        ? ['Selecionar', 'Sigla', 'Nome', 'Quantidade', 'Valor de compra', 'Data de entrada', 'Data de retirada', 'Valor total']
+        : ['Selecionar', 'Sigla', 'Nome', 'Quantidade', 'Preço médio', 'Valor total'];
+      for (const label of managementHeaders) { const th = document.createElement('th'); th.textContent = label; header.append(th); }
       head.append(header); const body = document.createElement('tbody');
       for (const asset of group.assets) {
         const tr = document.createElement('tr'); const selectCell = document.createElement('td'); const checkbox = document.createElement('input');
@@ -276,7 +279,10 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
         checkbox.setAttribute('aria-label', asset.transactionCount ? `${asset.symbol}: possui transações e não pode ser excluído` : `Selecionar ${asset.symbol} para exclusão`);
         if (asset.transactionCount) checkbox.title = 'Exclua primeiro as transações vinculadas.';
         selectCell.append(checkbox); tr.append(selectCell);
-        for (const value of [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)]) { const td = document.createElement('td'); td.textContent = value; tr.append(td); }
+        const managementValues = group.assetType === 2
+          ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), formatTransactionDate(asset.entryDate), formatTransactionDate(asset.exitDate), money(asset.total)]
+          : [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)];
+        for (const value of managementValues) { const td = document.createElement('td'); td.textContent = value; tr.append(td); }
         body.append(tr);
       }
       table.append(head, body); wrap.append(table); details.append(summary, wrap); container.append(details);
@@ -316,10 +322,12 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     const average = inlineField('Preço médio / Valor de compra', 'averagePrice', record.averagePrice, { type: 'number', attributes: { min: '0', step: '0.01', required: '' } });
     const current = inlineField('Valor atual', 'currentPrice', record.priceIsDefault ? '' : record.currentPrice, { type: 'number', attributes: { min: '0', step: '0.01' } });
     const income = inlineField('Rendimento atual', 'currentIncome', record.currentIncome, { type: 'number', attributes: { min: '0', step: '0.00001' } });
+    const entryDate = inlineField('Data de entrada', 'entryDate', record.entryDate, { type: 'date' });
+    const exitDate = inlineField('Data de retirada', 'exitDate', record.exitDate, { type: 'date' });
     const fetchIncome = document.createElement('button'); fetchIncome.type = 'button'; fetchIncome.className = 'button button-secondary finance-income-fetch'; fetchIncome.textContent = 'Obter rendimento';
     const incomeResult = document.createElement('small'); incomeResult.className = 'finance-income-result'; incomeResult.setAttribute('role', 'status'); incomeResult.setAttribute('aria-live', 'polite');
     income.append(fetchIncome, incomeResult);
-    const fields = document.createElement('div'); fields.className = 'finance-inline-fields'; fields.append(owner, type, subtype, name, symbol, amount, average, current, income);
+    const fields = document.createElement('div'); fields.className = 'finance-inline-fields'; fields.append(owner, type, subtype, name, symbol, amount, average, current, income, entryDate, exitDate);
     const actions = document.createElement('div'); actions.className = 'finance-row-actions';
     const save = document.createElement('button'); save.type = 'submit'; save.className = 'button button-primary'; save.textContent = 'Salvar';
     const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'button button-secondary'; cancel.textContent = 'Cancelar';
@@ -330,6 +338,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       form.elements.subType.value = choices.includes(previous) ? previous : choices[0];
       const classification = { assetType: selectedType, subType: Number(form.elements.subType.value) };
       current.hidden = !hasCurrentPrice(classification); income.hidden = !hasIncome(classification);
+      entryDate.hidden = selectedType !== 2; exitDate.hidden = selectedType !== 2;
       fetchIncome.hidden = !(selectedType === 1 && [1, 2].includes(classification.subType));
     };
     type.querySelector('select').addEventListener('change', updateInlineFields); subtype.querySelector('select').addEventListener('change', updateInlineFields); updateInlineFields();
@@ -350,7 +359,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     cancel.addEventListener('click', () => render());
     form.addEventListener('submit', async event => {
       event.preventDefault(); const f = form.elements;
-      const ok = await request({ type: 'asset', operation: 'update', id: record.id, revision: record.revision, owner: f.owner.value, assetType: Number(f.assetType.value), subType: Number(f.subType.value), name: f.name.value, symbol: f.symbol.value, quantity: Number(f.quantity.value), averagePrice: Number(f.averagePrice.value), currentPrice: f.currentPrice.value === '' ? null : Number(f.currentPrice.value), currentIncome: f.currentIncome.value === '' ? null : Number(f.currentIncome.value) });
+      const ok = await request({ type: 'asset', operation: 'update', id: record.id, revision: record.revision, owner: f.owner.value, assetType: Number(f.assetType.value), subType: Number(f.subType.value), name: f.name.value, symbol: f.symbol.value, quantity: Number(f.quantity.value), averagePrice: Number(f.averagePrice.value), currentPrice: f.currentPrice.value === '' ? null : Number(f.currentPrice.value), currentIncome: f.currentIncome.value === '' ? null : Number(f.currentIncome.value), entryDate: f.entryDate.value || null, exitDate: f.exitDate.value || null });
       if (ok) message('Ativo atualizado com sucesso.');
     });
     form.elements.name.focus();
@@ -378,6 +387,10 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     assetForm.querySelectorAll('[data-market-field]').forEach(label => {
       label.hidden = !visible;
       label.querySelector('input').disabled = !visible || busy || !data;
+    });
+    assetForm.querySelectorAll('[data-fixed-date-field]').forEach(label => {
+      label.hidden = !fixedIncome;
+      label.querySelector('input').disabled = !fixedIncome || busy || !data;
     });
     assetForm.elements.currentPrice.placeholder = assetForm.elements.averagePrice.value
       ? money(Number(assetForm.elements.averagePrice.value)) : fixedIncome ? 'Usar valor de compra' : 'Usar preço médio';
@@ -648,7 +661,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
   assetForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!data || busy) return;
-    if (await request({ type: 'asset', operation: editingAsset ? 'update' : 'create', id: editingAsset?.id || assetRequestId, revision: editingAsset?.revision, owner: assetForm.elements.owner.value, assetType: Number(assetForm.elements.assetType.value), subType: Number(assetForm.elements.subType.value), name: assetForm.elements.name.value, symbol: assetForm.elements.symbol.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value) })) {
+    if (await request({ type: 'asset', operation: editingAsset ? 'update' : 'create', id: editingAsset?.id || assetRequestId, revision: editingAsset?.revision, owner: assetForm.elements.owner.value, assetType: Number(assetForm.elements.assetType.value), subType: Number(assetForm.elements.subType.value), name: assetForm.elements.name.value, symbol: assetForm.elements.symbol.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value), entryDate: assetForm.elements.entryDate.value || null, exitDate: assetForm.elements.exitDate.value || null })) {
       clearEdit('asset'); view('overview');
     }
   });
