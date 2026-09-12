@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="admin.css?v=16" />
+    <link rel="stylesheet" href="admin.css?v=17" />
   </head>
   <body class="admin-page is-locked">
     <main class="auth-shell" id="auth-shell">
@@ -348,7 +348,7 @@
           <div class="finance-table-wrap"><table><thead><tr><th>Adicionar</th><th>Proprietário</th><th>Nome</th><th>Grupo</th><th>Valor</th></tr></thead><tbody id="monthly-update-list"></tbody><tfoot><tr><th colspan="4">Total selecionado</th><th id="monthly-selected-total">R$ 0,00</th></tr></tfoot></table></div>
         </form>
         <section id="monthly-overview" class="finance-form" hidden>
-          <h3>Exibir gastos</h3>
+          <div class="panel-heading"><h3>Exibir gastos</h3><button id="monthly-overview-print" type="button" class="button button-secondary">Imprimir em PDF</button></div>
           <div class="grid grid-2"><label>Mês<select id="monthly-overview-month"></select></label><label>Ano<input id="monthly-overview-year" type="number" min="1900" max="9999" step="1" /></label></div>
           <div class="grid grid-2 finance-summary">
             <div class="group-shell"><p class="eyebrow">Total de rendas</p><strong id="monthly-overview-income">R$ 0,00</strong></div>

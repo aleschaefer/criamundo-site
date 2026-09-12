@@ -497,6 +497,23 @@ button:disabled { opacity: .5; cursor: wait; transform: none; }
   body.card-expenses-printing .finance-table-wrap { overflow: visible; }
   body.card-expenses-printing .finance-table-wrap th,
   body.card-expenses-printing .finance-table-wrap td { padding: 5px 7px; color: #111; border-color: #ddd; }
+
+  body.monthly-expenses-printing { color: #111; background: #fff; font-size: 10px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  body.monthly-expenses-printing .admin-shell { width: 100%; padding: 0; }
+  body.monthly-expenses-printing .admin-header,
+  body.monthly-expenses-printing .admin-shell > nav,
+  body.monthly-expenses-printing #monthly-expenses-section > .finance-actions,
+  body.monthly-expenses-printing #monthly-expenses-section > .save-status,
+  body.monthly-expenses-printing #monthly-overview-print { display: none !important; }
+  body.monthly-expenses-printing #monthly-expenses-section { display: block !important; padding: 0; border: 0; box-shadow: none; background: #fff; }
+  body.monthly-expenses-printing #monthly-overview { display: block !important; }
+  body.monthly-expenses-printing #monthly-overview .group-shell { color: #111; background: #fff; border-color: #bbb; box-shadow: none; break-inside: avoid; }
+  body.monthly-expenses-printing #monthly-overview details > summary { padding: 8px 10px; color: #6b4b20; background: #f3eee6; }
+  body.monthly-expenses-printing #monthly-overview select,
+  body.monthly-expenses-printing #monthly-overview input { padding: 7px 9px; color: #111; background: #fff; border-color: #bbb; }
+  body.monthly-expenses-printing #monthly-overview .finance-table-wrap { overflow: visible; }
+  body.monthly-expenses-printing #monthly-overview th,
+  body.monthly-expenses-printing #monthly-overview td { padding: 5px 7px; color: #111; border-color: #ddd; }
 }
 input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .button[aria-pressed="true"] { background: var(--gold-soft); border-color: var(--gold); }
