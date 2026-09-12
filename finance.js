@@ -4,7 +4,7 @@ import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
 import { readB3AssetsPdf } from './finance-asset-import.js?v=5';
 import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=4';
-import { financeOverviewTotals } from './finance-overview.mjs?v=1';
+import { financeOverviewTotals } from './finance-overview.mjs?v=2';
 import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
 import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from './finance-similar-assets.mjs?v=1';
 
@@ -445,9 +445,9 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     const ownerTransactions = data.transactions.filter(item => !selectedOwner || item.owner === selectedOwner);
     const overviewTotals = financeOverviewTotals(ownerAssets);
     $('#finance-total').textContent = money(overviewTotals.currentValue);
-    $('#finance-total-breakdown').textContent = `(Ações: ${money(overviewTotals.currentByCategory.stocks)} - FIIs: ${money(overviewTotals.currentByCategory.fiis)} - Renda Fixa: ${money(overviewTotals.currentByCategory.fixed)})`;
+    $('#finance-total-breakdown').textContent = `(Ações: ${money(overviewTotals.currentByCategory.stocks)} - FIIs: ${money(overviewTotals.currentByCategory.fiis)} - Renda Fixa: ${money(overviewTotals.currentByCategory.fixed)} - Outros: ${money(overviewTotals.currentByCategory.others)})`;
     $('#finance-average-total').textContent = money(overviewTotals.averageValue);
-    $('#finance-average-breakdown').textContent = `(Ações: ${money(overviewTotals.averageByCategory.stocks)} - FIIs: ${money(overviewTotals.averageByCategory.fiis)} - Renda Fixa: ${money(overviewTotals.averageByCategory.fixed)})`;
+    $('#finance-average-breakdown').textContent = `(Ações: ${money(overviewTotals.averageByCategory.stocks)} - FIIs: ${money(overviewTotals.averageByCategory.fiis)} - Renda Fixa: ${money(overviewTotals.averageByCategory.fixed)} - Outros: ${money(overviewTotals.averageByCategory.others)})`;
     $('#finance-income-total').textContent = money(overviewTotals.monthlyIncome);
     $('#finance-income-breakdown').textContent = `(Ações: ${money(overviewTotals.stockMonthlyIncome)} - FIIs: ${money(overviewTotals.fiiMonthlyIncome)})`;
     $('#finance-count').textContent = ownerAssets.length;
