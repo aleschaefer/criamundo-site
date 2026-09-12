@@ -461,3 +461,9 @@ npx wrangler d1 execute criamundo-content --remote --file=migrations/0024_monthl
 ```
 
 A migração cria os grupos, os gastos recorrentes e a seleção dos gastos por mês e ano.
+
+Para cadastrar rendas no módulo Gastos Mensais, aplique uma vez após a 0024:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0025_monthly_income.sql
+```
