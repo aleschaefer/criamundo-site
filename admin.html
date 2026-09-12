@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="admin.css?v=15" />
+    <link rel="stylesheet" href="admin.css?v=16" />
   </head>
   <body class="admin-page is-locked">
     <main class="auth-shell" id="auth-shell">
@@ -277,7 +277,7 @@
           <div class="finance-table-wrap"><table><thead><tr><th>Arquivo</th><th>Fatura</th><th>Transações</th><th>Importado em</th></tr></thead><tbody id="card-imports-list"></tbody></table></div>
         </form>
         <section id="card-expenses">
-          <label>Fatura<select id="card-period-filter"></select></label>
+          <div class="card-expenses-toolbar"><label>Fatura<select id="card-period-filter"></select></label><button id="card-print-pdf" type="button" class="button button-secondary">Imprimir em PDF</button></div>
           <p id="card-expenses-empty" class="intro">Cadastre um período para consultar os gastos.</p>
           <div id="card-invoice-total" class="card-invoice-total" hidden><div><span>Total da fatura</span><small id="card-invoice-status" class="card-invoice-status" hidden>Fatura encerrada</small></div><strong id="card-invoice-total-value">R$ 0,00</strong></div>
           <div id="card-expenses-content" class="finance-pie-content" hidden>
@@ -410,6 +410,6 @@
     <script src="data-manager.js?v=2"></script>
     <script src="admin.js?v=2"></script>
     <script type="module" src="finance.js?v=39"></script>
-  <script type="module" src="credit-card.js?v=22"></script>
+  <script type="module" src="credit-card.js?v=23"></script>
   </body>
 </html>
