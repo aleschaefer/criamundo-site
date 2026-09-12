@@ -443,3 +443,13 @@ npx wrangler d1 execute criamundo-content --remote --file=migrations/0022_financ
 
 A migração 0022 preserva os registros existentes. As datas são opcionais, mas a data
 de retirada, quando informada, exige uma data de entrada igual ou anterior.
+
+Para marcar os ativos disponíveis para compor a entrada de um imóvel, aplique uma
+vez após a 0022:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0023_finance_property_entry_availability.sql
+```
+
+A migração 0023 preserva todos os registros existentes e inicia o novo atributo
+desmarcado (`false`).

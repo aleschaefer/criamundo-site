@@ -85,7 +85,8 @@ export function validateAction(action) {
     if (entryDate && !validTransactionDate(entryDate)) throw new Error('Informe uma data de entrada válida.');
     if (exitDate && !validTransactionDate(exitDate)) throw new Error('Informe uma data de retirada válida.');
     if (exitDate && (!entryDate || exitDate < entryDate)) throw new Error('A data de retirada deve ser igual ou posterior à data de entrada.');
-    return { ...action, name, symbol, currentPrice, currentIncome: Math.round(currentIncome * 100000) / 100000, entryDate, exitDate, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
+    const availableForPropertyEntry = action.availableForPropertyEntry === true;
+    return { ...action, name, symbol, currentPrice, currentIncome: Math.round(currentIncome * 100000) / 100000, entryDate, exitDate, availableForPropertyEntry, averagePrice: action.quantity ? cents / 100 : 0, value: valueCents / 100 };
   }
   if (!validTransactionDate(action.transactionDate)) throw new Error('Informe uma data da transação válida.');
   if (typeof action.assetId !== 'string' || !action.assetId) throw new Error('Selecione um ativo.');

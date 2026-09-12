@@ -4,7 +4,7 @@ import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
 import { readB3AssetsPdf } from './finance-asset-import.js?v=5';
 import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=4';
-import { financeOverviewTotals } from './finance-overview.mjs?v=2';
+import { financeOverviewTotals } from './finance-overview.mjs?v=3';
 import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
 import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from './finance-similar-assets.mjs?v=1';
 
@@ -308,7 +308,10 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       input = document.createElement('input'); input.type = options.type || 'text';
       for (const [key, item] of Object.entries(options.attributes || {})) input.setAttribute(key, item);
     }
-    input.name = name; input.value = value ?? ''; wrapper.append(input); return wrapper;
+    input.name = name;
+    if (input.type === 'checkbox') input.checked = Boolean(value);
+    else input.value = value ?? '';
+    wrapper.append(input); return wrapper;
   }
   function startInlineAssetEdit(record, sourceRow) {
     const td = document.createElement('td'); td.colSpan = sourceRow.children.length; const form = document.createElement('form'); form.className = 'finance-inline-edit';
@@ -324,10 +327,11 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     const income = inlineField('Rendimento atual', 'currentIncome', record.currentIncome, { type: 'number', attributes: { min: '0', step: '0.00001' } });
     const entryDate = inlineField('Data de entrada', 'entryDate', record.entryDate, { type: 'date' });
     const exitDate = inlineField('Data de retirada', 'exitDate', record.exitDate, { type: 'date' });
+    const availableForPropertyEntry = inlineField('Disponível para entrada em imóvel', 'availableForPropertyEntry', record.availableForPropertyEntry, { type: 'checkbox' });
     const fetchIncome = document.createElement('button'); fetchIncome.type = 'button'; fetchIncome.className = 'button button-secondary finance-income-fetch'; fetchIncome.textContent = 'Obter rendimento';
     const incomeResult = document.createElement('small'); incomeResult.className = 'finance-income-result'; incomeResult.setAttribute('role', 'status'); incomeResult.setAttribute('aria-live', 'polite');
     income.append(fetchIncome, incomeResult);
-    const fields = document.createElement('div'); fields.className = 'finance-inline-fields'; fields.append(owner, type, subtype, name, symbol, amount, average, current, income, entryDate, exitDate);
+    const fields = document.createElement('div'); fields.className = 'finance-inline-fields'; fields.append(owner, type, subtype, name, symbol, amount, average, current, income, entryDate, exitDate, availableForPropertyEntry);
     const actions = document.createElement('div'); actions.className = 'finance-row-actions';
     const save = document.createElement('button'); save.type = 'submit'; save.className = 'button button-primary'; save.textContent = 'Salvar';
     const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'button button-secondary'; cancel.textContent = 'Cancelar';
@@ -359,7 +363,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     cancel.addEventListener('click', () => render());
     form.addEventListener('submit', async event => {
       event.preventDefault(); const f = form.elements;
-      const ok = await request({ type: 'asset', operation: 'update', id: record.id, revision: record.revision, owner: f.owner.value, assetType: Number(f.assetType.value), subType: Number(f.subType.value), name: f.name.value, symbol: f.symbol.value, quantity: Number(f.quantity.value), averagePrice: Number(f.averagePrice.value), currentPrice: f.currentPrice.value === '' ? null : Number(f.currentPrice.value), currentIncome: f.currentIncome.value === '' ? null : Number(f.currentIncome.value), entryDate: f.entryDate.value || null, exitDate: f.exitDate.value || null });
+      const ok = await request({ type: 'asset', operation: 'update', id: record.id, revision: record.revision, owner: f.owner.value, assetType: Number(f.assetType.value), subType: Number(f.subType.value), name: f.name.value, symbol: f.symbol.value, quantity: Number(f.quantity.value), averagePrice: Number(f.averagePrice.value), currentPrice: f.currentPrice.value === '' ? null : Number(f.currentPrice.value), currentIncome: f.currentIncome.value === '' ? null : Number(f.currentIncome.value), entryDate: f.entryDate.value || null, exitDate: f.exitDate.value || null, availableForPropertyEntry: f.availableForPropertyEntry.checked });
       if (ok) message('Ativo atualizado com sucesso.');
     });
     form.elements.name.focus();
@@ -448,6 +452,8 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     $('#finance-total-breakdown').textContent = `(Ações: ${money(overviewTotals.currentByCategory.stocks)} - FIIs: ${money(overviewTotals.currentByCategory.fiis)} - Renda Fixa: ${money(overviewTotals.currentByCategory.fixed)} - Outros: ${money(overviewTotals.currentByCategory.others)})`;
     $('#finance-average-total').textContent = money(overviewTotals.averageValue);
     $('#finance-average-breakdown').textContent = `(Ações: ${money(overviewTotals.averageByCategory.stocks)} - FIIs: ${money(overviewTotals.averageByCategory.fiis)} - Renda Fixa: ${money(overviewTotals.averageByCategory.fixed)} - Outros: ${money(overviewTotals.averageByCategory.others)})`;
+    $('#finance-property-entry-current').textContent = money(overviewTotals.availableCurrentValue);
+    $('#finance-property-entry-average').textContent = money(overviewTotals.availableAverageValue);
     $('#finance-income-total').textContent = money(overviewTotals.monthlyIncome);
     $('#finance-income-breakdown').textContent = `(Ações: ${money(overviewTotals.stockMonthlyIncome)} - FIIs: ${money(overviewTotals.fiiMonthlyIncome)})`;
     $('#finance-count').textContent = ownerAssets.length;
@@ -661,7 +667,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
   assetForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!data || busy) return;
-    if (await request({ type: 'asset', operation: editingAsset ? 'update' : 'create', id: editingAsset?.id || assetRequestId, revision: editingAsset?.revision, owner: assetForm.elements.owner.value, assetType: Number(assetForm.elements.assetType.value), subType: Number(assetForm.elements.subType.value), name: assetForm.elements.name.value, symbol: assetForm.elements.symbol.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value), entryDate: assetForm.elements.entryDate.value || null, exitDate: assetForm.elements.exitDate.value || null })) {
+    if (await request({ type: 'asset', operation: editingAsset ? 'update' : 'create', id: editingAsset?.id || assetRequestId, revision: editingAsset?.revision, owner: assetForm.elements.owner.value, assetType: Number(assetForm.elements.assetType.value), subType: Number(assetForm.elements.subType.value), name: assetForm.elements.name.value, symbol: assetForm.elements.symbol.value, quantity: Number(assetForm.elements.quantity.value), averagePrice: Number(assetForm.elements.averagePrice.value), currentPrice: assetForm.elements.currentPrice.value === '' ? null : Number(assetForm.elements.currentPrice.value), currentIncome: assetForm.elements.currentIncome.value === '' ? null : Number(assetForm.elements.currentIncome.value), entryDate: assetForm.elements.entryDate.value || null, exitDate: assetForm.elements.exitDate.value || null, availableForPropertyEntry: assetForm.elements.availableForPropertyEntry.checked })) {
       clearEdit('asset'); view('overview');
     }
   });

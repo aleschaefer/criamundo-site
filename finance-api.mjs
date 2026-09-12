@@ -6,10 +6,10 @@ const reply = (body, status = 200) => new Response(JSON.stringify(body), { statu
 async function overview(db) {
   // Um batch fornece uma visão consistente das duas tabelas.
   const [assets, transactions] = await db.batch([
-    db.prepare('SELECT id, owner, name, symbol, type AS assetType, subtype AS subType, quantity, average_price AS averagePrice, value AS total, COALESCE(current_price, average_price) AS currentPrice, current_income AS currentIncome, entry_date AS entryDate, exit_date AS exitDate, current_price IS NULL AS priceIsDefault, created_at AS createdAt, updated_at AS updatedAt, revision, (SELECT COUNT(*) FROM finance_transactions t WHERE t.asset_id = finance_assets.id) AS transactionCount FROM finance_assets ORDER BY owner, name, type'),
+    db.prepare('SELECT id, owner, name, symbol, type AS assetType, subtype AS subType, quantity, average_price AS averagePrice, value AS total, COALESCE(current_price, average_price) AS currentPrice, current_income AS currentIncome, entry_date AS entryDate, exit_date AS exitDate, available_for_property_entry AS availableForPropertyEntry, current_price IS NULL AS priceIsDefault, created_at AS createdAt, updated_at AS updatedAt, revision, (SELECT COUNT(*) FROM finance_transactions t WHERE t.asset_id = finance_assets.id) AS transactionCount FROM finance_assets ORDER BY owner, name, type'),
     db.prepare('SELECT id, owner, asset_id AS assetId, name, type AS assetType, subtype AS subType, quantity, value, created_at AS createdAt, updated_at AS updatedAt, transaction_date AS transactionDate, revision FROM finance_transactions ORDER BY transaction_date, created_at, rowid')
   ]);
-  return { assets: assets.results.map(asset => ({ ...asset, ...calculateYields(asset.currentIncome, asset.currentPrice, asset.averagePrice) })), transactions: transactions.results, total: assets.results.reduce((sum, asset) => sum + Math.round(asset.total * 100), 0) / 100 };
+  return { assets: assets.results.map(asset => ({ ...asset, availableForPropertyEntry: Boolean(asset.availableForPropertyEntry), ...calculateYields(asset.currentIncome, asset.currentPrice, asset.averagePrice) })), transactions: transactions.results, total: assets.results.reduce((sum, asset) => sum + Math.round(asset.total * 100), 0) / 100 };
 }
 export async function handleFinance(request, env) {
   if (!await requireAdminSession(request, env)) return reply({ error: 'Sessão inválida. Entre novamente.' }, 401);
@@ -66,10 +66,10 @@ export async function handleFinance(request, env) {
       const result = await db.prepare(`UPDATE finance_assets SET name = ?1, type = ?2, subtype = ?10, symbol = ?11, owner = ?12,
         quantity = ?3, average_price = ?4,
         value = CASE WHEN EXISTS (SELECT 1 FROM finance_transactions WHERE asset_id = ?7) THEN value ELSE ?5 END,
-        current_price = ?6, current_income = ?8, entry_date = ?13, exit_date = ?14, current_dy = 0, revision = revision + 1
+        current_price = ?6, current_income = ?8, entry_date = ?13, exit_date = ?14, available_for_property_entry = ?15, current_dy = 0, revision = revision + 1
         WHERE id = ?7 AND revision = ?9 AND
           (NOT EXISTS (SELECT 1 FROM finance_transactions WHERE asset_id = ?7) OR (quantity = ?3 AND average_price = ?4))`)
-        .bind(action.name, action.assetType, action.quantity, action.averagePrice, action.value, action.currentPrice, action.id, action.currentIncome, action.revision, action.subType, action.symbol, action.owner, action.entryDate, action.exitDate).run();
+        .bind(action.name, action.assetType, action.quantity, action.averagePrice, action.value, action.currentPrice, action.id, action.currentIncome, action.revision, action.subType, action.symbol, action.owner, action.entryDate, action.exitDate, action.availableForPropertyEntry ? 1 : 0).run();
       if (!result.meta.changes) return reply({ error: 'Registro alterado ou saldo vinculado a transações. Atualize os dados; altere o saldo pelo histórico.' }, 409);
     } else if (operation === 'update') {
       const result = await db.prepare(`UPDATE finance_transactions SET
@@ -79,9 +79,9 @@ export async function handleFinance(request, env) {
         .bind(action.assetId, action.quantity, action.value, action.id, action.revision, action.transactionDate, action.owner).run();
       if (!result.meta.changes) return reply({ error: 'Registro alterado, excluído ou ativo indisponível. Atualize os dados.' }, 409);
     } else if (action.type === 'asset') {
-      await db.prepare(`INSERT INTO finance_assets (id, owner, name, type, quantity, average_price, value, current_price, current_income, subtype, symbol, entry_date, exit_date)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13) ON CONFLICT(id) DO NOTHING`)
-        .bind(action.id, action.owner, action.name, action.assetType, action.quantity, action.averagePrice, action.value, action.currentPrice, action.currentIncome, action.subType, action.symbol, action.entryDate, action.exitDate).run();
+      await db.prepare(`INSERT INTO finance_assets (id, owner, name, type, quantity, average_price, value, current_price, current_income, subtype, symbol, entry_date, exit_date, available_for_property_entry)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14) ON CONFLICT(id) DO NOTHING`)
+        .bind(action.id, action.owner, action.name, action.assetType, action.quantity, action.averagePrice, action.value, action.currentPrice, action.currentIncome, action.subType, action.symbol, action.entryDate, action.exitDate, action.availableForPropertyEntry ? 1 : 0).run();
     } else {
       // O INSERT e o trigger são atômicos: falha no saldo desfaz também a transação.
       // Nome e tipo vêm do ativo, nunca de campos livres enviados pelo cliente.
@@ -99,6 +99,6 @@ export async function handleFinance(request, env) {
     if (/UNIQUE constraint/i.test(error.message)) return reply({ error: 'Já existe um ativo deste proprietário com esta sigla, nome, tipo e subtipo.' }, 409);
     if (/CHECK constraint/i.test(error.message)) return reply({ error: 'A operação excede os limites de quantidade, preço médio ou valor do ativo.' }, 400);
     console.error('Finance database error', error);
-    return reply({ error: 'Não foi possível acessar Finanças. Verifique a conexão e se as migrações de Finanças até 0022 foram aplicadas no banco.' }, 503);
+    return reply({ error: 'Não foi possível acessar Finanças. Verifique a conexão e se as migrações de Finanças até 0023 foram aplicadas no banco.' }, 503);
   }
 }

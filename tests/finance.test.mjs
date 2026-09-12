@@ -21,6 +21,7 @@ const ownerMigration = readFileSync(new URL('../migrations/0019_finance_owner.sq
 const ownerIdentityMigration = readFileSync(new URL('../migrations/0020_finance_owner_identity.sql', import.meta.url), 'utf8');
 const independentTotalsMigration = readFileSync(new URL('../migrations/0021_finance_independent_import_totals.sql', import.meta.url), 'utf8');
 const fixedIncomeDatesMigration = readFileSync(new URL('../migrations/0022_finance_fixed_income_dates.sql', import.meta.url), 'utf8');
+const propertyEntryMigration = readFileSync(new URL('../migrations/0023_finance_property_entry_availability.sql', import.meta.url), 'utf8');
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
@@ -38,6 +39,7 @@ function database() {
   sql.exec(ownerIdentityMigration);
   sql.exec(independentTotalsMigration);
   sql.exec(fixedIncomeDatesMigration);
+  sql.exec(propertyEntryMigration);
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -73,6 +75,19 @@ test('valida e persiste datas opcionais somente em ativos de renda fixa', async 
   assert.throws(() => validateAction({ ...fixed, entryDate: null, exitDate: '2028-09-12' }));
   const variable = validateAction({ ...fixed, id: 'stock-dates', assetType: 1, subType: 1 });
   assert.equal(variable.entryDate, null); assert.equal(variable.exitDate, null);
+});
+test('disponibilidade para entrada em imóvel começa desmarcada e pode ser alterada', async () => {
+  const env = envFor();
+  const createdResponse = await handleFinance(request(asset({ id: 'property-entry' })), env);
+  assert.equal(createdResponse.status, 200);
+  let saved = (await createdResponse.json()).assets.find(item => item.id === 'property-entry');
+  assert.equal(saved.availableForPropertyEntry, false);
+
+  const update = asset({ ...saved, type: 'asset', operation: 'update', availableForPropertyEntry: true });
+  const updatedResponse = await handleFinance(request(update), env);
+  assert.equal(updatedResponse.status, 200);
+  saved = (await updatedResponse.json()).assets.find(item => item.id === 'property-entry');
+  assert.equal(saved.availableForPropertyEntry, true);
 });
 test('API persiste nas tabelas e trigger recalcula quantidade, média e valor', async () => {
   const env = envFor(); const a = asset();
@@ -315,7 +330,10 @@ test('schema completo inclui os campos atuais para banco novo', () => {
   const sql = new DatabaseSync(':memory:');
   sql.exec(readFileSync(new URL('../schema.sql', import.meta.url), 'utf8'));
   sql.exec("INSERT INTO finance_assets (id,name,type,quantity,average_price,value,current_price,current_dy,subtype) VALUES ('a','ABC',1,1,10,10,12.34,5.67,1)");
-  assert.equal(sql.prepare('SELECT current_dy FROM finance_assets').get().current_dy, 5.67);
+  const saved = sql.prepare('SELECT current_dy, available_for_property_entry FROM finance_assets').get();
+  assert.equal(saved.current_dy, 5.67);
+  assert.equal(saved.available_for_property_entry, 0);
+  assert.throws(() => sql.exec('UPDATE finance_assets SET available_for_property_entry=2'));
 });
 test('pizza agrupa custos em centavos para os três tipos sem usar a cotação', () => {
   const allocation = assetAllocation([

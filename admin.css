@@ -397,6 +397,9 @@ textarea {
 .finance-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
 .finance-form { display: grid; gap: 22px; }
 .finance-form small { color: var(--muted); font-weight: 400; }
+.finance-checkbox span { display: inline-flex; align-items: center; gap: 9px; }
+.finance-checkbox input,
+.finance-inline-edit input[type="checkbox"] { width: 18px; height: 18px; padding: 0; accent-color: var(--gold); }
 .finance-form > button { justify-self: start; }
 .finance-owner-filter { display: grid; gap: 8px; max-width: 320px; margin: 20px 0; }
 .finance-owner-actions { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
