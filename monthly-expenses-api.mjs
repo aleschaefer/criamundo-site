@@ -14,7 +14,9 @@ export async function handleMonthlyExpenses(request,env){
   try{
     const db=env.CONTENT_DB;if(request.method==='GET')return reply(await overview(db));
     let action;try{action=validateMonthlyExpenseAction(await request.json());}catch(error){return reply({error:error.message},400);}
-    if(action.type==='group')await db.prepare('INSERT INTO monthly_expense_groups(id,name) VALUES(?1,?2) ON CONFLICT(id) DO NOTHING').bind(action.id,action.name).run();
+    if(action.type==='delete-all-expenses')await db.prepare('DELETE FROM monthly_expenses').run();
+    else if(action.type==='delete-all-incomes')await db.prepare('DELETE FROM monthly_incomes').run();
+    else if(action.type==='group')await db.prepare('INSERT INTO monthly_expense_groups(id,name) VALUES(?1,?2) ON CONFLICT(id) DO NOTHING').bind(action.id,action.name).run();
     else if(action.type==='expense'){
       const result=await db.prepare(`INSERT INTO monthly_expenses(id,owner,name,value,group_id) SELECT ?1,?2,?3,?4,id FROM monthly_expense_groups WHERE id=?5 ON CONFLICT(id) DO NOTHING`).bind(action.id,action.owner,action.name,action.value,action.groupId).run();
       if(!result.meta.changes)return reply({error:'Grupo não encontrado ou gasto já incluído.'},409);

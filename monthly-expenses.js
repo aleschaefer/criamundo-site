@@ -8,7 +8,7 @@ import { todayInSaoPaulo } from './finance-date.mjs';
   let data=null,busy=false,expenseId=crypto.randomUUID(),incomeId=crypto.randomUUID(),groupId=crypto.randomUUID();
   function status(text,error=false){const node=$('#monthly-expenses-status');node.textContent=text;node.className=`save-status${error?' is-error':''}`;}
   function view(name){Object.entries(forms).forEach(([key,form])=>{form.hidden=key!==name;});document.querySelectorAll('[data-monthly-view]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.monthlyView===name)));}
-  function controls(){section.querySelectorAll('button,input,select').forEach(control=>{control.disabled=busy;});}
+  function controls(){section.querySelectorAll('button,input,select').forEach(control=>{control.disabled=busy;});$('#monthly-expenses-delete-all').disabled=busy||!data?.expenses.length;$('#monthly-incomes-delete-all').disabled=busy||!data?.incomes.length;}
   function selectedPeriod(){return{month:Number(forms.month.elements.month.value),year:Number(forms.month.elements.year.value)};}
   function updateTotal(){const total=[...$('#monthly-update-list').querySelectorAll('input:checked')].reduce((sum,input)=>sum+Number(data.expenses.find(item=>item.id===input.value)?.value||0),0);$('#monthly-selected-total').textContent=money(total);const checks=[...$('#monthly-update-list').querySelectorAll('input[type=checkbox]')];$('#monthly-select-all').checked=checks.length>0&&checks.every(input=>input.checked);$('#monthly-select-all').indeterminate=checks.some(input=>input.checked)&&!checks.every(input=>input.checked);}
   function renderOverview(){
@@ -33,6 +33,8 @@ import { todayInSaoPaulo } from './finance-date.mjs';
   ['#show-content','#show-finance','#show-credit-card'].forEach(selector=>$(selector).addEventListener('click',()=>area(false)));
   document.querySelectorAll('[data-monthly-view]').forEach(button=>button.addEventListener('click',()=>view(button.dataset.monthlyView)));
   $('#monthly-expenses-refresh').addEventListener('click',()=>request());
+  $('#monthly-expenses-delete-all').addEventListener('click',async()=>{if(!data?.expenses.length||!confirm('Deseja excluir todos os gastos cadastrados? As seleções desses gastos nos períodos também serão excluídas.'))return;if(await request({type:'delete-all-expenses'}))view('expense');});
+  $('#monthly-incomes-delete-all').addEventListener('click',async()=>{if(!data?.incomes.length||!confirm('Deseja excluir todas as rendas cadastradas?'))return;if(await request({type:'delete-all-incomes'}))view('income');});
   forms.group.addEventListener('submit',async event=>{event.preventDefault();if(await request({type:'group',id:groupId,name:forms.group.elements.name.value})){forms.group.reset();groupId=crypto.randomUUID();view('group');}});
   forms.expense.addEventListener('submit',async event=>{event.preventDefault();const f=forms.expense.elements;if(await request({type:'expense',id:expenseId,owner:f.owner.value,name:f.name.value,value:Number(f.value.value),groupId:f.groupId.value})){forms.expense.reset();expenseId=crypto.randomUUID();render();view('expense');}});
   forms.income.addEventListener('submit',async event=>{event.preventDefault();const f=forms.income.elements;if(await request({type:'income',id:incomeId,owner:f.owner.value,name:f.name.value,value:Number(f.value.value)})){forms.income.reset();incomeId=crypto.randomUUID();render();view('income');}});

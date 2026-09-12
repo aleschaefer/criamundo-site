@@ -4,7 +4,8 @@ const id=value=>{if(!uuid.test(String(value||'')))throw new Error('Identificador
 const period=body=>{const month=Number(body.month),year=Number(body.year);if(!Number.isInteger(month)||month<1||month>12)throw new Error('Selecione um mês válido.');if(!Number.isInteger(year)||year<1900||year>9999)throw new Error('Informe um ano válido.');return{month,year};};
 
 export function validateMonthlyExpenseAction(body){
-  if(!body||!['group','expense','income','month'].includes(body.type))throw new Error('Operação inválida.');
+  if(!body||!['group','expense','income','month','delete-all-expenses','delete-all-incomes'].includes(body.type))throw new Error('Operação inválida.');
+  if(body.type==='delete-all-expenses'||body.type==='delete-all-incomes')return{type:body.type};
   if(body.type==='group')return{type:'group',id:id(body.id),name:clean(body.name,30,'Nome do grupo')};
   if(body.type==='expense'){
     const value=Number(body.value);if(!['Ale','Ana'].includes(body.owner))throw new Error('Proprietário inválido.');if(!Number.isFinite(value)||value<0||value>99999999.99||Math.round(value*100)!==value*100)throw new Error('Valor inválido.');
