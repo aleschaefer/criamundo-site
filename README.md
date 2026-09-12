@@ -274,7 +274,7 @@ nesse caso não aplique as migrações depois.
 Para testar localmente, use `--local` no lugar de `--remote`, configure `ADMIN_PASSWORD`
 em `.dev.vars` e execute `npx wrangler dev`. Nunca publique credenciais como assets.
 
-Testes (Node 24+, usando SQLite real em memória): `node --test tests/finance.test.mjs`.
+Testes (Node 24+, usando SQLite real em memória): `node --test tests/*.test.mjs`.
 
 ## Cartão de Crédito
 
@@ -453,3 +453,11 @@ npx wrangler d1 execute criamundo-content --remote --file=migrations/0023_financ
 
 A migração 0023 preserva todos os registros existentes e inicia o novo atributo
 desmarcado (`false`).
+
+Para criar a área Gastos Mensais, aplique uma vez após a 0023:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0024_monthly_expenses.sql
+```
+
+A migração cria os grupos, os gastos recorrentes e a seleção dos gastos por mês e ano.
