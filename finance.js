@@ -103,15 +103,23 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
   function renderAssetGroups(assets) {
     const container = $('#finance-asset-groups'); container.replaceChildren();
     const groups = new Map();
+    const ownerGroups = new Map();
     for (const asset of assets) {
       const key = `${asset.owner}\u0000${asset.assetType}\u0000${asset.subType}`;
       if (!groups.has(key)) groups.set(key, { owner: asset.owner, assetType: asset.assetType, subType: asset.subType, assets: [] });
       groups.get(key).assets.push(asset);
     }
+    for (const owner of [...new Set(assets.map(asset => asset.owner))]) {
+      const ownerDetails = document.createElement('details'); ownerDetails.className = 'finance-owner-group';
+      const ownerSummary = document.createElement('summary');
+      ownerSummary.textContent = `${owner} (${assets.filter(asset => asset.owner === owner).length} ativos)`;
+      const ownerContent = document.createElement('div'); ownerContent.className = 'finance-owner-group-content';
+      ownerDetails.append(ownerSummary, ownerContent); container.append(ownerDetails); ownerGroups.set(owner, ownerContent);
+    }
     for (const group of groups.values()) {
-      const details = document.createElement('details'); details.className = 'finance-asset-group'; details.open = true;
+      const details = document.createElement('details'); details.className = 'finance-asset-group';
       const summary = document.createElement('summary');
-      const summaryLabel = document.createElement('span'); summaryLabel.textContent = `${group.owner} · ${types[group.assetType]} · ${subtypes[group.subType]} (${group.assets.length})`;
+      const summaryLabel = document.createElement('span'); summaryLabel.textContent = `${types[group.assetType]} · ${subtypes[group.subType]} (${group.assets.length})`;
       summary.append(summaryLabel);
       if (group.assetType === 1 && [1, 2].includes(group.subType)) {
         const groupActions = document.createElement('span'); groupActions.className = 'finance-group-actions';
@@ -243,7 +251,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           if (averageCell) { averageCell.classList.add('finance-value-undefined'); averageCell.title = 'Preço médio indefinido no PDF importado'; }
         }
       }
-      table.append(caption, head, body); wrap.append(table); details.append(summary, wrap); container.append(details);
+      table.append(caption, head, body); wrap.append(table); details.append(summary, wrap); ownerGroups.get(group.owner).append(details);
     }
   }
   function renderAssetManagement(assets) {
