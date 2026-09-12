@@ -236,7 +236,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       const headers = variable
         ? ['Sigla', 'Quantidade', 'Preço médio', 'Valor atual', 'Rendimento atual (R$)', 'DY atual (%)', 'DY médio (%)', 'Valor total', 'Ações']
         : fixed
-          ? ['Sigla', 'Nome', 'Quantidade', 'Valor de compra', 'Valor atual', 'Data de entrada', 'Data de retirada', 'Valor total', 'Ações']
+          ? ['Sigla', 'Nome', 'Quantidade', 'Valor atual', 'Data de retirada', 'Valor total', 'Ações']
           : ['Sigla', 'Nome', 'Quantidade', 'Preço médio', 'Valor total', 'Ações'];
       const head = document.createElement('thead'); const headerRow = document.createElement('tr');
       for (const label of headers) { const th = document.createElement('th'); th.textContent = label; headerRow.append(th); }
@@ -246,7 +246,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
         const values = variable
           ? [asset.symbol || '—', quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(currentAssetTotal(asset))]
           : fixed
-            ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.currentPrice), formatTransactionDate(asset.entryDate), formatTransactionDate(asset.exitDate), money(currentAssetTotal(asset))]
+            ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.currentPrice), formatTransactionDate(asset.exitDate), money(currentAssetTotal(asset))]
             : [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)];
         row(body, values, 'asset', asset);
         if (undefinedAveragePriceAssetIds.has(asset.id)) {
