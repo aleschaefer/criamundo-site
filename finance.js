@@ -30,6 +30,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
   let busy = false;
   let generation = 0;
   let importedAssets = [];
+  let assetGroupToReopen = null;
   const undefinedAveragePriceAssetIds = new Set();
   function message(text, error = false) {
     status.textContent = text;
@@ -111,6 +112,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     }
     for (const owner of [...new Set(assets.map(asset => asset.owner))]) {
       const ownerDetails = document.createElement('details'); ownerDetails.className = 'finance-owner-group';
+      ownerDetails.open = assetGroupToReopen?.owner === owner;
       const ownerSummary = document.createElement('summary');
       ownerSummary.textContent = `${owner} (${assets.filter(asset => asset.owner === owner).length} ativos)`;
       const ownerContent = document.createElement('div'); ownerContent.className = 'finance-owner-group-content';
@@ -118,6 +120,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     }
     for (const group of groups.values()) {
       const details = document.createElement('details'); details.className = 'finance-asset-group';
+      details.open = assetGroupToReopen?.owner === group.owner && assetGroupToReopen?.assetType === group.assetType && assetGroupToReopen?.subType === group.subType;
       const summary = document.createElement('summary');
       const summaryLabel = document.createElement('span'); summaryLabel.textContent = `${types[group.assetType]} · ${subtypes[group.subType]} (${group.assets.length})`;
       summary.append(summaryLabel);
@@ -253,6 +256,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       }
       table.append(caption, head, body); wrap.append(table); details.append(summary, wrap); ownerGroups.get(group.owner).append(details);
     }
+    assetGroupToReopen = null;
   }
   function renderAssetManagement(assets) {
     const container = $('#finance-assets-groups'); container.replaceChildren(); $('#finance-assets-empty').hidden = Boolean(assets.length);
@@ -360,11 +364,16 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       } catch (error) { incomeResult.textContent = error.message || 'Não foi possível obter o rendimento.'; }
       finally { fetchIncome.disabled = false; }
     });
-    cancel.addEventListener('click', () => render());
+    cancel.addEventListener('click', () => {
+      assetGroupToReopen = { owner: record.owner, assetType: record.assetType, subType: record.subType };
+      render();
+    });
     form.addEventListener('submit', async event => {
       event.preventDefault(); const f = form.elements;
+      assetGroupToReopen = { owner: f.owner.value, assetType: Number(f.assetType.value), subType: Number(f.subType.value) };
       const ok = await request({ type: 'asset', operation: 'update', id: record.id, revision: record.revision, owner: f.owner.value, assetType: Number(f.assetType.value), subType: Number(f.subType.value), name: f.name.value, symbol: f.symbol.value, quantity: Number(f.quantity.value), averagePrice: Number(f.averagePrice.value), currentPrice: f.currentPrice.value === '' ? null : Number(f.currentPrice.value), currentIncome: f.currentIncome.value === '' ? null : Number(f.currentIncome.value), entryDate: f.entryDate.value || null, exitDate: f.exitDate.value || null, availableForPropertyEntry: f.availableForPropertyEntry.checked });
       if (ok) message('Ativo atualizado com sucesso.');
+      else assetGroupToReopen = null;
     });
     form.elements.name.focus();
   }
