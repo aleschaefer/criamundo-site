@@ -7,14 +7,17 @@ const optionalDate=value=>{const date=String(value||'').trim();if(!date)return n
 export function validateMonthlyExpenseAction(body){
   if(!body||!['group','expense','income','month','delete-all-expenses','delete-all-incomes'].includes(body.type))throw new Error('Operação inválida.');
   if(body.type==='delete-all-expenses'||body.type==='delete-all-incomes')return{type:body.type};
-  if(body.type==='group')return{type:'group',id:id(body.id),name:clean(body.name,30,'Nome do grupo')};
+  const operation=body.operation||'create';
+  if(['group','expense','income'].includes(body.type)&&operation==='delete'){const revision=Number(body.revision);if(!Number.isInteger(revision)||revision<0)throw new Error('Revisão inválida.');return{type:body.type,operation,id:id(body.id),revision};}
+  const revision=operation==='update'?Number(body.revision):undefined;if(operation==='update'&&(!Number.isInteger(revision)||revision<0))throw new Error('Revisão inválida.');
+  if(body.type==='group')return{type:'group',operation,id:id(body.id),name:clean(body.name,30,'Nome do grupo'),revision};
   if(body.type==='expense'){
     const value=Number(body.value);if(!['Ale','Ana'].includes(body.owner))throw new Error('Proprietário inválido.');if(!Number.isFinite(value)||value<0||value>99999999.99||Math.round(value*100)!==value*100)throw new Error('Valor inválido.');
-    return{type:'expense',id:id(body.id),owner:body.owner,name:clean(body.name,50,'Nome'),value,groupId:id(body.groupId),paymentDate:optionalDate(body.paymentDate),settled:body.settled===true};
+    return{type:'expense',operation,id:id(body.id),owner:body.owner,name:clean(body.name,50,'Nome'),value,groupId:id(body.groupId),paymentDate:optionalDate(body.paymentDate),settled:body.settled===true,revision};
   }
   if(body.type==='income'){
     const value=Number(body.value);if(!['Ale','Ana'].includes(body.owner))throw new Error('Proprietário inválido.');if(!Number.isFinite(value)||value<0||value>99999999.99||Math.round(value*100)!==value*100)throw new Error('Valor inválido.');
-    return{type:'income',id:id(body.id),owner:body.owner,name:clean(body.name,50,'Nome'),value};
+    return{type:'income',operation,id:id(body.id),owner:body.owner,name:clean(body.name,50,'Nome'),value,...period(body),revision};
   }
   const selected=[...new Set(Array.isArray(body.expenseIds)?body.expenseIds:[])].map(id);
   if(selected.length>1000)throw new Error('Quantidade de gastos excede o limite.');

@@ -473,3 +473,12 @@ Para registrar data de pagamento e liquidação dos gastos, aplique uma vez apó
 ```sh
 npx wrangler d1 execute criamundo-content --remote --file=migrations/0026_monthly_expense_settlement.sql
 ```
+
+Para associar cada renda a uma competência mensal, aplique uma vez após a 0026:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0027_monthly_income_period.sql
+```
+
+As rendas já cadastradas são preservadas. Edite-as para informar mês e ano e incluí-las
+nos totais da competência correspondente.
