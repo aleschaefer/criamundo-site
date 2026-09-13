@@ -467,3 +467,9 @@ Para cadastrar rendas no módulo Gastos Mensais, aplique uma vez após a 0024:
 ```sh
 npx wrangler d1 execute criamundo-content --remote --file=migrations/0025_monthly_income.sql
 ```
+
+Para registrar data de pagamento e liquidação dos gastos, aplique uma vez após a 0025:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0026_monthly_expense_settlement.sql
+```
