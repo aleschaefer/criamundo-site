@@ -353,7 +353,7 @@
         </form>
         <section id="monthly-overview" class="finance-form" hidden>
           <div class="panel-heading"><h3>Exibir gastos</h3><button id="monthly-overview-print" type="button" class="button button-secondary">Imprimir em PDF</button></div>
-          <div class="grid grid-2"><label>Mês<select id="monthly-overview-month"></select></label><label>Ano<input id="monthly-overview-year" type="number" min="1900" max="9999" step="1" /></label></div>
+          <div class="grid grid-3"><label>Proprietário<select id="monthly-overview-owner"><option value="">Todos</option><option value="Ale">Ale</option><option value="Ana">Ana</option></select></label><label>Mês<select id="monthly-overview-month"></select></label><label>Ano<input id="monthly-overview-year" type="number" min="1900" max="9999" step="1" /></label></div>
           <div class="grid grid-2 finance-summary">
             <div class="group-shell"><p class="eyebrow">Total de rendas</p><strong id="monthly-overview-income">R$ 0,00</strong></div>
             <div class="group-shell"><p class="eyebrow">Total de gastos</p><strong id="monthly-overview-expenses">R$ 0,00</strong></div>
@@ -478,6 +478,6 @@
     <script src="admin.js?v=2"></script>
     <script type="module" src="finance.js?v=39"></script>
     <script type="module" src="credit-card.js?v=24"></script>
-    <script type="module" src="monthly-expenses.js?v=14"></script>
+    <script type="module" src="monthly-expenses.js?v=15"></script>
   </body>
 </html>
