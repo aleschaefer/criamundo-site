@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="admin.css?v=18" />
+    <link rel="stylesheet" href="admin.css?v=19" />
   </head>
   <body class="admin-page is-locked">
     <main class="auth-shell" id="auth-shell">
@@ -356,7 +356,7 @@
           <div class="grid grid-3"><label>Proprietário<select id="monthly-overview-owner"><option value="">Todos</option><option value="Ale">Ale</option><option value="Ana">Ana</option></select></label><label>Mês<select id="monthly-overview-month"></select></label><label>Ano<input id="monthly-overview-year" type="number" min="1900" max="9999" step="1" /></label></div>
           <div class="grid grid-2 finance-summary">
             <div class="group-shell"><p class="eyebrow">Total de rendas</p><strong id="monthly-overview-income">R$ 0,00</strong></div>
-            <div class="group-shell"><p class="eyebrow">Total de gastos</p><strong id="monthly-overview-expenses">R$ 0,00</strong></div>
+            <div class="group-shell"><p class="eyebrow">Total de gastos</p><strong id="monthly-overview-expenses">R$ 0,00</strong><small id="monthly-overview-expenses-status">Liquidado: R$ 0,00 · Pendente: R$ 0,00</small></div>
             <div class="group-shell"><p class="eyebrow">Expectativa de Saldo</p><strong id="monthly-overview-expected-balance">R$ 0,00</strong></div>
             <div class="group-shell"><p class="eyebrow">Saldo do mês</p><strong id="monthly-overview-balance">R$ 0,00</strong></div>
           </div>
@@ -479,6 +479,6 @@
     <script src="admin.js?v=2"></script>
     <script type="module" src="finance.js?v=39"></script>
     <script type="module" src="credit-card.js?v=24"></script>
-    <script type="module" src="monthly-expenses.js?v=18"></script>
+    <script type="module" src="monthly-expenses.js?v=19"></script>
   </body>
 </html>

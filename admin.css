@@ -429,6 +429,7 @@ textarea {
 .finance-income-result { min-height: 1.2em; color: var(--muted); font-size: .78rem; }
 .finance-summary { margin-bottom: 28px; }
 .finance-summary strong { font-size: clamp(1.5rem, 4vw, 2.2rem); overflow-wrap: anywhere; }
+.finance-summary small { display: block; margin-top: 8px; color: var(--muted); }
 .finance-table-wrap { overflow-x: auto; margin: 16px 0 28px; }
 .finance-table-wrap table { width: 100%; border-collapse: collapse; text-align: left; }
 .finance-table-wrap th, .finance-table-wrap td { padding: 14px 12px; border-bottom: 1px solid var(--line); }
