@@ -360,6 +360,14 @@
             <div class="group-shell"><p class="eyebrow">Expectativa de Saldo</p><strong id="monthly-overview-expected-balance">R$ 0,00</strong></div>
             <div class="group-shell"><p class="eyebrow">Saldo atual do mês</p><strong id="monthly-overview-balance">R$ 0,00</strong><small id="monthly-overview-balance-status">(Total de rendas: R$ 0,00 - Liquidado: R$ 0,00)</small></div>
           </div>
+          <section class="group-shell monthly-expense-chart" aria-labelledby="monthly-expense-chart-title">
+            <h3 id="monthly-expense-chart-title">Percentual de gastos por grupo</h3>
+            <p id="monthly-expense-chart-empty" class="intro">Nenhum gasto com valor positivo para exibir.</p>
+            <div id="monthly-expense-chart-content" class="finance-pie-content" hidden>
+              <div id="monthly-expense-pie" class="finance-pie" role="img" aria-label="Percentual de gastos por grupo"></div>
+              <ul id="monthly-expense-pie-legend" class="finance-pie-legend monthly-pie-legend" aria-label="Valores e percentuais dos gastos por grupo"></ul>
+            </div>
+          </section>
           <h3>Gastos do período</h3><p id="monthly-overview-empty" class="intro">Nenhum gasto selecionado para este período.</p><div id="monthly-overview-groups" class="finance-asset-groups"></div>
         </section>
       </section>
@@ -477,6 +485,6 @@
     <script src="admin.js?v=2"></script>
     <script type="module" src="finance.js?v=39"></script>
     <script type="module" src="credit-card.js?v=24"></script>
-    <script type="module" src="monthly-expenses.js?v=23"></script>
+    <script type="module" src="monthly-expenses.js?v=24"></script>
   </body>
 </html>

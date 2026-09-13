@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { validateMonthlyExpenseAction } from '../monthly-expenses-model.mjs';
+import { monthlyExpenseGroupSlices, validateMonthlyExpenseAction } from '../monthly-expenses-model.mjs';
 import { handleMonthlyExpenses } from '../monthly-expenses-api.mjs';
 const migration=readFileSync(new URL('../migrations/0024_monthly_expenses.sql',import.meta.url),'utf8');
 const incomeMigration=readFileSync(new URL('../migrations/0025_monthly_income.sql',import.meta.url),'utf8');
@@ -18,6 +18,8 @@ function env(){const db=database(),original=db.prepare;db.prepare=query=>{const 
 const request=body=>new Request('https://x/api/admin/monthly-expenses',{method:body?'POST':'GET',headers:{'x-admin-password':'pw','Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
 
 test('valida proprietário, valor, período e identificadores',()=>{const groupId=id();assert.equal(validateMonthlyExpenseAction({type:'expense',paymentDay:10,id:id(),owner:'Ale',name:'Internet',value:99.9,groupId}).value,99.9);assert.throws(()=>validateMonthlyExpenseAction({type:'expense',paymentDay:10,id:id(),owner:'Outro',name:'X',value:1,groupId}));assert.throws(()=>validateMonthlyExpenseAction({type:'month',month:13,year:2026,expenseIds:[]}));assert.throws(()=>validateMonthlyExpenseAction({type:'income',id:id(),owner:'Ale',name:'Salário',value:5000,month:13,year:2026}));});
+
+test('pizza consolida todos os grupos relacionados a crianças',()=>{const slices=monthlyExpenseGroupSlices([{groupName:'ESCOLA CRIANÇAS',value:600},{groupName:'Saúde das crianças',value:400},{groupName:'Moradia',value:1000}]);assert.deepEqual(slices,[{name:'CRIANÇAS',cents:100000,percentage:50},{name:'Moradia',cents:100000,percentage:50}]);});
 
 test('cadastra grupos e gastos e atualiza a seleção de cada mês',async()=>{const e=env(),groupId=id(),expenseId=id();assert.equal((await handleMonthlyExpenses(request({type:'group',id:groupId,name:'CASA'}),e)).status,200);assert.equal((await handleMonthlyExpenses(request({type:'expense',paymentDay:10,id:expenseId,owner:'Ana',name:'Internet',value:120.5,groupId}),e)).status,200);let response=await handleMonthlyExpenses(request({type:'month',month:9,year:2026,expenseIds:[expenseId]}),e);assert.equal(response.status,200);let data=await response.json();assert.deepEqual(data.entries,[{expenseId,month:9,year:2026,settled:0,disregarded:0}]);response=await handleMonthlyExpenses(request({type:'month',month:9,year:2026,expenseIds:[]}),e);data=await response.json();assert.equal(data.entries.length,0);assert.equal(data.expenses[0].groupName,'CASA');});
 

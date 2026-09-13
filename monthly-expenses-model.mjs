@@ -4,6 +4,19 @@ const id=value=>{if(!uuid.test(String(value||'')))throw new Error('Identificador
 const period=body=>{const month=Number(body.month),year=Number(body.year);if(!Number.isInteger(month)||month<1||month>12)throw new Error('Selecione um mês válido.');if(!Number.isInteger(year)||year<1900||year>9999)throw new Error('Informe um ano válido.');return{month,year};};
 const paymentDay=value=>{const day=Number(value);if(!Number.isInteger(day)||day<1||day>31)throw new Error('Dia do pagamento deve ser um número entre 1 e 31.');return day;};
 
+export function monthlyExpenseGroupSlices(expenses){
+  const totals=new Map();
+  for(const expense of expenses||[]){
+    const original=String(expense?.groupName||'Sem grupo').trim()||'Sem grupo';
+    const normalized=original.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+    const name=normalized.includes('CRIANCAS')?'CRIANÇAS':original;
+    const cents=Math.round(Number(expense?.value)*100);
+    if(Number.isFinite(cents)&&cents>0)totals.set(name,(totals.get(name)||0)+cents);
+  }
+  const total=[...totals.values()].reduce((sum,value)=>sum+value,0);
+  return[...totals.entries()].map(([name,cents])=>({name,cents,percentage:total?cents/total*100:0})).sort((a,b)=>b.cents-a.cents||a.name.localeCompare(b.name,'pt-BR'));
+}
+
 export function validateMonthlyExpenseAction(body){
   if(!body||!['group','expense','income','month','settlement','consideration','delete-all-expenses','delete-all-incomes'].includes(body.type))throw new Error('Operação inválida.');
   if(body.type==='delete-all-expenses'||body.type==='delete-all-incomes')return{type:body.type};
