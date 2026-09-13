@@ -482,3 +482,9 @@ npx wrangler d1 execute criamundo-content --remote --file=migrations/0027_monthl
 
 As rendas já cadastradas são preservadas. Edite-as para informar mês e ano e incluí-las
 nos totais da competência correspondente.
+
+Para controlar a liquidação individualmente em cada competência, aplique após a 0027:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0028_monthly_entry_settlement.sql
+```
