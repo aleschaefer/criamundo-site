@@ -497,11 +497,11 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       });
       const result = await response.json();
       if (token !== generation) return false;
-      if (!response.ok) throw new Error(result.error || 'Não foi possível acessar Finanças.');
+      if (!response.ok) throw new Error(result.error || 'Não foi possível acessar Investimentos.');
       data = result; render(); message(action ? 'Salvo com sucesso.' : 'Dados atualizados.');
       return true;
     } catch (error) {
-      if (token === generation) message(error.message || 'Não foi possível acessar Finanças.', true);
+      if (token === generation) message(error.message || 'Não foi possível acessar Investimentos.', true);
       return false;
     } finally { if (token === generation) { busy = false; controls(); } }
   }

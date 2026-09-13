@@ -99,6 +99,6 @@ export async function handleFinance(request, env) {
     if (/UNIQUE constraint/i.test(error.message)) return reply({ error: 'Já existe um ativo deste proprietário com esta sigla, nome, tipo e subtipo.' }, 409);
     if (/CHECK constraint/i.test(error.message)) return reply({ error: 'A operação excede os limites de quantidade, preço médio ou valor do ativo.' }, 400);
     console.error('Finance database error', error);
-    return reply({ error: 'Não foi possível acessar Finanças. Verifique a conexão e se as migrações de Finanças até 0023 foram aplicadas no banco.' }, 503);
+    return reply({ error: 'Não foi possível acessar Investimentos. Verifique a conexão e se as migrações de Investimentos até 0023 foram aplicadas no banco.' }, 503);
   }
 }
