@@ -494,3 +494,12 @@ Para permitir desconsiderar gastos individualmente em cada mês, aplique após a
 ```sh
 npx wrangler d1 execute criamundo-content --remote --file=migrations/0029_monthly_entry_disregarded.sql
 ```
+
+Para cadastrar apenas o dia recorrente de pagamento e montar a data conforme a
+competência selecionada, aplique após a 0029:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0030_monthly_expense_payment_day.sql
+```
+
+A migração preserva os gastos existentes, extraindo o dia das datas já cadastradas.
