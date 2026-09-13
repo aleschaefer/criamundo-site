@@ -4,7 +4,7 @@ const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers
 async function overview(db){const [groups,expenses,entries,incomes]=await db.batch([
   db.prepare('SELECT id,name,revision FROM monthly_expense_groups ORDER BY name COLLATE NOCASE'),
   db.prepare(`SELECT e.id,e.owner,e.name,e.value,e.group_id AS groupId,g.name AS groupName,e.payment_date AS paymentDate,e.settled,e.revision FROM monthly_expenses e JOIN monthly_expense_groups g ON g.id=e.group_id ORDER BY e.owner,e.name COLLATE NOCASE`),
-  db.prepare('SELECT expense_id AS expenseId,month,year,settled FROM monthly_expense_entries ORDER BY year DESC,month DESC'),
+  db.prepare('SELECT expense_id AS expenseId,month,year,settled,disregarded FROM monthly_expense_entries ORDER BY year DESC,month DESC'),
   db.prepare('SELECT id,owner,name,value,month,year,revision FROM monthly_incomes ORDER BY year DESC,month DESC,owner,name COLLATE NOCASE')
 ]);return{groups:groups.results,expenses:expenses.results,entries:entries.results,incomes:incomes.results};}
 export async function handleMonthlyExpenses(request,env){
@@ -33,6 +33,9 @@ export async function handleMonthlyExpenses(request,env){
     }else if(action.type==='settlement'){
       const result=await db.prepare('INSERT INTO monthly_expense_entries(expense_id,month,year,settled) SELECT id,?2,?3,?4 FROM monthly_expenses WHERE id=?1 ON CONFLICT(expense_id,month,year) DO UPDATE SET settled=excluded.settled').bind(action.expenseId,action.month,action.year,action.settled?1:0).run();
       if(!result.meta.changes)return reply({error:'Gasto não encontrado.'},404);
+    }else if(action.type==='consideration'){
+      const result=await db.prepare('INSERT INTO monthly_expense_entries(expense_id,month,year,disregarded) SELECT id,?2,?3,?4 FROM monthly_expenses WHERE id=?1 ON CONFLICT(expense_id,month,year) DO UPDATE SET disregarded=excluded.disregarded').bind(action.expenseId,action.month,action.year,action.disregarded?1:0).run();
+      if(!result.meta.changes)return reply({error:'Gasto não encontrado.'},404);
     }else{
       const statements=[db.prepare('DELETE FROM monthly_expense_entries WHERE month=?1 AND year=?2 AND expense_id NOT IN (SELECT value FROM json_each(?3))').bind(action.month,action.year,JSON.stringify(action.expenseIds)),...action.expenseIds.map(expenseId=>db.prepare('INSERT INTO monthly_expense_entries(expense_id,month,year) SELECT id,?2,?3 FROM monthly_expenses WHERE id=?1 ON CONFLICT(expense_id,month,year) DO NOTHING').bind(expenseId,action.month,action.year))];
       await db.batch(statements);
@@ -42,6 +45,6 @@ export async function handleMonthlyExpenses(request,env){
     if(/UNIQUE constraint/i.test(error.message))return reply({error:'Já existe um grupo com esse nome.'},409);
     if(/FOREIGN KEY constraint/i.test(error.message))return reply({error:'Este grupo está sendo usado por gastos e não pode ser excluído.'},409);
     if(/CHECK constraint/i.test(error.message))return reply({error:'Os dados não atendem às regras de Gastos Mensais.'},400);
-    console.error('Monthly expenses database error',error);return reply({error:'Não foi possível acessar Gastos Mensais. Aplique as migrações até 0028.'},503);
+    console.error('Monthly expenses database error',error);return reply({error:'Não foi possível acessar Gastos Mensais. Aplique as migrações até 0029.'},503);
   }
 }

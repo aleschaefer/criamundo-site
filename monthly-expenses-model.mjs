@@ -5,7 +5,7 @@ const period=body=>{const month=Number(body.month),year=Number(body.year);if(!Nu
 const optionalDate=value=>{const date=String(value||'').trim();if(!date)return null;if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||new Date(`${date}T00:00:00Z`).toISOString().slice(0,10)!==date)throw new Error('Data de pagamento inválida.');return date;};
 
 export function validateMonthlyExpenseAction(body){
-  if(!body||!['group','expense','income','month','settlement','delete-all-expenses','delete-all-incomes'].includes(body.type))throw new Error('Operação inválida.');
+  if(!body||!['group','expense','income','month','settlement','consideration','delete-all-expenses','delete-all-incomes'].includes(body.type))throw new Error('Operação inválida.');
   if(body.type==='delete-all-expenses'||body.type==='delete-all-incomes')return{type:body.type};
   const operation=body.operation||'create';
   if(['group','expense','income'].includes(body.type)&&operation==='delete'){const revision=Number(body.revision);if(!Number.isInteger(revision)||revision<0)throw new Error('Revisão inválida.');return{type:body.type,operation,id:id(body.id),revision};}
@@ -20,6 +20,7 @@ export function validateMonthlyExpenseAction(body){
     return{type:'income',operation,id:id(body.id),owner:body.owner,name:clean(body.name,50,'Nome'),value,...period(body),revision};
   }
   if(body.type==='settlement')return{type:'settlement',expenseId:id(body.expenseId),...period(body),settled:body.settled===true};
+  if(body.type==='consideration')return{type:'consideration',expenseId:id(body.expenseId),...period(body),disregarded:body.disregarded===true};
   const selected=[...new Set(Array.isArray(body.expenseIds)?body.expenseIds:[])].map(id);
   if(selected.length>1000)throw new Error('Quantidade de gastos excede o limite.');
   return{type:'month',...period(body),expenseIds:selected};

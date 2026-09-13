@@ -488,3 +488,9 @@ Para controlar a liquidação individualmente em cada competência, aplique apó
 ```sh
 npx wrangler d1 execute criamundo-content --remote --file=migrations/0028_monthly_entry_settlement.sql
 ```
+
+Para permitir desconsiderar gastos individualmente em cada mês, aplique após a 0028:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0029_monthly_entry_disregarded.sql
+```

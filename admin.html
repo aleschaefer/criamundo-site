@@ -345,10 +345,10 @@
         <form id="monthly-update-form" class="finance-form">
           <h3>Gerenciar Gastos</h3>
           <div class="grid grid-2"><label>Mês<select name="month" required></select></label><label>Ano<input name="year" type="number" min="1900" max="9999" step="1" required /></label></div>
-          <p class="draft-note">Selecione os gastos cadastrados que pertencem ao mês e salve a lista.</p>
-          <div class="finance-actions"><label class="finance-checkbox"><span><input id="monthly-select-all" type="checkbox" /> Selecionar todos</span></label></div>
+          <p class="draft-note">Todos os gastos cadastrados são considerados neste período. Use Desconsiderar apenas nos gastos que não pertencem ao mês.</p>
+          <div class="group-shell"><p class="eyebrow">Valor total de <span id="monthly-period-label"></span></p><strong id="monthly-period-total">R$ 0,00</strong></div>
           <p id="monthly-update-empty" class="intro">Inclua gastos para montar a lista mensal.</p>
-          <div class="finance-table-wrap"><table><thead><tr><th>Adicionar</th><th>Proprietário</th><th>Nome</th><th>Grupo</th><th>Valor</th><th>Situação</th></tr></thead><tbody id="monthly-update-list"></tbody><tfoot><tr><th colspan="4">Total selecionado</th><th id="monthly-selected-total">R$ 0,00</th><th><button class="button button-primary" type="submit">Salvar gastos do mês</button></th></tr></tfoot></table></div>
+          <div class="finance-table-wrap"><table><thead><tr><th>Proprietário</th><th>Nome</th><th>Grupo</th><th>Valor</th><th>Situação</th><th>Consideração</th></tr></thead><tbody id="monthly-update-list"></tbody></table></div>
         </form>
         <section id="monthly-overview" class="finance-form" hidden>
           <div class="panel-heading"><h3>Exibir gastos</h3><button id="monthly-overview-print" type="button" class="button button-secondary">Imprimir em PDF</button></div>
@@ -477,6 +477,6 @@
     <script src="admin.js?v=2"></script>
     <script type="module" src="finance.js?v=39"></script>
     <script type="module" src="credit-card.js?v=24"></script>
-    <script type="module" src="monthly-expenses.js?v=9"></script>
+    <script type="module" src="monthly-expenses.js?v=10"></script>
   </body>
 </html>
