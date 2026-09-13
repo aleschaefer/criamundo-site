@@ -21,7 +21,12 @@ export function validateMonthlyExpenseAction(body){
   }
   if(body.type==='settlement')return{type:'settlement',expenseId:id(body.expenseId),...period(body),settled:body.settled===true};
   if(body.type==='consideration')return{type:'consideration',expenseId:id(body.expenseId),...period(body),disregarded:body.disregarded===true};
+  if(Array.isArray(body.entries)){
+    if(body.entries.length>1000)throw new Error('Quantidade de gastos excede o limite.');
+    const seen=new Set(),entries=body.entries.map(item=>{const expenseId=id(item?.expenseId);if(seen.has(expenseId))throw new Error('Gasto repetido na competência.');seen.add(expenseId);return{expenseId,settled:item.settled===true,disregarded:item.disregarded===true};});
+    return{type:'month',...period(body),entries};
+  }
   const selected=[...new Set(Array.isArray(body.expenseIds)?body.expenseIds:[])].map(id);
   if(selected.length>1000)throw new Error('Quantidade de gastos excede o limite.');
-  return{type:'month',...period(body),expenseIds:selected};
+  return{type:'month',...period(body),entries:selected.map(expenseId=>({expenseId,settled:false,disregarded:false}))};
 }

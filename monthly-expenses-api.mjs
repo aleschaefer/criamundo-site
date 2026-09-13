@@ -37,7 +37,7 @@ export async function handleMonthlyExpenses(request,env){
       const result=await db.prepare('INSERT INTO monthly_expense_entries(expense_id,month,year,disregarded) SELECT id,?2,?3,?4 FROM monthly_expenses WHERE id=?1 ON CONFLICT(expense_id,month,year) DO UPDATE SET disregarded=excluded.disregarded').bind(action.expenseId,action.month,action.year,action.disregarded?1:0).run();
       if(!result.meta.changes)return reply({error:'Gasto não encontrado.'},404);
     }else{
-      const statements=[db.prepare('DELETE FROM monthly_expense_entries WHERE month=?1 AND year=?2 AND expense_id NOT IN (SELECT value FROM json_each(?3))').bind(action.month,action.year,JSON.stringify(action.expenseIds)),...action.expenseIds.map(expenseId=>db.prepare('INSERT INTO monthly_expense_entries(expense_id,month,year) SELECT id,?2,?3 FROM monthly_expenses WHERE id=?1 ON CONFLICT(expense_id,month,year) DO NOTHING').bind(expenseId,action.month,action.year))];
+      const statements=[db.prepare('DELETE FROM monthly_expense_entries WHERE month=?1 AND year=?2').bind(action.month,action.year),...action.entries.map(item=>db.prepare('INSERT INTO monthly_expense_entries(expense_id,month,year,settled,disregarded) SELECT id,?2,?3,?4,?5 FROM monthly_expenses WHERE id=?1').bind(item.expenseId,action.month,action.year,item.settled?1:0,item.disregarded?1:0))];
       await db.batch(statements);
     }
     return reply(await overview(db));
