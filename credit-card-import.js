@@ -1,4 +1,4 @@
-import { parseOcrText } from './credit-card-import-model.mjs?v=5';
+import { parseOcrText } from './credit-card-import-model.mjs?v=6';
 import { textPortions } from './credit-card-pdf-text.mjs?v=1';
 
 const PDF_MAX_BYTES = 15 * 1024 * 1024, PDF_MAX_PAGES = 30;

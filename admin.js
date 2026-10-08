@@ -3,6 +3,7 @@ const LOGIN_COOLDOWN_MS = 60 * 1000;
 const ADMIN_AUTH_API_PATH = "/api/admin/auth";
 let authenticatedSession = false;
 let authConfigured = true;
+let authFlowId = "";
 
 let adminData = createEmptySiteData();
 let failedLoginAttempts = 0;
@@ -16,6 +17,9 @@ const passwordField = document.querySelector("#admin-password");
 const emailField = document.querySelector("#admin-email");
 const legacyPasswordField = document.querySelector("#admin-legacy-password");
 const legacyPasswordLabel = document.querySelector("#legacy-password-label");
+const codeField = document.querySelector("#admin-code");
+const codeLabel = document.querySelector("#admin-code-label");
+const codeCancelButton = document.querySelector("#admin-code-cancel");
 const authStatus = document.querySelector("#auth-status");
 const logoutButton = document.querySelector("#logout-admin");
 const logoutAllButton = document.querySelector("#logout-all-admin");
@@ -94,11 +98,7 @@ function updateAuthView(isAuthenticated) {
 function persistAuthenticatedSession() { authenticatedSession = true; }
 function clearAuthenticatedSession() { authenticatedSession = false; }
 function isAuthenticated() { return authenticatedSession; }
-function fromBase64Url(value) { const text=value.replaceAll("-","+").replaceAll("_","/"); return Uint8Array.from(atob(text+"=".repeat((4-text.length%4)%4)),c=>c.charCodeAt(0)); }
-function toBase64Url(value) { return btoa(String.fromCharCode(...new Uint8Array(value))).replaceAll("+","-").replaceAll("/","_").replace(/=+$/,""); }
 async function authRequest(path, body) { const response=await fetch(`${ADMIN_AUTH_API_PATH}/${path}`,{method:body?"POST":"GET",credentials:"same-origin",headers:{Accept:"application/json",...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{})}); const result=await response.json(); if(!response.ok)throw new Error(result.error||"Não foi possível autenticar."); return result; }
-function publicKeyOptions(options) { return {...options,challenge:fromBase64Url(options.challenge),...(options.user?{user:{...options.user,id:fromBase64Url(options.user.id)}}:{}),...(options.allowCredentials?{allowCredentials:options.allowCredentials.map(item=>({...item,id:fromBase64Url(item.id)}))}:{})}; }
-function credentialPayload(credential, setup=false) { const response=credential.response; return {rawId:toBase64Url(credential.rawId),response:{clientDataJSON:toBase64Url(response.clientDataJSON),...(setup?{attestationObject:toBase64Url(response.attestationObject)}:{authenticatorData:toBase64Url(response.authenticatorData),signature:toBase64Url(response.signature),userHandle:response.userHandle?toBase64Url(response.userHandle):null})},...(setup?{transports:response.getTransports?.()||[]}:{})}; }
 
 function escapeHtml(value) {
   return String(value)
@@ -347,22 +347,22 @@ async function importJsonFileContents(file) {
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (Date.now() < loginCooldownUntil) { applyLoginCooldown(); return; }
-  if (!window.PublicKeyCredential) { setAuthStatus("Este navegador não oferece suporte a passkeys/Touch ID.","error"); return; }
   try {
-    const path=authConfigured?"login-options":"setup-options";
-    const options=await authRequest(path,{email:emailField.value,password:passwordField.value,legacyPassword:legacyPasswordField.value});
-    setAuthStatus("Confirme sua identidade com o Touch ID…");
-    const credential=authConfigured
-      ? await navigator.credentials.get({publicKey:publicKeyOptions(options.publicKey)})
-      : await navigator.credentials.create({publicKey:publicKeyOptions(options.publicKey)});
-    await authRequest(authConfigured?"login-verify":"setup-verify",{flowId:options.flowId,...credentialPayload(credential,!authConfigured)});
-    failedLoginAttempts=0; loginCooldownUntil=0; passwordField.disabled=false; authConfigured=true; persistAuthenticatedSession(); updateAuthView(true); setAuthStatus(""); passwordField.value=""; legacyPasswordField.value=""; setSaveStatus("Painel liberado com senha e Touch ID.","success");
+    if(!authFlowId){
+      const path=authConfigured?"login-options":"setup-options";
+      const options=await authRequest(path,{password:passwordField.value,legacyPassword:legacyPasswordField.value});
+      authFlowId=options.flowId;emailField.disabled=true;passwordField.disabled=true;legacyPasswordField.disabled=true;codeLabel.hidden=false;codeField.required=true;codeCancelButton.hidden=false;loginForm.querySelector("button[type=submit]").textContent="Validar código";setAuthStatus(`Código enviado para ${options.destination}.`);codeField.focus();return;
+    }
+    await authRequest(authConfigured?"login-verify":"setup-verify",{flowId:authFlowId,code:codeField.value});
+    failedLoginAttempts=0;loginCooldownUntil=0;authFlowId="";emailField.disabled=false;passwordField.disabled=false;legacyPasswordField.disabled=false;codeLabel.hidden=true;codeField.required=false;codeField.value="";codeCancelButton.hidden=true;authConfigured=true;persistAuthenticatedSession();updateAuthView(true);setAuthStatus("");passwordField.value="";legacyPasswordField.value="";setSaveStatus("Painel liberado com senha e código enviado por e-mail.","success");
   } catch (error) {
-    failedLoginAttempts += 1; passwordField.value="";
-    if(failedLoginAttempts>=MAX_LOGIN_ATTEMPTS){loginCooldownUntil=Date.now()+LOGIN_COOLDOWN_MS;failedLoginAttempts=0;applyLoginCooldown();return;}
-    setAuthStatus(error.name==="NotAllowedError"?"A confirmação pelo Touch ID foi cancelada.":error.message||"Não foi possível validar o acesso.","error");
+    if(!authFlowId){failedLoginAttempts += 1;passwordField.value="";if(failedLoginAttempts>=MAX_LOGIN_ATTEMPTS){loginCooldownUntil=Date.now()+LOGIN_COOLDOWN_MS;failedLoginAttempts=0;applyLoginCooldown();return;}}
+    else codeField.select();
+    setAuthStatus(error.message||"Não foi possível validar o acesso.","error");
   }
 });
+
+codeCancelButton.addEventListener("click",()=>{authFlowId="";emailField.disabled=false;passwordField.disabled=false;legacyPasswordField.disabled=false;codeLabel.hidden=true;codeField.required=false;codeField.value="";codeCancelButton.hidden=true;loginForm.querySelector("button[type=submit]").textContent=authConfigured?"Enviar código de acesso":"Cadastrar usuário e enviar código";setAuthStatus("");passwordField.focus();});
 
 logoutButton.addEventListener("click", async () => {
   try { await authRequest("logout",{}); } catch (error) { console.error(error); }
@@ -604,7 +604,8 @@ async function initializeAdmin() {
   const authState=await authRequest("status");
   authenticatedSession=authState.authenticated; authConfigured=authState.configured;
   legacyPasswordLabel.hidden=authConfigured; legacyPasswordField.required=!authConfigured;
-  loginForm.querySelector("button[type=submit]").textContent=authConfigured?"Entrar com Touch ID":"Cadastrar usuário e Touch ID";
+  emailField.value="aleschaefer@gmail.com";
+  loginForm.querySelector("button[type=submit]").textContent=authConfigured?"Enviar código de acesso":"Cadastrar usuário e enviar código";
   updateAuthView(authenticatedSession);
   if (!authenticatedSession) emailField.focus();
 }

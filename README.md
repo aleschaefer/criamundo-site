@@ -62,32 +62,44 @@ No projeto Worker, adicione um binding D1:
 - Binding name: `CONTENT_DB`
 - Database: o banco criado acima
 
-### 3. Autenticação administrativa com senha e Touch ID
+### 3. Autenticação administrativa com senha e código por e-mail
 
-Antes de publicar o código que exige passkey, aplique no D1:
+Antes de publicar a autenticação, aplique no D1:
 
 ```sql
 -- conteúdo de migrations/0016_admin_passkey_auth.sql
 ```
 
-No primeiro acesso ao `/admin`, informe um e-mail, uma nova senha com pelo menos
-12 caracteres e a senha administrativa atual. O navegador solicitará o Touch ID
-e salvará somente a chave pública da passkey no D1. Nos acessos seguintes, o
-login exige e-mail, senha e a confirmação biométrica.
+No primeiro acesso ao `/admin`, informe uma nova senha com pelo menos 12 caracteres
+e a senha administrativa atual. Após validar a senha, o sistema envia um código de
+5 dígitos para `aleschaefer@gmail.com`. O código expira em 10 minutos, admite no
+máximo cinco tentativas e pode ser usado somente uma vez.
 
 A sessão é mantida em cookie `HttpOnly`, `Secure` e `SameSite=Strict`, com
 validade de oito horas. A senha e o token da sessão não são salvos no
 `localStorage` ou `sessionStorage`.
 
-### 4. Variável de ambiente de implantação inicial
+### 4. Variáveis de ambiente e envio de e-mail
 
 Adicione uma variavel de ambiente no Worker:
 
 - `ADMIN_PASSWORD`
 
-Ela autoriza somente o cadastro inicial do primeiro usuário e da primeira
-passkey. Depois da configuração, as APIs administrativas aceitam apenas a sessão
-segura. Não configure `ALLOW_LEGACY_ADMIN_AUTH` em produção.
+Ela autoriza somente o cadastro inicial do primeiro usuário. Depois da configuração,
+as APIs administrativas aceitam apenas a sessão segura. Não configure
+`ALLOW_LEGACY_ADMIN_AUTH` em produção.
+
+O envio utiliza a API do Resend. Cadastre a chave como segredo:
+
+```sh
+npx wrangler secret put RESEND_API_KEY
+```
+
+Por padrão, o Worker usa `onboarding@resend.dev`, que permite os primeiros testes
+para o e-mail da própria conta Resend. Depois de verificar `criamundo.art.br` no
+Resend, substitua `AUTH_EMAIL_FROM` no `wrangler.jsonc` por um remetente do domínio,
+por exemplo `Financeiro Anale <acesso@criamundo.art.br>`. O destinatário fica fixado
+no servidor e não pode ser alterado pelo navegador.
 
 ## Endpoints
 
@@ -500,6 +512,12 @@ competência selecionada, aplique após a 0029:
 
 ```sh
 npx wrangler d1 execute criamundo-content --remote --file=migrations/0030_monthly_expense_payment_day.sql
+```
+
+Para permitir a importação de créditos e reembolsos negativos no Cartão de Crédito:
+
+```bash
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0031_credit_card_refunds.sql
 ```
 
 A migração preserva os gastos existentes, extraindo o dia das datas já cadastradas.

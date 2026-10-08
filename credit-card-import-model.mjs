@@ -27,7 +27,7 @@ const categoryNames = new Map([
   ['lancamentos em processamento','LANÇAMENTOS EM PROCESSAMENTO']
 ]);
 const ignoredCategories = /pagamentos?\s*\/\s*cr[eé]ditos?|saldo fatura anterior/i;
-const nonExpenseNames = /\b(?:pagamento|cr[eé]dito|estorno|desconto|saldo\s+fatura)\b/i;
+const paymentNames = /\b(?:pagamento(?:\s+de)?\s+fatura|pgto\s+(?:d[eé]bito|fatura)|saldo\s+fatura)\b/i;
 const stripMarks = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
 
 function parseAmount(value) {
@@ -63,13 +63,17 @@ export function parseOcrText(text, { page = 1, periodEnd, confidence = 0 } = {})
     let purchaseDate;
     try { purchaseDate = inferPurchaseDate(match[1], periodEnd); } catch { continue; }
     const processing = category === 'LANÇAMENTOS EM PROCESSAMENTO';
-    const excluded = nonExpenseNames.test(name) || (value <= 0 && !processing);
+    // Algumas faturas representam compras ainda em processamento com sinal
+    // negativo. Fora dessa seção, o sinal identifica créditos/reembolsos e
+    // precisa ser preservado. Pagamentos da própria fatura continuam excluídos.
+    const importedValue = processing ? Math.abs(value) : value;
+    const excluded = paymentNames.test(name);
     result.push({
-      page, row, purchaseDate, name: name.slice(0, 50), value: Math.abs(value), category,
+      page, row, purchaseDate, name: name.slice(0, 50), value: importedValue, category,
       payment: installment ? 2 : 1, currentInstallment, installmentCount,
       confidence: Math.max(0, Math.min(100, Math.round(confidence))),
       include: !excluded,
-      reason: excluded ? 'Pagamento ou crédito: não será somado aos gastos.' : ''
+      reason: excluded ? 'Pagamento da fatura: não será importado.' : ''
     });
   }
   return result;
@@ -84,7 +88,7 @@ export function validateImportAction(action) {
     if (!validId(item.id) || !validId(item.groupId) || !validTransactionDate(item.purchaseDate)) throw new Error(`Revise a transação ${index + 1}.`);
     const name = normalizeImportText(item.name);
     if (!name || [...name].length > 50) throw new Error(`Nome inválido na transação ${index + 1}.`);
-    if (typeof item.value !== 'number' || !Number.isFinite(item.value) || item.value <= 0 || item.value > 99999999.99 || Math.abs(item.value * 100 - Math.round(item.value * 100)) > .000001) throw new Error(`Valor inválido na transação ${index + 1}.`);
+    if (typeof item.value !== 'number' || !Number.isFinite(item.value) || item.value === 0 || Math.abs(item.value) > 99999999.99 || Math.abs(item.value * 100 - Math.round(item.value * 100)) > .000001) throw new Error(`Valor inválido na transação ${index + 1}.`);
     const current = item.payment === 2 ? item.currentInstallment : 1;
     const count = item.payment === 2 ? item.installmentCount : 1;
     if (![1,2].includes(item.payment) || !Number.isInteger(current) || !Number.isInteger(count) || current < 1 || count < current || count > 999) throw new Error(`Parcelas inválidas na transação ${index + 1}.`);

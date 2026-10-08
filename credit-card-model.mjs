@@ -51,7 +51,7 @@ export function validateCreditAction(action) {
   const current = action.payment === 1 ? 1 : integer(action.currentInstallment, 1, 999, 'Parcela atual');
   const count = action.payment === 1 ? 1 : integer(action.installmentCount, 1, 999, 'Quantidade de parcelas');
   if (current > count) throw new Error('A parcela atual não pode ser maior que a quantidade de parcelas.');
-  if (typeof action.value !== 'number' || !Number.isFinite(action.value) || action.value < 0 || action.value > 99999999.99 || Math.abs(action.value * 100 - Math.round(action.value * 100)) > 0.000001) throw new Error('Valor deve ter até 2 casas decimais e não pode exceder R$ 99.999.999,99.');
+  if (typeof action.value !== 'number' || !Number.isFinite(action.value) || Math.abs(action.value) > 99999999.99 || Math.abs(action.value * 100 - Math.round(action.value * 100)) > 0.000001) throw new Error('Valor deve ter até 2 casas decimais e não pode exceder R$ 99.999.999,99 em módulo.');
   return { ...action, name, value: Math.round(action.value * 100) / 100, currentInstallment: current, installmentCount: count };
 }
 export function expandInstallments(action) {

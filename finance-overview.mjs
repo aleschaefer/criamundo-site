@@ -24,6 +24,10 @@ export function financeOverviewTotals(assets = []) {
   }
   stockMonthlyIncome = Math.round(stockMonthlyIncome * 100) / 100;
   fiiMonthlyIncome = Math.round(fiiMonthlyIncome * 100) / 100;
+  const annualIncome = Math.round((stockMonthlyIncome + fiiMonthlyIncome) * 12 * 100) / 100;
+  const currentVariableValue = (currentByCategoryCents.stocks + currentByCategoryCents.fiis) / 100;
+  const averageVariableValue = (averageByCategoryCents.stocks + averageByCategoryCents.fiis) / 100;
+  const dy = value => value > 0 ? Math.round(annualIncome / value * 100 * 100000) / 100000 : null;
   return {
     currentValue: currentValueCents / 100,
     averageValue: averageValueCents / 100,
@@ -32,6 +36,8 @@ export function financeOverviewTotals(assets = []) {
     monthlyIncome: Math.round((stockMonthlyIncome + fiiMonthlyIncome) * 100) / 100,
     stockMonthlyIncome,
     fiiMonthlyIncome,
+    currentVariableDy: dy(currentVariableValue),
+    averageVariableDy: dy(averageVariableValue),
     currentByCategory: Object.fromEntries(Object.entries(currentByCategoryCents).map(([key, cents]) => [key, cents / 100])),
     averageByCategory: Object.fromEntries(Object.entries(averageByCategoryCents).map(([key, cents]) => [key, cents / 100])),
     countByCategory

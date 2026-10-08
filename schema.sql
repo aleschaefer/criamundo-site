@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS credit_card_transactions (
   series_id TEXT NOT NULL,
   transaction_date TEXT NOT NULL CHECK (transaction_date = date(transaction_date, '+0 days')),
   name CHAR(50) NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 50 AND name = trim(name)),
-  value DECIMAL(10,2) NOT NULL CHECK (value BETWEEN 0 AND 99999999.99 AND value = round(value, 2)),
+  value DECIMAL(10,2) NOT NULL CHECK (value BETWEEN -99999999.99 AND 99999999.99 AND value = round(value, 2)),
   group_id TEXT NOT NULL,
   payment SMALLINT NOT NULL CHECK (payment IN (1, 2)),
   installment_number INTEGER NOT NULL CHECK (typeof(installment_number) = 'integer' AND installment_number >= 1),
@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS credit_card_import_items (
   row_number INTEGER NOT NULL CHECK (row_number >= 1),
   purchase_date TEXT NOT NULL CHECK (purchase_date = date(purchase_date, '+0 days')),
   raw_name TEXT NOT NULL CHECK (length(trim(raw_name)) BETWEEN 1 AND 120),
-  value DECIMAL(10,2) NOT NULL CHECK (value > 0 AND value <= 99999999.99 AND value = round(value, 2)),
+  value DECIMAL(10,2) NOT NULL CHECK (value != 0 AND value BETWEEN -99999999.99 AND 99999999.99 AND value = round(value, 2)),
   confidence DECIMAL(5,2) NOT NULL CHECK (confidence BETWEEN 0 AND 100),
   transaction_id TEXT NOT NULL UNIQUE,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
@@ -264,7 +264,7 @@ BEGIN
   );
 END;
 
--- Autenticação administrativa com senha e passkey/WebAuthn.
+-- Autenticação administrativa com senha e código de uso único por e-mail.
 CREATE TABLE IF NOT EXISTS admin_users (id TEXT PRIMARY KEY NOT NULL,email TEXT NOT NULL UNIQUE COLLATE NOCASE,password_salt TEXT NOT NULL,password_hash TEXT NOT NULL,password_iterations INTEGER NOT NULL DEFAULT 100000,created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
 CREATE TABLE IF NOT EXISTS admin_passkeys (credential_id TEXT PRIMARY KEY NOT NULL,user_id TEXT NOT NULL,public_key TEXT NOT NULL,sign_count INTEGER NOT NULL DEFAULT 0,transports TEXT,created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),last_used_at TEXT,FOREIGN KEY(user_id) REFERENCES admin_users(id) ON DELETE CASCADE);
 CREATE TABLE IF NOT EXISTS admin_auth_challenges (id TEXT PRIMARY KEY NOT NULL,user_id TEXT,purpose TEXT NOT NULL CHECK(purpose IN ('setup','login')),challenge TEXT NOT NULL,payload TEXT,expires_at TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),FOREIGN KEY(user_id) REFERENCES admin_users(id) ON DELETE CASCADE);
