@@ -22,12 +22,12 @@ export function addMonthsClamped(date, months) {
 export function validateCreditAction(action) {
   if (!action || !['group', 'period', 'transaction'].includes(action.type) || !validId(action.id)) throw new Error('Dados inválidos.');
   const operation = action.operation || 'create';
-  if (!['create', 'update', 'delete', 'delete-all', 'delete-period-forward'].includes(operation)) throw new Error('Operação inválida.');
+  if (!['create', 'update', 'delete', 'delete-all', 'delete-period', 'delete-period-forward'].includes(operation)) throw new Error('Operação inválida.');
   if (operation === 'delete-all') {
     if (action.type !== 'transaction') throw new Error('Operação inválida.');
     return action;
   }
-  if (operation === 'delete-period-forward') {
+  if (operation === 'delete-period' || operation === 'delete-period-forward') {
     if (action.type !== 'transaction' || !validId(action.periodId)) throw new Error('Selecione um período válido.');
     return action;
   }

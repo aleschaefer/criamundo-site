@@ -110,25 +110,13 @@ export async function handleCreditCard(request, env) {
     if (action.type === 'transaction' && action.operation === 'delete-all') {
       await db.prepare(`UPDATE credit_card_transactions SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
         updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE deleted_at IS NULL`).run();
-    } else if (action.type === 'transaction' && action.operation === 'delete-period-forward') {
-      const period = await db.prepare('SELECT id,month,year FROM credit_card_periods WHERE id=?1').bind(action.periodId).first();
+    } else if (action.type === 'transaction' && ['delete-period','delete-period-forward'].includes(action.operation)) {
+      const period = await db.prepare('SELECT id FROM credit_card_periods WHERE id=?1').bind(action.periodId).first();
       if (!period) return reply({ error: 'O período selecionado não existe mais. Atualize os dados.' }, 409);
       await db.prepare(`UPDATE credit_card_transactions
         SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
             updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1
-        WHERE deleted_at IS NULL AND (
-          period_id=?1 OR (
-            payment=2 AND (
-              period_id IN (
-                SELECT id FROM credit_card_periods
-                WHERE year>?3 OR (year=?3 AND month>?2)
-              ) OR id IN (
-                SELECT transaction_id FROM credit_card_transaction_meta
-                WHERE billing_year>?3 OR (billing_year=?3 AND billing_month>?2)
-              )
-            )
-          )
-        )`).bind(period.id,period.month,period.year).run();
+        WHERE deleted_at IS NULL AND period_id=?1`).bind(period.id).run();
     } else if (action.type === 'transaction' && action.operation === 'delete') {
       const result=await db.prepare(`UPDATE credit_card_transactions SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
         updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE id=?1 AND revision=?2 AND deleted_at IS NULL`).bind(action.id,action.revision).run();
