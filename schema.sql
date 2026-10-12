@@ -280,3 +280,9 @@ CREATE TABLE IF NOT EXISTS monthly_expense_entries (expense_id TEXT NOT NULL,mon
 CREATE INDEX IF NOT EXISTS idx_monthly_expense_entries_period ON monthly_expense_entries(year,month);
 CREATE TABLE IF NOT EXISTS monthly_incomes (id TEXT PRIMARY KEY NOT NULL,owner TEXT NOT NULL CHECK(owner IN('Ale','Ana')),name CHAR(50) NOT NULL CHECK(length(trim(name)) BETWEEN 1 AND 50 AND name=trim(name)),value DECIMAL(10,2) NOT NULL CHECK(value>=0 AND value<=99999999.99 AND value=round(value,2)),month INTEGER CHECK(month IS NULL OR(typeof(month)='integer' AND month BETWEEN 1 AND 12)),year INTEGER CHECK(year IS NULL OR(typeof(year)='integer' AND year BETWEEN 1900 AND 9999)),revision INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT(strftime('%Y-%m-%dT%H:%M:%fZ','now')));
 CREATE INDEX IF NOT EXISTS idx_monthly_incomes_period ON monthly_incomes(year,month);
+
+-- Categorias e lembretes pessoais.
+CREATE TABLE IF NOT EXISTS reminder_categories (id TEXT PRIMARY KEY NOT NULL,name CHAR(40) COLLATE NOCASE NOT NULL UNIQUE CHECK(length(trim(name)) BETWEEN 1 AND 40 AND name=trim(name)),revision INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT(strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY NOT NULL,description CHAR(200) NOT NULL CHECK(length(trim(description)) BETWEEN 1 AND 200 AND description=trim(description)),category_id TEXT NOT NULL,resolution_date TEXT NOT NULL CHECK(resolution_date=date(resolution_date,'+0 days')),revision INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT(strftime('%Y-%m-%dT%H:%M:%fZ','now')),updated_at TEXT NOT NULL DEFAULT(strftime('%Y-%m-%dT%H:%M:%fZ','now')),FOREIGN KEY(category_id) REFERENCES reminder_categories(id) ON UPDATE CASCADE ON DELETE RESTRICT);
+CREATE INDEX IF NOT EXISTS idx_reminders_resolution_date ON reminders(resolution_date);
+CREATE INDEX IF NOT EXISTS idx_reminders_category ON reminders(category_id);

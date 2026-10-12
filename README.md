@@ -521,3 +521,9 @@ npx wrangler d1 execute criamundo-content --remote --file=migrations/0031_credit
 ```
 
 A migração preserva os gastos existentes, extraindo o dia das datas já cadastradas.
+
+Para cadastrar categorias e lembretes, aplique após a 0031:
+
+```bash
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0032_reminders.sql
+```

@@ -115,6 +115,7 @@
         <button type="button" class="button button-secondary" id="show-finance" aria-pressed="false">Investimentos</button>
         <button type="button" class="button button-secondary" id="show-credit-card" aria-pressed="false">Cartão de Crédito</button>
         <button type="button" class="button button-secondary" id="show-monthly-expenses" aria-pressed="false">Gastos Mensais</button>
+        <button type="button" class="button button-secondary" id="show-reminders" aria-pressed="false">Lembretes</button>
       </nav>
       <section id="finance-section" class="panel" hidden aria-labelledby="finance-title">
         <div class="panel-heading"><div><p class="eyebrow">Gestão de ativos</p><h2 id="finance-title">Investimentos</h2></div></div>
@@ -380,6 +381,55 @@
         </section>
       </section>
 
+      <section id="reminders-section" class="panel" hidden aria-labelledby="reminders-title">
+        <div class="panel-heading"><div><p class="eyebrow">Agenda pessoal</p><h2 id="reminders-title">Lembretes</h2></div></div>
+        <p class="intro">Cadastre lembretes por categoria e compartilhe os itens selecionados pelo WhatsApp.</p>
+        <div class="finance-actions" aria-label="Ações de Lembretes">
+          <button type="button" class="button button-secondary" data-reminders-view="category">Incluir categoria</button>
+          <button type="button" class="button button-primary" data-reminders-view="reminder" aria-pressed="true">Incluir lembrete</button>
+          <button type="button" class="button button-secondary" data-reminders-view="reminders">Exibir lembretes</button>
+          <button type="button" class="button button-secondary" data-reminders-view="categories">Exibir categorias</button>
+          <button type="button" class="button button-secondary" data-reminders-view="alerts">Enviar alertas</button>
+          <button type="button" class="button button-secondary" id="reminders-refresh">Atualizar dados</button>
+        </div>
+        <p id="reminders-status" class="save-status" role="status" aria-live="polite"></p>
+
+        <form id="reminder-category-form" class="finance-form" hidden>
+          <h3 id="reminder-category-title">Incluir categoria</h3>
+          <label>Nome da categoria<input name="name" maxlength="40" required /></label>
+          <div class="finance-actions"><button class="button button-primary" type="submit">Salvar categoria</button><button class="button button-secondary" id="reminder-category-cancel" type="button" hidden>Cancelar edição</button></div>
+        </form>
+
+        <form id="reminder-form" class="finance-form">
+          <h3 id="reminder-title">Incluir lembrete</h3>
+          <div class="grid grid-2">
+            <label class="full-width">Descrição<textarea name="description" maxlength="200" rows="3" required></textarea></label>
+            <label>Categoria<select name="categoryId" required></select></label>
+            <label>Data de resolução<input name="resolutionDate" type="date" required /></label>
+          </div>
+          <div class="finance-actions"><button class="button button-primary" type="submit">Salvar lembrete</button><button class="button button-secondary" id="reminder-cancel" type="button" hidden>Cancelar edição</button></div>
+        </form>
+
+        <section id="reminders-list-view" class="finance-form" hidden>
+          <h3>Lembretes cadastrados</h3><p id="reminders-empty" class="intro">Nenhum lembrete cadastrado.</p>
+          <div class="finance-table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data de resolução</th><th>Ações</th></tr></thead><tbody id="reminders-list"></tbody></table></div>
+        </section>
+
+        <section id="reminder-categories-view" class="finance-form" hidden>
+          <h3>Categorias cadastradas</h3><p id="reminder-categories-empty" class="intro">Nenhuma categoria cadastrada.</p>
+          <div class="finance-table-wrap"><table><thead><tr><th>Categoria</th><th>Ações</th></tr></thead><tbody id="reminder-categories-list"></tbody></table></div>
+        </section>
+
+        <form id="reminder-alerts-form" class="finance-form" hidden>
+          <h3>Enviar alertas</h3>
+          <label>Telefone com DDD<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(48) 99999-9999" required /><small>Informe um telefone brasileiro. O WhatsApp abrirá com a mensagem pronta para confirmação.</small></label>
+          <p id="reminder-alerts-empty" class="intro">Nenhum lembrete cadastrado.</p>
+          <label class="finance-checkbox" id="reminder-alerts-select-all-wrap"><span><input id="reminder-alerts-select-all" type="checkbox" /> Selecionar todos</span></label>
+          <div class="finance-table-wrap"><table><thead><tr><th>Enviar</th><th>Descrição</th><th>Categoria</th><th>Data de resolução</th></tr></thead><tbody id="reminder-alerts-list"></tbody></table></div>
+          <div class="finance-actions"><button class="button button-primary" type="submit">Abrir no WhatsApp</button></div>
+        </form>
+      </section>
+
       <form id="admin-form" class="admin-form">
         <section class="panel">
           <div class="panel-heading">
@@ -494,5 +544,6 @@
     <script type="module" src="finance.js?v=41"></script>
     <script type="module" src="credit-card.js?v=26"></script>
     <script type="module" src="monthly-expenses.js?v=24"></script>
+    <script type="module" src="reminders.js?v=1"></script>
   </body>
 </html>

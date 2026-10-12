@@ -1,6 +1,7 @@
 import { handleFinance } from './finance-api.mjs';
 import { handleCreditCard } from './credit-card-api.mjs';
 import { handleMonthlyExpenses } from './monthly-expenses-api.mjs';
+import { handleReminders } from './reminders-api.mjs';
 import { handleFinanceIncome, handleFinanceCurrentPrice } from './finance-income-api.mjs';
 import { handleAdminAuthentication, requireAdminSession } from './admin-auth.mjs';
 
@@ -177,6 +178,10 @@ export default {
 
     if (url.pathname === "/api/admin/monthly-expenses") {
       return handleMonthlyExpenses(request, env);
+    }
+
+    if (url.pathname === "/api/admin/reminders") {
+      return handleReminders(request, env);
     }
 
     if (url.pathname === "/api/content" && request.method === "GET") {
