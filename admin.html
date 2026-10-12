@@ -116,6 +116,7 @@
         <button type="button" class="button button-secondary" id="show-credit-card" aria-pressed="false">Cartão de Crédito</button>
         <button type="button" class="button button-secondary" id="show-monthly-expenses" aria-pressed="false">Gastos Mensais</button>
         <button type="button" class="button button-secondary" id="show-reminders" aria-pressed="false">Lembretes</button>
+        <button type="button" class="button button-secondary" id="show-market" aria-pressed="false">Mercado</button>
       </nav>
       <section id="finance-section" class="panel" hidden aria-labelledby="finance-title">
         <div class="panel-heading"><div><p class="eyebrow">Gestão de ativos</p><h2 id="finance-title">Investimentos</h2></div></div>
@@ -430,6 +431,49 @@
         </form>
       </section>
 
+      <section id="market-section" class="panel" hidden aria-labelledby="market-title">
+        <div class="panel-heading"><div><p class="eyebrow">Listas de compras</p><h2 id="market-title">Mercado</h2></div></div>
+        <p class="intro">Cadastre itens reutilizáveis, monte listas por data e compartilhe uma lista pelo WhatsApp.</p>
+        <div class="finance-actions" aria-label="Ações de Mercado">
+          <button type="button" class="button button-secondary" data-market-view="category">Incluir categoria</button>
+          <button type="button" class="button button-secondary" data-market-view="item">Incluir item</button>
+          <button type="button" class="button button-primary" data-market-view="list" aria-pressed="true">Montar lista</button>
+          <button type="button" class="button button-secondary" data-market-view="categories">Exibir categorias</button>
+          <button type="button" class="button button-secondary" data-market-view="lists">Exibir listas</button>
+          <button type="button" class="button button-secondary" data-market-view="alerts">Enviar alertas</button>
+          <button type="button" class="button button-secondary" id="market-refresh">Atualizar dados</button>
+        </div>
+        <p id="market-status" class="save-status" role="status" aria-live="polite"></p>
+
+        <form id="market-category-form" class="finance-form" hidden>
+          <h3 id="market-category-title">Incluir categoria</h3><label>Nome da categoria<input name="name" maxlength="40" required /></label>
+          <div class="finance-actions"><button class="button button-primary" type="submit">Salvar categoria</button><button class="button button-secondary" id="market-category-cancel" type="button" hidden>Cancelar edição</button></div>
+        </form>
+
+        <form id="market-item-form" class="finance-form" hidden>
+          <h3 id="market-item-title">Incluir item</h3><div class="grid grid-2">
+            <label>Nome<input name="name" maxlength="80" required /></label><label>Quantidade<input name="quantity" type="number" min="1" max="9999" step="1" required /></label>
+            <label>Categoria<select name="categoryId" required></select></label><label>Valor aproximado (R$)<input name="approximateValue" type="number" min="0" max="99999999.99" step="0.01" required /></label>
+          </div><div class="finance-actions"><button class="button button-primary" type="submit">Salvar item</button><button class="button button-secondary" id="market-item-cancel" type="button" hidden>Cancelar edição</button></div>
+          <h3>Itens cadastrados</h3><p id="market-items-empty" class="intro">Nenhum item cadastrado.</p><div class="finance-table-wrap"><table><thead><tr><th>Nome</th><th>Quantidade</th><th>Categoria</th><th>Valor aproximado</th><th>Ações</th></tr></thead><tbody id="market-items-list"></tbody></table></div>
+        </form>
+
+        <form id="market-list-form" class="finance-form">
+          <h3 id="market-list-title">Montar lista</h3><label>Data<input name="listDate" type="date" required /></label>
+          <p id="market-list-items-empty" class="intro">Inclua itens para montar uma lista.</p><div class="finance-table-wrap"><table><thead><tr><th>Selecionar</th><th>Nome</th><th>Quantidade</th><th>Categoria</th><th>Valor aproximado</th></tr></thead><tbody id="market-list-items"></tbody><tfoot><tr><th colspan="4">Total aproximado</th><th id="market-list-total">R$ 0,00</th></tr></tfoot></table></div>
+          <div class="finance-actions"><button class="button button-primary" type="submit">Salvar lista</button><button class="button button-secondary" id="market-list-cancel" type="button" hidden>Cancelar edição</button></div>
+        </form>
+
+        <section id="market-categories-view" class="finance-form" hidden><h3>Categorias cadastradas</h3><p id="market-categories-empty" class="intro">Nenhuma categoria cadastrada.</p><div class="finance-table-wrap"><table><thead><tr><th>Categoria</th><th>Ações</th></tr></thead><tbody id="market-categories-list"></tbody></table></div></section>
+        <section id="market-lists-view" class="finance-form" hidden><h3>Listas de compras cadastradas</h3><p id="market-lists-empty" class="intro">Nenhuma lista cadastrada.</p><div id="market-lists" class="finance-asset-groups"></div></section>
+
+        <form id="market-alerts-form" class="finance-form" hidden><h3>Enviar alertas</h3>
+          <label>Telefone com DDD<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(48) 99999-9999" required /><small>Selecione uma lista. O WhatsApp abrirá com os itens e o total aproximado.</small></label>
+          <p id="market-alerts-empty" class="intro">Nenhuma lista cadastrada.</p><div class="finance-table-wrap"><table><thead><tr><th>Enviar</th><th>Data</th><th>Itens</th><th>Total aproximado</th></tr></thead><tbody id="market-alerts-list"></tbody></table></div>
+          <div class="finance-actions"><button class="button button-primary" type="submit">Abrir no WhatsApp</button></div>
+        </form>
+      </section>
+
       <form id="admin-form" class="admin-form">
         <section class="panel">
           <div class="panel-heading">
@@ -545,5 +589,6 @@
     <script type="module" src="credit-card.js?v=26"></script>
     <script type="module" src="monthly-expenses.js?v=24"></script>
     <script type="module" src="reminders.js?v=1"></script>
+    <script type="module" src="market.js?v=1"></script>
   </body>
 </html>
