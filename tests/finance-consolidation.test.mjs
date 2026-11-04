@@ -34,3 +34,13 @@ test('resumo calcula rendimento total e DY ponderado pelo custo, sem somar perce
   assert.equal(totals.averageDy, 5);
   assert.equal(assetGroupSummary([]).averageDy, null);
 });
+
+test('renda fixa mantém linhas repetidas e seus dados individuais em Todos', () => {
+  const first = { ...asset, assetType: 2, subType: 7, symbol: 'CDB', exitDate: '2027-01-01' };
+  const second = { ...first, id: 'b', owner: 'Ana', quantity: 30, exitDate: '2028-01-01' };
+  const result = consolidateAssets([first, second, asset, { ...asset, id: 'c', owner: 'Ana' }]);
+  assert.equal(result.length, 3);
+  assert.equal(result[0], first);
+  assert.equal(result[1], second);
+  assert.equal(result[2].quantity, 20);
+});

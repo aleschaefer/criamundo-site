@@ -4,6 +4,10 @@ import { calculateYields } from './finance-yield.mjs';
 export function consolidateAssets(assets) {
   const groups = new Map();
   for (const asset of assets) {
+    if (asset.assetType === 2) {
+      groups.set(Symbol(), [asset]);
+      continue;
+    }
     const symbol = String(asset.symbol || '').trim().toUpperCase();
     const key = JSON.stringify([asset.assetType, asset.subType, symbol || asset.name]);
     if (!groups.has(key)) groups.set(key, []);

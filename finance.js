@@ -1,4 +1,4 @@
-import { consolidateAssets, assetGroupSummary } from './finance-consolidation.mjs';
+import { consolidateAssets, assetGroupSummary } from './finance-consolidation.mjs?v=2';
 import { ASSET_TYPES as types, ASSET_SUBTYPES as subtypes, SUBTYPES_BY_TYPE, hasIncome, hasCurrentPrice } from './finance-types.mjs';
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
@@ -152,6 +152,14 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           indicator.append(caption, amount); indicators.append(indicator);
         }
         summary.append(indicators);
+      }
+      if (group.assetType === 2) {
+        const indicators = document.createElement('span'); indicators.className = 'finance-group-totals';
+        const indicator = document.createElement('span'); indicator.className = 'finance-group-total';
+        const caption = document.createElement('span'); caption.textContent = 'Valor total';
+        const amount = document.createElement('strong');
+        amount.textContent = money(group.assets.reduce((sum, asset) => sum + Math.round(currentAssetTotal(asset) * 100), 0) / 100);
+        indicator.append(caption, amount); indicators.append(indicator); summary.append(indicators);
       }
       let importControls = null;
       if (group.assetType === 1 && [1, 2].includes(group.subType)) {
