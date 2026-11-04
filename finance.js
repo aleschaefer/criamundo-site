@@ -142,7 +142,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
         const totals = assetGroupSummary(group.assets);
         const indicators = document.createElement('span'); indicators.className = 'finance-group-totals';
         for (const [label, value, hint] of [
-          ['Rend. Atual (total)', money(totals.income), 'Soma do rendimento por ativo multiplicado pela quantidade.'],
+          [group.subType === 1 ? 'Rend. Atual (mensal)' : 'Rend. Atual (total)', money(group.subType === 1 ? totals.income / 12 : totals.income), group.subType === 1 ? 'Rendimento anual total dividido por 12: média mensal estimada.' : 'Soma do rendimento por ativo multiplicado pela quantidade.'],
           ['DY médio (%)', yieldPercent(totals.averageDy), 'Rendimento total dividido pelo valor total a preço médio.'],
           ['Valor total', money(totals.averageValue), 'Soma das quantidades multiplicadas pelos preços médios.']
         ]) {
