@@ -1,3 +1,4 @@
+import { consolidateAssets } from './finance-consolidation.mjs';
 import { ASSET_TYPES as types, ASSET_SUBTYPES as subtypes, SUBTYPES_BY_TYPE, hasIncome, hasCurrentPrice } from './finance-types.mjs';
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
@@ -91,7 +92,17 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     values.forEach(value => { const td = document.createElement('td'); td.textContent = value; tr.append(td); });
     const actions = document.createElement('td');
     const buttons = document.createElement('div'); buttons.className = 'finance-row-actions';
-    ['edit', 'delete'].forEach(action => {
+    if (record.members) {
+      for (const owner of [...new Set(record.members.map(asset => asset.owner))]) {
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'button button-secondary';
+        button.textContent = `Ver ${owner}`;
+        button.addEventListener('click', () => {
+          selectedOwner = owner; $('#finance-owner-filter').value = owner;
+          assetGroupToReopen = { owner, assetType: record.assetType, subType: record.subType }; render();
+        });
+        buttons.append(button);
+      }
+    } else ['edit', 'delete'].forEach(action => {
       const button = document.createElement('button'); button.type = 'button';
       button.className = `button ${action === 'delete' ? 'button-danger' : 'button-secondary'}`;
       button.textContent = action === 'edit' ? 'Editar' : 'Excluir';
@@ -106,24 +117,26 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     const container = $('#finance-asset-groups'); container.replaceChildren();
     const groups = new Map();
     const ownerGroups = new Map();
+    const owner = selectedOwner || 'Todos';
     for (const asset of assets) {
-      const key = `${asset.owner}\u0000${asset.assetType}\u0000${asset.subType}`;
-      if (!groups.has(key)) groups.set(key, { owner: asset.owner, assetType: asset.assetType, subType: asset.subType, assets: [] });
+      const key = `${asset.assetType}\u0000${asset.subType}`;
+      if (!groups.has(key)) groups.set(key, { owner, assetType: asset.assetType, subType: asset.subType, assets: [] });
       groups.get(key).assets.push(asset);
     }
-    for (const owner of [...new Set(assets.map(asset => asset.owner))]) {
+    if (assets.length) {
       const ownerDetails = document.createElement('details'); ownerDetails.className = 'finance-owner-group';
-      ownerDetails.open = assetGroupToReopen?.owner === owner;
+      ownerDetails.open = Boolean(assetGroupToReopen);
       const ownerSummary = document.createElement('summary');
-      ownerSummary.textContent = `${owner} (${assets.filter(asset => asset.owner === owner).length} ativos)`;
+      ownerSummary.textContent = `${owner === 'Todos' ? 'Todos · Ale e Ana' : owner} (${(selectedOwner ? assets : consolidateAssets(assets)).length} ativos)`;
       const ownerContent = document.createElement('div'); ownerContent.className = 'finance-owner-group-content';
       ownerDetails.append(ownerSummary, ownerContent); container.append(ownerDetails); ownerGroups.set(owner, ownerContent);
     }
     for (const group of groups.values()) {
+      const displayAssets = selectedOwner ? group.assets : consolidateAssets(group.assets);
       const details = document.createElement('details'); details.className = 'finance-asset-group';
-      details.open = assetGroupToReopen?.owner === group.owner && assetGroupToReopen?.assetType === group.assetType && assetGroupToReopen?.subType === group.subType;
+      details.open = (group.owner === 'Todos' || assetGroupToReopen?.owner === group.owner) && assetGroupToReopen?.assetType === group.assetType && assetGroupToReopen?.subType === group.subType;
       const summary = document.createElement('summary');
-      const summaryLabel = document.createElement('span'); summaryLabel.textContent = `${types[group.assetType]} · ${subtypes[group.subType]} (${group.assets.length})`;
+      const summaryLabel = document.createElement('span'); summaryLabel.textContent = `${types[group.assetType]} · ${subtypes[group.subType]} (${displayAssets.length})`;
       summary.append(summaryLabel);
       if (group.assetType === 1 && [1, 2].includes(group.subType)) {
         const groupActions = document.createElement('span'); groupActions.className = 'finance-group-actions';
@@ -279,7 +292,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       head.append(headerRow);
       const body = document.createElement('tbody');
       const sortableRows = [];
-      for (const asset of group.assets) {
+      for (const asset of displayAssets) {
         const values = variable
           ? [asset.symbol || '—', quantity(asset.quantity), asset.minimumPrice == null ? '—' : money(asset.minimumPrice), money(asset.averagePrice), hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(Math.round(Number(asset.quantity) * Number(asset.averagePrice) * 100) / 100), hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', money(currentAssetTotal(asset))]
           : fixed
@@ -287,7 +300,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
             : [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)];
         row(body, values, 'asset', asset);
         sortableRows.push({ asset, element: body.lastElementChild });
-        if (undefinedAveragePriceAssetIds.has(asset.id)) {
+        if ((asset.members || [asset]).some(member => undefinedAveragePriceAssetIds.has(member.id))) {
           const averageCell = body.lastElementChild?.cells[3];
           if (averageCell) { averageCell.classList.add('finance-value-undefined'); averageCell.title = 'Preço médio indefinido no PDF importado'; }
         }

@@ -197,6 +197,12 @@
             <div class="group-shell"><p class="eyebrow">DY% Ações e FIIs (Total)</p><strong id="finance-variable-current-dy">—</strong><small>Rendimento anual combinado ÷ valor atual de Ações e FIIs.</small></div>
             <div class="group-shell"><p class="eyebrow">DY% Ações e FIIs (Médio)</p><strong id="finance-variable-average-dy">—</strong><small>Rendimento anual combinado ÷ valor médio de Ações e FIIs.</small></div>
           </div>
+          <div class="finance-list-filter">
+            <p id="finance-filter-status" class="draft-note" role="status" aria-live="polite">Exibindo todos os tipos de ativos.</p>
+            <button id="finance-filter-clear" type="button" class="button button-secondary" hidden>Mostrar todos</button>
+          </div>
+          <h3>Ativos</h3><p id="finance-empty" class="intro">Carregue os dados para consultar seus ativos.</p>
+          <div id="finance-asset-groups" class="finance-asset-groups"></div>
           <section class="finance-allocation group-shell" aria-labelledby="finance-allocation-title">
             <h3 id="finance-allocation-title">Distribuição por tipo de ativo</h3>
             <p class="draft-note">Montante acumulado pelo custo de aquisição, sem usar a cotação atual. Clique na legenda para filtrar as listas; clique novamente para mostrar todos.</p>
@@ -206,12 +212,6 @@
               <ul id="finance-pie-legend" class="finance-pie-legend" aria-label="Montantes e percentuais por tipo"></ul>
             </div>
           </section>
-          <div class="finance-list-filter">
-            <p id="finance-filter-status" class="draft-note" role="status" aria-live="polite">Exibindo todos os tipos de ativos.</p>
-            <button id="finance-filter-clear" type="button" class="button button-secondary" hidden>Mostrar todos</button>
-          </div>
-          <h3>Ativos</h3><p id="finance-empty" class="intro">Carregue os dados para consultar seus ativos.</p>
-          <div id="finance-asset-groups" class="finance-asset-groups"></div>
           <h3 class="finance-history-section">Histórico de transações</h3><p id="finance-history-empty" class="intro finance-history-section">Nenhuma transação registrada.</p>
           <div class="finance-table-wrap finance-history-section"><table><caption class="sr-only">Histórico de transações</caption><thead><tr><th>Proprietário</th><th>Data da transação</th><th>Registro</th><th>Nome</th><th>Tipo</th><th>Subtipo</th><th>Quantidade</th><th>Valor total</th><th>Ações</th></tr></thead><tbody id="finance-history"></tbody></table></div>
         </div>
