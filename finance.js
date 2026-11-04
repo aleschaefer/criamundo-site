@@ -281,9 +281,10 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       const table = document.createElement('table');
       const caption = document.createElement('caption'); caption.className = 'sr-only'; caption.textContent = `Ativos de ${group.owner}, ${types[group.assetType]}, ${subtypes[group.subType]}`;
       const variable = group.assetType === 1;
+      if (variable) table.classList.add('finance-variable-table');
       const fixed = group.assetType === 2;
       const headers = variable
-        ? ['Sigla', 'Qtde.', 'Valor Mín.', 'Preço Médio', 'Rend. Atual', 'DY médio (%)', 'Valor total (méd.)', 'DY atual (%)', 'Valor total (atual)', 'Ações']
+        ? ['Sigla', 'Qtde.', 'Valor Mín.', 'Valor Atual', 'Preço Médio', 'Rend. Atual', 'DY médio (%)', 'Valor total (méd.)', 'DY atual (%)', 'Valor total (atual)', 'Ações']
         : fixed
           ? ['Sigla', 'Nome', 'Quantidade', 'Valor atual', 'Data de retirada', 'Valor total', 'Ações']
           : ['Sigla', 'Nome', 'Quantidade', 'Preço médio', 'Valor total', 'Ações'];
@@ -294,20 +295,20 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       const sortableRows = [];
       for (const asset of displayAssets) {
         const values = variable
-          ? [asset.symbol || '—', quantity(asset.quantity), asset.minimumPrice == null ? '—' : money(asset.minimumPrice), money(asset.averagePrice), hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(Math.round(Number(asset.quantity) * Number(asset.averagePrice) * 100) / 100), hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', money(currentAssetTotal(asset))]
+          ? [asset.symbol || '—', quantity(asset.quantity), asset.minimumPrice == null ? '—' : money(asset.minimumPrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', money(asset.averagePrice), hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(Math.round(Number(asset.quantity) * Number(asset.averagePrice) * 100) / 100), hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', money(currentAssetTotal(asset))]
           : fixed
             ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.currentPrice), formatTransactionDate(asset.exitDate), money(currentAssetTotal(asset))]
             : [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)];
         row(body, values, 'asset', asset);
         sortableRows.push({ asset, element: body.lastElementChild });
         if ((asset.members || [asset]).some(member => undefinedAveragePriceAssetIds.has(member.id))) {
-          const averageCell = body.lastElementChild?.cells[3];
+          const averageCell = body.lastElementChild?.cells[variable ? 4 : 3];
           if (averageCell) { averageCell.classList.add('finance-value-undefined'); averageCell.title = 'Preço médio indefinido no PDF importado'; }
         }
       }
       if (variable && [1, 2].includes(group.subType)) {
         const sortKey = `${group.owner}:${group.subType}`;
-        const sortValues = asset => [asset.symbol || null, asset.quantity, asset.minimumPrice, asset.averagePrice,
+        const sortValues = asset => [asset.symbol || null, asset.quantity, asset.minimumPrice, hasCurrentPrice(asset) ? asset.currentPrice : null, asset.averagePrice,
           hasIncome(asset) ? asset.currentIncome : null, hasIncome(asset) ? asset.averageDy : null,
           Math.round(Number(asset.quantity) * Number(asset.averagePrice) * 100) / 100,
           hasIncome(asset) ? asset.currentDy : null, currentAssetTotal(asset)];
@@ -351,7 +352,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
         const storageKey = `finance-optional-columns:${group.owner}:${group.subType}`;
         let preferences = {};
         try { preferences = JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { /* Preferências locais são opcionais. */ }
-        for (const [key, title, index] of [['currentDy', 'DY atual (%)', 7], ['currentTotal', 'Valor total (atual)', 8]]) {
+        for (const [key, title, index] of [['currentDy', 'DY atual (%)', 8], ['currentTotal', 'Valor total (atual)', 9]]) {
           const option = document.createElement('label');
           const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = preferences[key] === true;
           const updateVisibility = () => {

@@ -597,3 +597,6 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .finance-column-sort { appearance: none; background: transparent; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; white-space: nowrap; }
 .finance-column-sort:hover { color: var(--gold); }
 .finance-column-sort:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 2px; }
+
+.finance-table-wrap .finance-variable-table th:first-child,
+.finance-table-wrap .finance-variable-table td:first-child:not([colspan]) { width: 1%; min-width: 72px; white-space: nowrap; overflow-wrap: normal; padding-right: 10px; }
