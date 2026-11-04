@@ -1,4 +1,4 @@
-import { consolidateAssets } from './finance-consolidation.mjs';
+import { consolidateAssets, assetGroupSummary } from './finance-consolidation.mjs';
 import { ASSET_TYPES as types, ASSET_SUBTYPES as subtypes, SUBTYPES_BY_TYPE, hasIncome, hasCurrentPrice } from './finance-types.mjs';
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { calculateYields } from './finance-yield.mjs';
@@ -46,7 +46,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     assetForm.elements.subType.disabled = busy || !data || assetForm.elements.assetType.value === '3';
     transactionControls();
     $('#finance-refresh').disabled = busy;
-    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-current-price-batch, .finance-minimum-price-batch, .finance-average-price-import, #finance-filter-clear, #finance-print-pdf, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
+    section.querySelectorAll('.finance-import-choice, .finance-import-button, [data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-current-price-batch, .finance-minimum-price-batch, .finance-average-price-import, #finance-filter-clear, #finance-print-pdf, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
   }
   function view(name) {
     assetForm.hidden = name !== 'asset';
@@ -139,10 +139,31 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       const summaryLabel = document.createElement('span'); summaryLabel.textContent = `${types[group.assetType]} · ${subtypes[group.subType]} (${displayAssets.length})`;
       summary.append(summaryLabel);
       if (group.assetType === 1 && [1, 2].includes(group.subType)) {
-        const groupActions = document.createElement('span'); groupActions.className = 'finance-group-actions';
-        const importPrices = document.createElement('button'); importPrices.type = 'button'; importPrices.className = 'button button-secondary finance-average-price-import'; importPrices.textContent = 'Importar preços médios';
+        const totals = assetGroupSummary(group.assets);
+        const indicators = document.createElement('span'); indicators.className = 'finance-group-totals';
+        for (const [label, value, hint] of [
+          ['Rend. Atual (total)', money(totals.income), 'Soma do rendimento por ativo multiplicado pela quantidade.'],
+          ['DY médio (%)', yieldPercent(totals.averageDy), 'Rendimento total dividido pelo valor total a preço médio.'],
+          ['Valor total', money(totals.averageValue), 'Soma das quantidades multiplicadas pelos preços médios.']
+        ]) {
+          const indicator = document.createElement('span'); indicator.className = 'finance-group-total'; indicator.title = hint;
+          const caption = document.createElement('span'); caption.textContent = label;
+          const amount = document.createElement('strong'); amount.textContent = value;
+          indicator.append(caption, amount); indicators.append(indicator);
+        }
+        summary.append(indicators);
+      }
+      let importControls = null;
+      if (group.assetType === 1 && [1, 2].includes(group.subType)) {
+        importControls = document.createElement('span'); importControls.className = 'finance-import-controls';
+        const importChoice = document.createElement('select'); importChoice.className = 'finance-import-choice';
+        importChoice.setAttribute('aria-label', 'Dados para importar');
+        for (const [value, label] of [['minimum', 'Preços mínimos'], ['current', 'Preços atuais'], ['average', 'Preços médios'], ['income', 'Rendimentos']]) {
+          const option = document.createElement('option'); option.value = value; option.textContent = label; importChoice.append(option);
+        }
+        const importButton = document.createElement('button'); importButton.type = 'button'; importButton.className = 'button button-secondary finance-import-button'; importButton.textContent = 'Importar';
+        const importPrices = importButton;
         const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = '.pdf,application/pdf'; fileInput.hidden = true;
-        importPrices.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); if (!busy) fileInput.click(); });
         fileInput.addEventListener('click', event => event.stopPropagation());
         fileInput.addEventListener('change', async event => {
           event.stopPropagation(); const file = fileInput.files?.[0]; if (!file || busy) return;
@@ -168,10 +189,10 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
             if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os preços médios.');
             data = result; render(); message(`${updates.length} preço(s) médio(s) importado(s) para ${group.owner} · ${subtypes[group.subType]}.`);
           } catch (error) { message(error.message || 'Não foi possível importar os preços médios.', true); }
-          finally { fileInput.value = ''; busy = false; controls(); importPrices.textContent = 'Importar preços médios'; }
+          finally { fileInput.value = ''; busy = false; controls(); importPrices.textContent = 'Importar'; }
         });
-        const fetchMinimumPrices = document.createElement('button'); fetchMinimumPrices.type = 'button'; fetchMinimumPrices.className = 'button button-secondary finance-minimum-price-batch'; fetchMinimumPrices.textContent = 'Importar preços mínimos';
-        fetchMinimumPrices.addEventListener('click', async event => {
+        const fetchMinimumPrices = importButton;
+        const fetchMinimumPricesAction = async event => {
           event.preventDefault(); event.stopPropagation();
           if (busy) return;
           busy = true; controls(); const pricesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const candidates = data.assets.filter(asset => asset.assetType === group.assetType && asset.subType === group.subType); const sources = preferredSimilarAssets(group.assets, candidates);
@@ -201,12 +222,12 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           } catch (error) { message(error.message || 'Não foi possível atualizar os preços mínimos.', true); }
           finally {
             busy = false;
-            if (fetchMinimumPrices.isConnected) fetchMinimumPrices.textContent = 'Importar preços mínimos';
+            if (fetchMinimumPrices.isConnected) fetchMinimumPrices.textContent = 'Importar';
             controls();
           }
-        });
-        const fetchCurrentPrices = document.createElement('button'); fetchCurrentPrices.type = 'button'; fetchCurrentPrices.className = 'button button-secondary finance-current-price-batch'; fetchCurrentPrices.textContent = 'Importar preços atuais';
-        fetchCurrentPrices.addEventListener('click', async event => {
+        };
+        const fetchCurrentPrices = importButton;
+        const fetchCurrentPricesAction = async event => {
           event.preventDefault(); event.stopPropagation();
           if (busy) return;
           busy = true; controls(); const pricesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const candidates = data.assets.filter(asset => asset.assetType === group.assetType && asset.subType === group.subType); const sources = preferredSimilarAssets(group.assets, candidates);
@@ -236,12 +257,12 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           } catch (error) { message(error.message || 'Não foi possível atualizar os preços atuais.', true); }
           finally {
             busy = false;
-            if (fetchCurrentPrices.isConnected) fetchCurrentPrices.textContent = 'Importar preços atuais';
+            if (fetchCurrentPrices.isConnected) fetchCurrentPrices.textContent = 'Importar';
             controls();
           }
-        });
-        const fetchAll = document.createElement('button'); fetchAll.type = 'button'; fetchAll.className = 'button button-secondary finance-income-batch'; fetchAll.textContent = 'Obter todos rendimentos';
-        fetchAll.addEventListener('click', async event => {
+        };
+        const fetchAll = importButton;
+        const fetchAllAction = async event => {
           event.preventDefault(); event.stopPropagation();
           if (busy) return;
           busy = true; controls(); const incomesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const candidates = data.assets.filter(asset => asset.assetType === group.assetType && asset.subType === group.subType); const sources = preferredSimilarAssets(group.assets, candidates);
@@ -271,11 +292,17 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           } catch (error) { message(error.message || 'Não foi possível atualizar os rendimentos.', true); }
           finally {
             busy = false;
-            if (fetchAll.isConnected) fetchAll.textContent = 'Obter todos rendimentos';
+            if (fetchAll.isConnected) fetchAll.textContent = 'Importar';
             controls();
           }
+        };
+        importButton.addEventListener('click', event => {
+          event.preventDefault(); event.stopPropagation();
+          if (busy) return;
+          if (importChoice.value === 'average') fileInput.click();
+          else ({ minimum: fetchMinimumPricesAction, current: fetchCurrentPricesAction, income: fetchAllAction })[importChoice.value](event);
         });
-        groupActions.append(fetchMinimumPrices, importPrices, fetchCurrentPrices, fetchAll, fileInput); summary.append(groupActions);
+        importControls.append(importChoice, importButton, fileInput);
       }
       const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap';
       const table = document.createElement('table');
@@ -366,6 +393,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           });
           option.append(checkbox, document.createTextNode(title)); options.append(option); updateVisibility();
         }
+        if (importControls) options.append(importControls);
         details.append(options);
       }
       details.append(wrap); ownerGroups.get(group.owner).append(details);

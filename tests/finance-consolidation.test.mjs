@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { consolidateAssets } from '../finance-consolidation.mjs';
+import { consolidateAssets, assetGroupSummary } from '../finance-consolidation.mjs';
 const asset = { id: 'a', owner: 'Ale', symbol: 'BCRI11', assetType: 1, subType: 2, quantity: 10, averagePrice: 20, currentPrice: 15, currentIncome: 1, total: 200, minimumPrice: 12 };
 test('consolida quantidades, custos e valores atuais sem alterar os registros', () => {
   const other = { ...asset, id: 'b', owner: 'Ana', quantity: 30, averagePrice: 40, currentPrice: 25, currentIncome: 2, total: 1200 };
@@ -25,4 +25,12 @@ test('mínimos ausentes não viram zero e datas distintas não são atribuídas 
   const [result] = consolidateAssets([{ ...asset, minimumPrice: null, exitDate: '2027-01-01' }, { ...asset, owner: 'Ana', minimumPrice: null, exitDate: '2028-01-01' }]);
   assert.equal(result.minimumPrice, null);
   assert.equal(result.exitDate, null);
+});
+
+test('resumo calcula rendimento total e DY ponderado pelo custo, sem somar percentuais', () => {
+  const totals = assetGroupSummary([asset, { ...asset, quantity: 30, averagePrice: 40, currentIncome: 2 }]);
+  assert.equal(totals.income, 70);
+  assert.equal(totals.averageValue, 1400);
+  assert.equal(totals.averageDy, 5);
+  assert.equal(assetGroupSummary([]).averageDy, null);
 });

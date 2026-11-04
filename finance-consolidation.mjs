@@ -29,3 +29,9 @@ export function consolidateAssets(assets) {
     };
   });
 }
+
+export function assetGroupSummary(assets) {
+  const income = assets.reduce((sum, asset) => sum + asset.quantity * asset.currentIncome, 0);
+  const averageValue = assets.reduce((sum, asset) => sum + Math.round(asset.quantity * asset.averagePrice * 100), 0) / 100;
+  return { income, averageValue, averageDy: averageValue > 0 ? income / averageValue * 100 : null };
+}
