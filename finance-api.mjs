@@ -1,12 +1,12 @@
 import { calculateYields } from './finance-yield.mjs';
-import { validateAction, validateAssetIncomeBatch, validateAssetAveragePriceBatch, validateAssetCurrentPriceBatch, validateAssetDeleteBatch } from './finance-model.mjs';
+import { validateAction, validateAssetIncomeBatch, validateAssetAveragePriceBatch, validateAssetCurrentPriceBatch, validateAssetMinimumPriceBatch, validateAssetDeleteBatch } from './finance-model.mjs';
 import { requireAdminSession } from './admin-auth.mjs';
 import { validateAssetImport } from './finance-asset-import-model.mjs';
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 async function overview(db) {
   // Um batch fornece uma visão consistente das duas tabelas.
   const [assets, transactions] = await db.batch([
-    db.prepare('SELECT id, owner, name, symbol, type AS assetType, subtype AS subType, quantity, average_price AS averagePrice, value AS total, COALESCE(current_price, average_price) AS currentPrice, current_income AS currentIncome, entry_date AS entryDate, exit_date AS exitDate, available_for_property_entry AS availableForPropertyEntry, current_price IS NULL AS priceIsDefault, created_at AS createdAt, updated_at AS updatedAt, revision, (SELECT COUNT(*) FROM finance_transactions t WHERE t.asset_id = finance_assets.id) AS transactionCount FROM finance_assets ORDER BY owner, name, type'),
+    db.prepare('SELECT id, owner, name, symbol, type AS assetType, subtype AS subType, quantity, minimum_price AS minimumPrice, average_price AS averagePrice, value AS total, COALESCE(current_price, average_price) AS currentPrice, current_income AS currentIncome, entry_date AS entryDate, exit_date AS exitDate, available_for_property_entry AS availableForPropertyEntry, current_price IS NULL AS priceIsDefault, created_at AS createdAt, updated_at AS updatedAt, revision, (SELECT COUNT(*) FROM finance_transactions t WHERE t.asset_id = finance_assets.id) AS transactionCount FROM finance_assets ORDER BY owner, name, type'),
     db.prepare('SELECT id, owner, asset_id AS assetId, name, type AS assetType, subtype AS subType, quantity, value, created_at AS createdAt, updated_at AS updatedAt, transaction_date AS transactionDate, revision FROM finance_transactions ORDER BY transaction_date, created_at, rowid')
   ]);
   return { assets: assets.results.map(asset => ({ ...asset, availableForPropertyEntry: Boolean(asset.availableForPropertyEntry), ...calculateYields(asset.currentIncome, asset.currentPrice, asset.averagePrice) })), transactions: transactions.results, total: assets.results.reduce((sum, asset) => sum + Math.round(asset.total * 100), 0) / 100 };
@@ -19,7 +19,7 @@ export async function handleFinance(request, env) {
     const db = env.CONTENT_DB;
     if (request.method === 'GET') return reply(await overview(db));
     let action;
-    try { const body=await request.json();action=body?.type==='asset-import'?validateAssetImport(body):body?.type==='asset-income-batch'?validateAssetIncomeBatch(body):body?.type==='asset-average-price-batch'?validateAssetAveragePriceBatch(body):body?.type==='asset-current-price-batch'?validateAssetCurrentPriceBatch(body):body?.type==='asset-delete-batch'?validateAssetDeleteBatch(body):validateAction(body); } catch (error) { return reply({ error: error.message }, 400); }
+    try { const body=await request.json();action=body?.type==='asset-import'?validateAssetImport(body):body?.type==='asset-income-batch'?validateAssetIncomeBatch(body):body?.type==='asset-average-price-batch'?validateAssetAveragePriceBatch(body):body?.type==='asset-minimum-price-batch'?validateAssetMinimumPriceBatch(body):body?.type==='asset-current-price-batch'?validateAssetCurrentPriceBatch(body):body?.type==='asset-delete-batch'?validateAssetDeleteBatch(body):validateAction(body); } catch (error) { return reply({ error: error.message }, 400); }
     if(action.type==='asset-import'){
       const statements=[];
       for(const item of action.items){
@@ -50,6 +50,12 @@ export async function handleFinance(request, env) {
       const results=await db.batch(action.items.map(item=>db.prepare(`UPDATE finance_assets SET current_price=?1,revision=revision+1
         WHERE id=?2 AND revision=?3 AND type=1 AND subtype IN (1,2) RETURNING id`).bind(item.currentPrice,item.id,item.revision)));
       if(results.some(result=>!result.results?.length))return reply({error:'Um dos ativos foi alterado ou não aceita preço atual. Atualize os dados e tente novamente.'},409);
+      return reply(await overview(db));
+    }
+    if(action.type==='asset-minimum-price-batch'){
+      const results=await db.batch(action.items.map(item=>db.prepare(`UPDATE finance_assets SET minimum_price=?1,revision=revision+1
+        WHERE id=?2 AND revision=?3 AND type=1 AND subtype IN (1,2) RETURNING id`).bind(item.minimumPrice,item.id,item.revision)));
+      if(results.some(result=>!result.results?.length))return reply({error:'Um dos ativos foi alterado ou não aceita preço mínimo. Atualize os dados e tente novamente.'},409);
       return reply(await overview(db));
     }
     if(action.type==='asset-delete-batch'){
@@ -99,6 +105,6 @@ export async function handleFinance(request, env) {
     if (/UNIQUE constraint/i.test(error.message)) return reply({ error: 'Já existe um ativo deste proprietário com esta sigla, nome, tipo e subtipo.' }, 409);
     if (/CHECK constraint/i.test(error.message)) return reply({ error: 'A operação excede os limites de quantidade, preço médio ou valor do ativo.' }, 400);
     console.error('Finance database error', error);
-    return reply({ error: 'Não foi possível acessar Investimentos. Verifique a conexão e se as migrações de Investimentos até 0023 foram aplicadas no banco.' }, 503);
+    return reply({ error: 'Não foi possível acessar Investimentos. Verifique a conexão e se as migrações de Investimentos até 0034 foram aplicadas no banco.' }, 503);
   }
 }

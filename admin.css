@@ -418,7 +418,7 @@ textarea {
 .finance-asset-group { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .finance-asset-group > summary { cursor: pointer; padding: 15px 18px; color: var(--gold); font-weight: 700; background: rgba(255,255,255,.025); }
 .finance-asset-group > summary > span:first-child { margin-right: 12px; }
-.finance-group-actions { float: right; display: inline-flex; align-items: center; gap: 8px; margin: -6px 0; }
+.finance-group-actions { float: right; display: inline-flex; flex-wrap: wrap; max-width: 100%; align-items: center; gap: 8px; margin: -6px 0; }
 .finance-income-batch, .finance-average-price-import { min-height: 32px; padding: 5px 11px; font-size: .78rem; }
 @media (max-width: 760px) { .finance-group-actions { float: none; display: flex; margin: 10px 0 0; flex-wrap: wrap; } }
 .finance-asset-group > .finance-table-wrap { margin: 0; border-width: 1px 0 0; border-radius: 0; }
@@ -588,3 +588,12 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .finance-legend-filter[aria-pressed="true"] { background: var(--gold-soft); border-color: var(--gold); }
 .finance-list-filter { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
 @media (max-width: 640px) { .finance-list-filter { flex-direction: column; align-items: stretch; } }
+
+.finance-column-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 18px; font-size: .85rem; }
+.finance-column-options label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.finance-column-options input { width: 16px; height: 16px; margin: 0; accent-color: var(--gold); }
+@media print { .finance-column-options { display: none !important; } }
+
+.finance-column-sort { appearance: none; background: transparent; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; white-space: nowrap; }
+.finance-column-sort:hover { color: var(--gold); }
+.finance-column-sort:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 2px; }

@@ -35,6 +35,14 @@ export function parseStatusInvestCurrentPrice(html) {
   return { value, source: 'Valor atual' };
 }
 
+export function parseStatusInvestMinimumPrice(html) {
+  const text = textOnly(html).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const match = text.match(/\bmin\.?\s*52\s+semanas\s*(?:R\$\s*)?([0-9]+(?:\.[0-9]{3})*,[0-9]{2})(?![0-9])/i);
+  const value = match ? Number(match[1].replaceAll('.', '').replace(',', '.')) : null;
+  if (!Number.isFinite(value) || value <= 0) throw new Error('O Status Invest não informou o mínimo de 52 semanas deste ativo.');
+  return { value, source: 'Min. 52 semanas' };
+}
+
 const statusInvestUrl = (symbol, category) => {
   const paths = { fii: 'fundos-imobiliarios', stock: 'acoes' };
   const path = category === 'fii' && symbol === 'dcra11' ? 'fiagros' : paths[category];
@@ -68,4 +76,8 @@ export async function handleFinanceIncome(request, env, fetcher = fetch) {
 
 export async function handleFinanceCurrentPrice(request, env, fetcher = fetch) {
   return readStatusInvest(request, env, fetcher, parseStatusInvestCurrentPrice, 'Não foi possível consultar o preço atual.');
+}
+
+export async function handleFinanceMinimumPrice(request, env, fetcher = fetch) {
+  return readStatusInvest(request, env, fetcher, parseStatusInvestMinimumPrice, 'Não foi possível consultar o preço mínimo.');
 }

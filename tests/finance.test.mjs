@@ -40,6 +40,7 @@ function database() {
   sql.exec(independentTotalsMigration);
   sql.exec(fixedIncomeDatesMigration);
   sql.exec(propertyEntryMigration);
+  sql.exec(readFileSync(new URL('../migrations/0034_finance_minimum_price.sql', import.meta.url), 'utf8'));
   const prepare = (query) => {
     let args = [];
     const statement = sql.prepare(query);
@@ -634,4 +635,21 @@ test('migração 0008 converte os cinco tipos antigos e preserva todos os regist
   assert.equal(sql.prepare('PRAGMA foreign_key_check').all().length, 0);
   sql.exec("DELETE FROM finance_transactions WHERE id='t1'");
   assert.equal(sql.prepare("SELECT value FROM finance_assets WHERE id='a1'").get().value, 10);
+});
+
+test('mínimo persiste sem alterar preços, saldo ou DY e rejeita valores e versões inválidos', async () => {
+  const env = envFor();
+  const fii = asset({ id: 'minimum', symbol: 'BCRI11', assetType: 1, subType: 2, currentPrice: 50, currentIncome: 0.7 });
+  const created = (await (await handleFinance(request(fii), env)).json()).assets[0];
+  assert.equal(created.minimumPrice, null);
+  const batch = { type: 'asset-minimum-price-batch', items: [{ id: fii.id, revision: 0, minimumPrice: 49.01 }] };
+  for (const minimumPrice of [0, -1, 1.001, 1000000, '49.01', null]) {
+    assert.equal((await handleFinance(request({ ...batch, items: [{ ...batch.items[0], minimumPrice }] }), env)).status, 400);
+  }
+  assert.equal((await handleFinance(request(batch), env)).status, 200);
+  const saved = (await (await handleFinance(request(), env)).json()).assets[0];
+  assert.equal(saved.minimumPrice, 49.01);
+  for (const field of ['averagePrice', 'currentPrice', 'total', 'currentIncome', 'currentDy', 'averageDy']) assert.equal(saved[field], created[field]);
+  assert.equal(saved.revision, 1);
+  assert.equal((await handleFinance(request(batch), env)).status, 409);
 });

@@ -32,6 +32,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
   let importedAssets = [];
   let assetGroupToReopen = null;
   const undefinedAveragePriceAssetIds = new Set();
+  const assetSortOrders = new Map();
   function message(text, error = false) {
     status.textContent = text;
     status.className = `save-status${error ? ' is-error' : ''}`;
@@ -44,7 +45,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     assetForm.elements.subType.disabled = busy || !data || assetForm.elements.assetType.value === '3';
     transactionControls();
     $('#finance-refresh').disabled = busy;
-    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-current-price-batch, .finance-average-price-import, #finance-filter-clear, #finance-print-pdf, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
+    section.querySelectorAll('[data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-current-price-batch, .finance-minimum-price-batch, .finance-average-price-import, #finance-filter-clear, #finance-print-pdf, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
   }
   function view(name) {
     assetForm.hidden = name !== 'asset';
@@ -156,6 +157,41 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           } catch (error) { message(error.message || 'Não foi possível importar os preços médios.', true); }
           finally { fileInput.value = ''; busy = false; controls(); importPrices.textContent = 'Importar preços médios'; }
         });
+        const fetchMinimumPrices = document.createElement('button'); fetchMinimumPrices.type = 'button'; fetchMinimumPrices.className = 'button button-secondary finance-minimum-price-batch'; fetchMinimumPrices.textContent = 'Importar preços mínimos';
+        fetchMinimumPrices.addEventListener('click', async event => {
+          event.preventDefault(); event.stopPropagation();
+          if (busy) return;
+          busy = true; controls(); const pricesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const candidates = data.assets.filter(asset => asset.assetType === group.assetType && asset.subType === group.subType); const sources = preferredSimilarAssets(group.assets, candidates);
+          try {
+            let next = 0, completed = 0; fetchMinimumPrices.textContent = `Consultando preços 0/${sources.length}…`;
+            const worker = async () => {
+              while (next < sources.length) {
+                const asset = sources[next++];
+                try {
+                  const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/minimum-price?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
+                  if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
+                  pricesBySymbol.set(asset.symbol, Number(result.value));
+                } catch { failures.push(asset.symbol || asset.name); }
+                completed++; fetchMinimumPrices.textContent = `Consultando preços ${completed}/${sources.length}…`;
+              }
+            };
+            await Promise.all(Array.from({ length: Math.min(4, sources.length) }, worker));
+            const byAsset = valuesForSimilarAssets(group.assets, pricesBySymbol);
+            const updates = group.assets.filter(asset => byAsset.has(asset.id)).map(asset => ({ id: asset.id, revision: asset.revision, minimumPrice: byAsset.get(asset.id) }));
+            if (updates.length) {
+              fetchMinimumPrices.textContent = `Salvando ${updates.length}…`;
+              const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-minimum-price-batch', items: updates }) });
+              if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os preços mínimos.');
+              data = result; render();
+            }
+            message(`${updates.length} preço(s) mínimo(s) atualizado(s)${failures.length ? `. Não encontrados: ${failures.join(', ')}.` : '.'}`, Boolean(failures.length));
+          } catch (error) { message(error.message || 'Não foi possível atualizar os preços mínimos.', true); }
+          finally {
+            busy = false;
+            if (fetchMinimumPrices.isConnected) fetchMinimumPrices.textContent = 'Importar preços mínimos';
+            controls();
+          }
+        });
         const fetchCurrentPrices = document.createElement('button'); fetchCurrentPrices.type = 'button'; fetchCurrentPrices.className = 'button button-secondary finance-current-price-batch'; fetchCurrentPrices.textContent = 'Importar preços atuais';
         fetchCurrentPrices.addEventListener('click', async event => {
           event.preventDefault(); event.stopPropagation();
@@ -226,7 +262,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
             controls();
           }
         });
-        groupActions.append(importPrices, fetchCurrentPrices, fetchAll, fileInput); summary.append(groupActions);
+        groupActions.append(fetchMinimumPrices, importPrices, fetchCurrentPrices, fetchAll, fileInput); summary.append(groupActions);
       }
       const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap';
       const table = document.createElement('table');
@@ -234,7 +270,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       const variable = group.assetType === 1;
       const fixed = group.assetType === 2;
       const headers = variable
-        ? ['Sigla', 'Quantidade', 'Preço médio', 'Valor atual', 'Rendimento atual (R$)', 'DY atual (%)', 'DY médio (%)', 'Valor total', 'Ações']
+        ? ['Sigla', 'Qtde.', 'Valor Mín.', 'Preço Médio', 'Rend. Atual', 'DY médio (%)', 'Valor total (méd.)', 'DY atual (%)', 'Valor total (atual)', 'Ações']
         : fixed
           ? ['Sigla', 'Nome', 'Quantidade', 'Valor atual', 'Data de retirada', 'Valor total', 'Ações']
           : ['Sigla', 'Nome', 'Quantidade', 'Preço médio', 'Valor total', 'Ações'];
@@ -242,19 +278,83 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
       for (const label of headers) { const th = document.createElement('th'); th.textContent = label; headerRow.append(th); }
       head.append(headerRow);
       const body = document.createElement('tbody');
+      const sortableRows = [];
       for (const asset of group.assets) {
         const values = variable
-          ? [asset.symbol || '—', quantity(asset.quantity), money(asset.averagePrice), hasCurrentPrice(asset) ? money(asset.currentPrice) : '—', hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(currentAssetTotal(asset))]
+          ? [asset.symbol || '—', quantity(asset.quantity), asset.minimumPrice == null ? '—' : money(asset.minimumPrice), money(asset.averagePrice), hasIncome(asset) ? incomeMoney(asset.currentIncome) : '—', hasIncome(asset) ? yieldPercent(asset.averageDy) : '—', money(Math.round(Number(asset.quantity) * Number(asset.averagePrice) * 100) / 100), hasIncome(asset) ? yieldPercent(asset.currentDy) : '—', money(currentAssetTotal(asset))]
           : fixed
             ? [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.currentPrice), formatTransactionDate(asset.exitDate), money(currentAssetTotal(asset))]
             : [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)];
         row(body, values, 'asset', asset);
+        sortableRows.push({ asset, element: body.lastElementChild });
         if (undefinedAveragePriceAssetIds.has(asset.id)) {
-          const averageCell = body.lastElementChild?.cells[2];
+          const averageCell = body.lastElementChild?.cells[3];
           if (averageCell) { averageCell.classList.add('finance-value-undefined'); averageCell.title = 'Preço médio indefinido no PDF importado'; }
         }
       }
-      table.append(caption, head, body); wrap.append(table); details.append(summary, wrap); ownerGroups.get(group.owner).append(details);
+      if (variable && [1, 2].includes(group.subType)) {
+        const sortKey = `${group.owner}:${group.subType}`;
+        const sortValues = asset => [asset.symbol || null, asset.quantity, asset.minimumPrice, asset.averagePrice,
+          hasIncome(asset) ? asset.currentIncome : null, hasIncome(asset) ? asset.averageDy : null,
+          Math.round(Number(asset.quantity) * Number(asset.averagePrice) * 100) / 100,
+          hasIncome(asset) ? asset.currentDy : null, currentAssetTotal(asset)];
+        const sortButtons = [];
+        const applySort = () => {
+          const order = assetSortOrders.get(sortKey);
+          if (!order) return;
+          const missing = value => value == null || (typeof value === 'number' && !Number.isFinite(value));
+          sortableRows.sort((a, b) => {
+            const left = sortValues(a.asset)[order.index], right = sortValues(b.asset)[order.index];
+            // Valores ausentes ficam no fim em ambas as direções.
+            if (missing(left) || missing(right)) return Number(missing(left)) - Number(missing(right));
+            const comparison = order.index === 0 ? left.localeCompare(right, 'pt-BR', { numeric: true }) : left - right;
+            return comparison * (order.ascending ? 1 : -1);
+          });
+          for (const item of sortableRows) body.append(item.element);
+          sortButtons.forEach((button, index) => {
+            const active = order.index === index;
+            headerRow.cells[index].setAttribute('aria-sort', active ? (order.ascending ? 'ascending' : 'descending') : 'none');
+            button.textContent = `${headers[index]} ${active ? (order.ascending ? '↑' : '↓') : '↕'}`;
+            button.setAttribute('aria-label', `${headers[index]}: ordenar em ordem ${active && order.ascending ? 'decrescente' : 'crescente'}`);
+          });
+        };
+        headers.slice(0, -1).forEach((label, index) => {
+          const button = document.createElement('button'); button.type = 'button'; button.className = 'finance-column-sort';
+          button.textContent = `${label} ↕`; button.setAttribute('aria-label', `${label}: ordenar em ordem crescente`);
+          headerRow.cells[index].setAttribute('aria-sort', 'none');
+          button.addEventListener('click', () => {
+            const previous = assetSortOrders.get(sortKey);
+            assetSortOrders.set(sortKey, { index, ascending: previous?.index === index ? !previous.ascending : true });
+            applySort();
+          });
+          headerRow.cells[index].replaceChildren(button); sortButtons.push(button);
+        });
+        applySort();
+      }
+      table.append(caption, head, body); wrap.append(table); details.append(summary);
+      if (variable) {
+        const options = document.createElement('div'); options.className = 'finance-column-options';
+        const label = document.createElement('span'); label.textContent = 'Exibir também:'; options.append(label);
+        const storageKey = `finance-optional-columns:${group.owner}:${group.subType}`;
+        let preferences = {};
+        try { preferences = JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { /* Preferências locais são opcionais. */ }
+        for (const [key, title, index] of [['currentDy', 'DY atual (%)', 7], ['currentTotal', 'Valor total (atual)', 8]]) {
+          const option = document.createElement('label');
+          const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = preferences[key] === true;
+          const updateVisibility = () => {
+            headerRow.cells[index].hidden = !checkbox.checked;
+            for (const assetRow of body.rows) if (assetRow.cells.length === headers.length) assetRow.cells[index].hidden = !checkbox.checked;
+          };
+          checkbox.addEventListener('change', () => {
+            preferences[key] = checkbox.checked;
+            try { localStorage.setItem(storageKey, JSON.stringify(preferences)); } catch { /* Mantém a escolha nesta exibição. */ }
+            updateVisibility();
+          });
+          option.append(checkbox, document.createTextNode(title)); options.append(option); updateVisibility();
+        }
+        details.append(options);
+      }
+      details.append(wrap); ownerGroups.get(group.owner).append(details);
     }
     assetGroupToReopen = null;
   }

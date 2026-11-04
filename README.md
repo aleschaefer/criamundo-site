@@ -533,3 +533,15 @@ Para habilitar o módulo Mercado, com catálogo de itens e listas de compras, ap
 ```bash
 npx wrangler d1 execute criamundo-content --remote --file=migrations/0033_market.sql
 ```
+
+### Preço mínimo de 52 semanas (0034)
+
+Em Investimentos, “Importar preços mínimos” consulta o indicador “Min. 52 semanas”
+no Status Invest e salva os valores na coluna “Valor Mín.”, antes do preço médio.
+DCRA11 usa a página de Fiagros. Consultas sem resultado preservam os valores salvos.
+O mínimo é informativo e não altera saldo, preço médio, preço atual ou DY.
+Antes de publicar esta versão, aplique a migração:
+
+```sh
+npx wrangler d1 execute criamundo-content --remote --file=migrations/0034_finance_minimum_price.sql
+```

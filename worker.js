@@ -3,7 +3,7 @@ import { handleCreditCard } from './credit-card-api.mjs';
 import { handleMonthlyExpenses } from './monthly-expenses-api.mjs';
 import { handleReminders } from './reminders-api.mjs';
 import { handleMarket } from './market-api.mjs';
-import { handleFinanceIncome, handleFinanceCurrentPrice } from './finance-income-api.mjs';
+import { handleFinanceIncome, handleFinanceCurrentPrice, handleFinanceMinimumPrice } from './finance-income-api.mjs';
 import { handleAdminAuthentication, requireAdminSession } from './admin-auth.mjs';
 
 function jsonResponse(payload, status = 200) {
@@ -167,6 +167,10 @@ export default {
 
     if (url.pathname === "/api/admin/finance/income") {
       return handleFinanceIncome(request, env);
+    }
+
+    if (url.pathname === "/api/admin/finance/minimum-price") {
+      return handleFinanceMinimumPrice(request, env);
     }
 
     if (url.pathname === "/api/admin/finance/current-price") {
