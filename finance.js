@@ -1,3 +1,5 @@
+import { readRicoQuantitiesPdf } from './finance-quantity-import.js';
+import { quantityUpdatesForAssets } from './finance-quantity-import-model.mjs';
 import { consolidateAssets, assetGroupSummary } from './finance-consolidation.mjs?v=2';
 import { ASSET_TYPES as types, ASSET_SUBTYPES as subtypes, SUBTYPES_BY_TYPE, hasIncome, hasCurrentPrice } from './finance-types.mjs';
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
@@ -169,6 +171,9 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
         for (const [value, label] of [['minimum', 'Preços mínimos'], ['current', 'Preços atuais'], ['average', 'Preços médios'], ['income', 'Rendimentos']]) {
           const option = document.createElement('option'); option.value = value; option.textContent = label; importChoice.append(option);
         }
+        if (['Ale', 'Ana'].includes(selectedOwner)) {
+          const option = document.createElement('option'); option.value = 'quantity'; option.textContent = 'Quantidades'; importChoice.append(option);
+        }
         const importButton = document.createElement('button'); importButton.type = 'button'; importButton.className = 'button button-secondary finance-import-button'; importButton.textContent = 'Importar';
         const importPrices = importButton;
         const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = '.pdf,application/pdf'; fileInput.hidden = true;
@@ -304,13 +309,39 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
             controls();
           }
         };
+        const quantityFileInput = document.createElement('input'); quantityFileInput.type = 'file'; quantityFileInput.accept = '.pdf,application/pdf'; quantityFileInput.hidden = true;
+        quantityFileInput.addEventListener('change', async () => {
+          const file = quantityFileInput.files?.[0];
+          if (!file || busy || !['Ale', 'Ana'].includes(group.owner)) return;
+          busy = true; controls(); importButton.textContent = 'Lendo PDF…';
+          try {
+            const recognized = await readRicoQuantitiesPdf(file);
+            const updates = quantityUpdatesForAssets(group.assets, recognized);
+            if (!updates.length) throw new Error('Nenhuma quantidade do PDF corresponde às siglas deste agrupamento.');
+            const changes = updates.map(item => {
+              const asset = group.assets.find(asset => asset.id === item.id);
+              return `${asset.symbol}: ${quantity(asset.quantity)} → ${quantity(item.quantity)}`;
+            });
+            const ignored = group.assets.length - updates.length;
+            if (!confirm(`Importar quantidades para ${group.owner} · ${subtypes[group.subType]}?\n\n${changes.join('\n')}\n\n${ignored} ativo(s) sem correspondência serão mantidos. As quantidades serão substituídas pelos valores do PDF.`)) {
+              message('Importação de quantidades cancelada.'); return;
+            }
+            importButton.textContent = 'Salvando…';
+            const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-quantity-batch', owner: group.owner, subType: group.subType, items: updates }) });
+            if (!response.ok) throw new Error(result.error || 'Não foi possível salvar as quantidades.');
+            assetGroupToReopen = { owner: group.owner, assetType: group.assetType, subType: group.subType };
+            data = result; render(); message(`${updates.length} quantidade(s) importada(s) para ${group.owner}.`);
+          } catch (error) { message(error.message || 'Não foi possível importar as quantidades.', true); }
+          finally { quantityFileInput.value = ''; busy = false; importButton.textContent = 'Importar'; controls(); }
+        });
         importButton.addEventListener('click', event => {
           event.preventDefault(); event.stopPropagation();
           if (busy) return;
-          if (importChoice.value === 'average') fileInput.click();
+          if (importChoice.value === 'quantity' && ['Ale', 'Ana'].includes(group.owner)) quantityFileInput.click();
+          else if (importChoice.value === 'average') fileInput.click();
           else ({ minimum: fetchMinimumPricesAction, current: fetchCurrentPricesAction, income: fetchAllAction })[importChoice.value](event);
         });
-        importControls.append(importChoice, importButton, fileInput);
+        importControls.append(importChoice, importButton, fileInput, quantityFileInput);
       }
       const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap';
       const table = document.createElement('table');

@@ -653,3 +653,34 @@ test('mínimo persiste sem alterar preços, saldo ou DY e rejeita valores e vers
   assert.equal(saved.revision, 1);
   assert.equal((await handleFinance(request(batch), env)).status, 409);
 });
+
+test('importa quantidades somente para proprietário e subtipo selecionados, sem mudar preços', async () => {
+  const env = envFor();
+  const first = asset({ id: 'qty-a', symbol: 'BCRI11', assetType: 1, subType: 2, quantity: 295, averagePrice: 73.87, currentPrice: 49.01 });
+  const second = { ...first, id: 'qty-b', owner: 'Ana', quantity: 192 };
+  await handleFinance(request(first), env); await handleFinance(request(second), env);
+  const action = { type: 'asset-quantity-batch', owner: 'Ale', subType: 2, items: [{ id: first.id, revision: 0, quantity: 305 }] };
+  assert.equal((await handleFinance(request({ ...action, owner: 'Todos' }), env)).status, 400);
+  assert.equal((await handleFinance(request({ ...action, items: [...action.items, { id: second.id, revision: 0, quantity: 999 }] }), env)).status, 409);
+  assert.equal((await handleFinance(request({ ...action, subType: 1 }), env)).status, 409);
+  assert.equal((await handleFinance(request(action), env)).status, 200);
+  const result = await (await handleFinance(request(), env)).json();
+  const updated = result.assets.find(item => item.id === first.id);
+  assert.equal(updated.quantity, 305); assert.equal(updated.averagePrice, 73.87); assert.equal(updated.currentPrice, 49.01);
+  assert.equal(updated.total, 22530.35);
+  assert.equal(result.assets.find(item => item.id === second.id).quantity, 192);
+  assert.equal((await handleFinance(request(action), env)).status, 409);
+  for (const quantity of [-1, 2.5, '305', 2147483648]) assert.equal((await handleFinance(request({ ...action, items: [{ id: first.id, revision: 1, quantity }] }), env)).status, 400);
+});
+test('lote de quantidades atualiza múltiplos ativos de modo atômico', async () => {
+  const env = envFor();
+  for (const [id, symbol] of [['qty1', 'BCRI11'], ['qty2', 'CPTS11']]) await handleFinance(request(asset({ id, symbol, assetType: 1, subType: 2 })), env);
+  const action = { type: 'asset-quantity-batch', owner: 'Ale', subType: 2, items: [{ id: 'qty1', revision: 0, quantity: 305 }, { id: 'qty2', revision: 1, quantity: 1950 }] };
+  assert.equal((await handleFinance(request(action), env)).status, 409);
+  let data = await (await handleFinance(request(), env)).json();
+  assert.ok(data.assets.every(asset => asset.quantity === 10 && asset.revision === 0));
+  action.items[1].revision = 0;
+  assert.equal((await handleFinance(request(action), env)).status, 200);
+  data = await (await handleFinance(request(), env)).json();
+  assert.deepEqual(data.assets.map(asset => asset.quantity).sort((a,b)=>a-b), [305, 1950]);
+});

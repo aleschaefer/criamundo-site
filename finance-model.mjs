@@ -108,3 +108,16 @@ export function validateAction(action) {
   // O total enviado pelo cliente nunca é usado como fonte de verdade.
   return { ...action, unitPrice: unitCents / 100, value: totalCents / 100 };
 }
+
+export function validateAssetQuantityBatch(action) {
+  if (action?.type !== 'asset-quantity-batch' || !['Ale', 'Ana'].includes(action.owner) || ![1, 2].includes(action.subType)) throw new Error('Selecione Ale ou Ana e um agrupamento de ações ou FIIs.');
+  if (!Array.isArray(action.items) || !action.items.length || action.items.length > 100) throw new Error('Nenhuma quantidade válida foi informada.');
+  const ids = new Set();
+  return { type: action.type, owner: action.owner, subType: action.subType, items: action.items.map(item => {
+    if (!item || typeof item.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(item.id) || ids.has(item.id)) throw new Error('Ativo inválido ou repetido.');
+    ids.add(item.id);
+    if (!Number.isSafeInteger(item.revision) || item.revision < 0) throw new Error('Versão inválida do ativo.');
+    if (!Number.isSafeInteger(item.quantity) || item.quantity < 0 || item.quantity > 2147483647) throw new Error('Quantidade deve ser um inteiro entre 0 e 2147483647.');
+    return { id: item.id, revision: item.revision, quantity: item.quantity };
+  }) };
+}

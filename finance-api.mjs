@@ -1,5 +1,5 @@
 import { calculateYields } from './finance-yield.mjs';
-import { validateAction, validateAssetIncomeBatch, validateAssetAveragePriceBatch, validateAssetCurrentPriceBatch, validateAssetMinimumPriceBatch, validateAssetDeleteBatch } from './finance-model.mjs';
+import { validateAction, validateAssetQuantityBatch, validateAssetIncomeBatch, validateAssetAveragePriceBatch, validateAssetCurrentPriceBatch, validateAssetMinimumPriceBatch, validateAssetDeleteBatch } from './finance-model.mjs';
 import { requireAdminSession } from './admin-auth.mjs';
 import { validateAssetImport } from './finance-asset-import-model.mjs';
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
@@ -19,7 +19,22 @@ export async function handleFinance(request, env) {
     const db = env.CONTENT_DB;
     if (request.method === 'GET') return reply(await overview(db));
     let action;
-    try { const body=await request.json();action=body?.type==='asset-import'?validateAssetImport(body):body?.type==='asset-income-batch'?validateAssetIncomeBatch(body):body?.type==='asset-average-price-batch'?validateAssetAveragePriceBatch(body):body?.type==='asset-minimum-price-batch'?validateAssetMinimumPriceBatch(body):body?.type==='asset-current-price-batch'?validateAssetCurrentPriceBatch(body):body?.type==='asset-delete-batch'?validateAssetDeleteBatch(body):validateAction(body); } catch (error) { return reply({ error: error.message }, 400); }
+    try { const body=await request.json();action=body?.type==='asset-quantity-batch'?validateAssetQuantityBatch(body):body?.type==='asset-import'?validateAssetImport(body):body?.type==='asset-income-batch'?validateAssetIncomeBatch(body):body?.type==='asset-average-price-batch'?validateAssetAveragePriceBatch(body):body?.type==='asset-minimum-price-batch'?validateAssetMinimumPriceBatch(body):body?.type==='asset-current-price-batch'?validateAssetCurrentPriceBatch(body):body?.type==='asset-delete-batch'?validateAssetDeleteBatch(body):validateAction(body); } catch (error) { return reply({ error: error.message }, 400); }
+    if (action.type === 'asset-quantity-batch') {
+      // Uma única atualização atômica: nenhum item é salvo se qualquer versão ou proprietário divergir.
+      const result = await db.prepare(`WITH requested AS MATERIALIZED (
+        SELECT json_extract(value,'$.id') AS id, json_extract(value,'$.revision') AS revision,
+          json_extract(value,'$.quantity') AS quantity FROM json_each(?1)
+      ), eligible AS MATERIALIZED (
+        SELECT a.id, r.quantity FROM finance_assets a JOIN requested r ON a.id=r.id
+        WHERE a.revision=r.revision AND a.owner=?2 AND a.type=1 AND a.subtype=?3
+      ) UPDATE finance_assets SET quantity=(SELECT quantity FROM eligible WHERE eligible.id=finance_assets.id),
+        value=ROUND((SELECT quantity FROM eligible WHERE eligible.id=finance_assets.id)*average_price,2), revision=revision+1
+        WHERE id IN (SELECT id FROM eligible) AND (SELECT COUNT(*) FROM eligible)=(SELECT COUNT(*) FROM requested)
+        RETURNING id`).bind(JSON.stringify(action.items), action.owner, action.subType).all();
+      if (result.results.length !== action.items.length) return reply({ error: 'Um ativo mudou ou não pertence ao proprietário e agrupamento selecionados. Atualize os dados e tente novamente.' }, 409);
+      return reply(await overview(db));
+    }
     if(action.type==='asset-import'){
       const statements=[];
       for(const item of action.items){
