@@ -147,7 +147,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
         const indicators = document.createElement('span'); indicators.className = 'finance-group-totals';
         for (const [label, value, hint] of [
           [group.subType === 1 ? 'Rend. Atual (mensal)' : 'Rend. Atual (total)', money(group.subType === 1 ? totals.income / 12 : totals.income), group.subType === 1 ? 'Rendimento anual total dividido por 12: média mensal estimada.' : 'Soma do rendimento por ativo multiplicado pela quantidade.'],
-          ['DY médio (%)', yieldPercent(totals.averageDy), 'Rendimento total dividido pelo valor total a preço médio.'],
+          ['DY médio (%)', yieldPercent(group.subType === 1 && totals.averageDy !== null ? totals.averageDy / 12 : totals.averageDy), group.subType === 1 ? 'DY médio mensal: rendimento anual total dividido por 12 e pelo valor total a preço médio.' : 'Rendimento total dividido pelo valor total a preço médio.'],
           ['Valor total', money(totals.averageValue), 'Soma das quantidades multiplicadas pelos preços médios.']
         ]) {
           const indicator = document.createElement('span'); indicator.className = 'finance-group-total'; indicator.title = hint;
@@ -682,8 +682,10 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     $('#finance-property-entry-average').textContent = money(overviewTotals.availableAverageValue);
     $('#finance-income-total').textContent = money(overviewTotals.monthlyIncome);
     $('#finance-income-breakdown').textContent = `(Ações: ${money(overviewTotals.stockMonthlyIncome)} - FIIs: ${money(overviewTotals.fiiMonthlyIncome)})`;
-    $('#finance-variable-current-dy').textContent = yieldPercent(overviewTotals.currentVariableDy);
-    $('#finance-variable-average-dy').textContent = yieldPercent(overviewTotals.averageVariableDy);
+    $('#finance-variable-current-dy').textContent = yieldPercent(overviewTotals.currentVariableDy === null ? null : overviewTotals.currentVariableDy / 12);
+    $('#finance-variable-current-dy-annual').textContent = `DY anual: ${yieldPercent(overviewTotals.currentVariableDy)}`;
+    $('#finance-variable-average-dy').textContent = yieldPercent(overviewTotals.averageVariableDy === null ? null : overviewTotals.averageVariableDy / 12);
+    $('#finance-variable-average-dy-annual').textContent = `DY anual: ${yieldPercent(overviewTotals.averageVariableDy)}`;
     $('#finance-count').textContent = ownerAssets.length;
     $('#finance-count-breakdown').textContent = `(Ações: ${overviewTotals.countByCategory.stocks} - FIIs: ${overviewTotals.countByCategory.fiis} - Renda Fixa: ${overviewTotals.countByCategory.fixed})`;
     const assets = selectedAssetType === null ? ownerAssets : ownerAssets.filter(asset => asset.assetType === selectedAssetType);
