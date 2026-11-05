@@ -1,3 +1,4 @@
+import { priceDifferencePercent, matchesPriceFilter } from './finance-price-comparison.mjs';
 import { readRicoQuantitiesPdf } from './finance-quantity-import.js';
 import { quantityUpdatesForAssets } from './finance-quantity-import-model.mjs';
 import { consolidateAssets, assetGroupSummary } from './finance-consolidation.mjs?v=2';
@@ -36,6 +37,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
   let assetGroupToReopen = null;
   const undefinedAveragePriceAssetIds = new Set();
   const assetSortOrders = new Map();
+  const assetPriceFilters = new Map();
   function message(text, error = false) {
     status.textContent = text;
     status.className = `save-status${error ? ' is-error' : ''}`;
@@ -367,6 +369,16 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
             : [asset.symbol || '—', asset.name, quantity(asset.quantity), money(asset.averagePrice), money(asset.total)];
         row(body, values, 'asset', asset);
         sortableRows.push({ asset, element: body.lastElementChild });
+        if (variable && hasCurrentPrice(asset)) {
+          const cell = body.lastElementChild.cells[3];
+          const difference = priceDifferencePercent(asset);
+          const hint = difference === null ? 'Comparação indisponível: preço médio não informado ou igual a zero.'
+            : difference === 0 ? 'Preço atual igual ao preço médio (0,00%).'
+            : `${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(difference))}% ${difference > 0 ? 'acima' : 'abaixo'} do preço médio.`;
+          cell.title = hint; cell.setAttribute('aria-label', `${cell.textContent}. ${hint}`); cell.tabIndex = 0;
+          if (difference !== null && difference !== 0) cell.classList.add(difference > 0 ? 'finance-price-above' : 'finance-price-below');
+        }
+
         if ((asset.members || [asset]).some(member => undefinedAveragePriceAssetIds.has(member.id))) {
           const averageCell = body.lastElementChild?.cells[variable ? 4 : 3];
           if (averageCell) { averageCell.classList.add('finance-value-undefined'); averageCell.title = 'Preço médio indefinido no PDF importado'; }
@@ -432,6 +444,30 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           });
           option.append(checkbox, document.createTextNode(title)); options.append(option); updateVisibility();
         }
+        const filterLabel = document.createElement('label'); filterLabel.className = 'finance-price-filter';
+        filterLabel.append(document.createTextNode('Exibir apenas:'));
+        const priceFilter = document.createElement('select');
+        priceFilter.setAttribute('aria-label', 'Filtrar preço atual em relação ao preço médio');
+        priceFilter.title = 'Compara o preço atual com o preço médio.';
+        for (const [value, text] of [['', 'Todos'], ['above', 'Acima do preço atual'], ['below', 'Abaixo do preço atual']]) {
+          const option = document.createElement('option'); option.value = value; option.textContent = text;
+          if (value) option.title = `Preço atual ${value === 'above' ? 'acima' : 'abaixo'} do preço médio`;
+          priceFilter.append(option);
+        }
+        const filterKey = `${group.owner}:${group.subType}`;
+        priceFilter.value = assetPriceFilters.get(filterKey) || '';
+        const emptyFilter = document.createElement('p'); emptyFilter.className = 'draft-note finance-price-filter-empty';
+        emptyFilter.textContent = 'Nenhum ativo corresponde ao filtro de preços.'; emptyFilter.setAttribute('role', 'status');
+        const applyPriceFilter = () => {
+          let visible = 0;
+          for (const item of sortableRows) {
+            item.element.hidden = !matchesPriceFilter(item.asset, priceFilter.value);
+            if (!item.element.hidden) visible++;
+          }
+          emptyFilter.hidden = visible > 0;
+        };
+        priceFilter.addEventListener('change', () => { assetPriceFilters.set(filterKey, priceFilter.value); applyPriceFilter(); });
+        filterLabel.append(priceFilter); options.append(filterLabel); wrap.append(emptyFilter); applyPriceFilter();
         if (importControls) options.append(importControls);
         details.append(options);
       }

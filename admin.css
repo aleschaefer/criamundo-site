@@ -611,3 +611,8 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .finance-group-total > span { color: var(--muted); font-size: .75rem; font-weight: 400; }
 .finance-group-total strong { color: var(--text); font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) { .finance-group-totals { display: flex; margin: 12px 0 0; gap: 10px 18px; } }
+
+.finance-variable-table .finance-price-above { color: #69aaff; }
+.finance-variable-table .finance-price-below { color: #ef7b72; }
+.finance-price-filter select { width: auto; padding: 7px 10px; }
+.finance-price-filter-empty { padding: 12px 18px; }
