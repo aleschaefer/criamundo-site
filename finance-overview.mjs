@@ -43,3 +43,13 @@ export function financeOverviewTotals(assets = []) {
     countByCategory
   };
 }
+
+export function financeMonthlyYields(totals) {
+  const ratio = (income, value) => value > 0 ? income / value * 100 : null;
+  return {
+    currentFii: ratio(totals.fiiMonthlyIncome, totals.currentByCategory.fiis),
+    averageFii: ratio(totals.fiiMonthlyIncome, totals.averageByCategory.fiis),
+    currentCombined: ratio(totals.monthlyIncome, totals.currentByCategory.fiis + totals.currentByCategory.stocks),
+    averageCombined: ratio(totals.monthlyIncome, totals.averageByCategory.fiis + totals.averageByCategory.stocks)
+  };
+}

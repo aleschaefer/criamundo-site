@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { financeOverviewTotals } from '../finance-overview.mjs';
+import { financeOverviewTotals, financeMonthlyYields } from '../finance-overview.mjs';
 
 test('calcula valor pelos preços médios e rendimento mensal de ações e FIIs', () => {
   const result = financeOverviewTotals([
@@ -41,4 +41,13 @@ test('soma somente os ativos disponíveis para entrada em imóvel', () => {
 
   assert.equal(result.availableCurrentValue, 64);
   assert.equal(result.availableAverageValue, 50);
+});
+
+test('cards destacam DY mensal dos FIIs e separam o combinado com ações', () => {
+  const result = financeMonthlyYields(financeOverviewTotals([
+    { assetType: 1, subType: 2, quantity: 10, currentPrice: 100, averagePrice: 125, currentIncome: 1 },
+    { assetType: 1, subType: 1, quantity: 10, currentPrice: 100, averagePrice: 125, currentIncome: 24 }
+  ]));
+  assert.deepEqual(result, { currentFii: 1, averageFii: 0.8, currentCombined: 1.5, averageCombined: 1.2 });
+  assert.deepEqual(financeMonthlyYields(financeOverviewTotals([])), { currentFii: null, averageFii: null, currentCombined: null, averageCombined: null });
 });

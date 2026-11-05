@@ -8,7 +8,7 @@ import { calculateYields } from './finance-yield.mjs';
 import { assetAllocation } from './finance-allocation.mjs';
 import { readB3AssetsPdf } from './finance-asset-import.js?v=5';
 import { readRicoAveragePricesPdf } from './finance-average-price-import.js?v=4';
-import { financeOverviewTotals } from './finance-overview.mjs?v=4';
+import { financeOverviewTotals, financeMonthlyYields } from './finance-overview.mjs?v=5';
 import { fetchJsonWithTimeout } from './finance-http.mjs?v=1';
 import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from './finance-similar-assets.mjs?v=1';
 
@@ -682,10 +682,11 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     $('#finance-property-entry-average').textContent = money(overviewTotals.availableAverageValue);
     $('#finance-income-total').textContent = money(overviewTotals.monthlyIncome);
     $('#finance-income-breakdown').textContent = `(Ações: ${money(overviewTotals.stockMonthlyIncome)} - FIIs: ${money(overviewTotals.fiiMonthlyIncome)})`;
-    $('#finance-variable-current-dy').textContent = yieldPercent(overviewTotals.currentVariableDy === null ? null : overviewTotals.currentVariableDy / 12);
-    $('#finance-variable-current-dy-annual').textContent = `DY anual: ${yieldPercent(overviewTotals.currentVariableDy)}`;
-    $('#finance-variable-average-dy').textContent = yieldPercent(overviewTotals.averageVariableDy === null ? null : overviewTotals.averageVariableDy / 12);
-    $('#finance-variable-average-dy-annual').textContent = `DY anual: ${yieldPercent(overviewTotals.averageVariableDy)}`;
+    const monthlyYields = financeMonthlyYields(overviewTotals);
+    $('#finance-variable-current-dy').textContent = yieldPercent(monthlyYields.currentFii);
+    $('#finance-variable-current-dy-combined').textContent = `DY FIIs + Ações (Total) - Mensal: ${yieldPercent(monthlyYields.currentCombined)}`;
+    $('#finance-variable-average-dy').textContent = yieldPercent(monthlyYields.averageFii);
+    $('#finance-variable-average-dy-combined').textContent = `DY FIIs + Ações (Médio) - Mensal: ${yieldPercent(monthlyYields.averageCombined)}`;
     $('#finance-count').textContent = ownerAssets.length;
     $('#finance-count-breakdown').textContent = `(Ações: ${overviewTotals.countByCategory.stocks} - FIIs: ${overviewTotals.countByCategory.fiis} - Renda Fixa: ${overviewTotals.countByCategory.fixed})`;
     const assets = selectedAssetType === null ? ownerAssets : ownerAssets.filter(asset => asset.assetType === selectedAssetType);
