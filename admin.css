@@ -618,3 +618,24 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .finance-price-filter-empty { padding: 12px 18px; }
 
 .finance-summary .finance-dy-annual { font-size: .75rem; margin: -4px 0 12px; }
+
+.finance-quantity-dialog { box-sizing: border-box; width: min(760px, calc(100vw - 32px)); max-height: min(85dvh, 820px); padding: 0; border: 1px solid var(--line); border-radius: 18px; background: #171614; color: var(--text); box-shadow: 0 24px 80px #0009; }
+.finance-quantity-dialog[open] { display: flex; flex-direction: column; }
+.finance-quantity-dialog::backdrop { background: #000b; }
+.finance-quantity-dialog header, .finance-quantity-dialog footer { flex: none; padding: 20px 24px; }
+.finance-quantity-dialog h2 { margin: 0 0 8px; font-size: 1.5rem; }
+.finance-quantity-dialog p { margin: 8px 0 0; font-size: .85rem; color: var(--muted); }
+.finance-quantity-context { overflow-wrap: anywhere; }
+.finance-quantity-preview-scroll { min-height: 0; overflow: auto; border-block: 1px solid var(--line); }
+.finance-quantity-preview-scroll table { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.finance-quantity-preview-scroll th, .finance-quantity-preview-scroll td { padding: 11px 18px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.finance-quantity-preview-scroll th:first-child { text-align: left; }
+.finance-quantity-preview-scroll thead th { position: sticky; top: 0; background: #25221c; color: var(--gold); z-index: 1; }
+.finance-quantity-changed { background: rgba(199,155,84,.09); }
+.finance-quantity-changed td:last-child { color: var(--gold); font-weight: 700; }
+.finance-quantity-preview-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+@media (max-width: 520px) {
+  .finance-quantity-dialog header, .finance-quantity-dialog footer { padding: 14px; }
+  .finance-quantity-preview-scroll th, .finance-quantity-preview-scroll td { padding: 10px; font-size: .8rem; }
+  .finance-quantity-preview-actions { flex-wrap: wrap; }
+}

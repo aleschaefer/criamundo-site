@@ -1,3 +1,4 @@
+import { confirmQuantityImport } from './finance-quantity-preview.js';
 import { priceDifferencePercent, matchesPriceFilter } from './finance-price-comparison.mjs';
 import { readRicoQuantitiesPdf } from './finance-quantity-import.js';
 import { quantityUpdatesForAssets } from './finance-quantity-import-model.mjs';
@@ -320,12 +321,8 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
             const recognized = await readRicoQuantitiesPdf(file);
             const updates = quantityUpdatesForAssets(group.assets, recognized);
             if (!updates.length) throw new Error('Nenhuma quantidade do PDF corresponde às siglas deste agrupamento.');
-            const changes = updates.map(item => {
-              const asset = group.assets.find(asset => asset.id === item.id);
-              return `${asset.symbol}: ${quantity(asset.quantity)} → ${quantity(item.quantity)}`;
-            });
-            const ignored = group.assets.length - updates.length;
-            if (!confirm(`Importar quantidades para ${group.owner} · ${subtypes[group.subType]}?\n\n${changes.join('\n')}\n\n${ignored} ativo(s) sem correspondência serão mantidos. As quantidades serão substituídas pelos valores do PDF.`)) {
+            importButton.textContent = 'Aguardando confirmação…';
+            if (!await confirmQuantityImport({ owner: group.owner, subtype: subtypes[group.subType], assets: group.assets, updates, filename: file.name })) {
               message('Importação de quantidades cancelada.'); return;
             }
             importButton.textContent = 'Salvando…';
