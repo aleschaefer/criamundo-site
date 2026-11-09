@@ -626,7 +626,14 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .finance-quantity-dialog h2 { margin: 0 0 8px; font-size: 1.5rem; }
 .finance-quantity-dialog p { margin: 8px 0 0; font-size: .85rem; color: var(--muted); }
 .finance-quantity-context { overflow-wrap: anywhere; }
-.finance-quantity-preview-scroll { min-height: 0; overflow: auto; border-block: 1px solid var(--line); }
+.finance-quantity-preview-scroll { min-height: 0; overflow-x: auto; overflow-y: scroll; scrollbar-gutter: stable; border-block: 1px solid var(--line); }
+.finance-quantity-preview-scroll::-webkit-scrollbar { width: 14px; height: 14px; }
+.finance-quantity-preview-scroll::-webkit-scrollbar-track { background: #25221c; }
+.finance-quantity-preview-scroll::-webkit-scrollbar-thumb { background: #c79b54; border: 3px solid #25221c; border-radius: 10px; }
+.finance-quantity-preview-scroll::-webkit-scrollbar-thumb:hover { background: #e3b96e; }
+@supports not selector(::-webkit-scrollbar) {
+  .finance-quantity-preview-scroll { scrollbar-width: auto; scrollbar-color: #c79b54 #25221c; }
+}
 .finance-quantity-preview-scroll table { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
 .finance-quantity-preview-scroll th, .finance-quantity-preview-scroll td { padding: 11px 18px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
 .finance-quantity-preview-scroll th:first-child { text-align: left; }
