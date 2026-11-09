@@ -1,4 +1,4 @@
-import { confirmQuantityImport } from './finance-quantity-preview.js';
+import { confirmQuantityImport, confirmAveragePriceImport } from './finance-quantity-preview.js?v=2';
 import { priceDifferencePercent, matchesPriceFilter } from './finance-price-comparison.mjs';
 import { readRicoQuantitiesPdf } from './finance-quantity-import.js';
 import { quantityUpdatesForAssets } from './finance-quantity-import-model.mjs';
@@ -196,10 +196,9 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
             });
             render();
             if (!updates.length) throw new Error(`Nenhum preço médio do PDF corresponde aos ativos de ${group.owner} · ${subtypes[group.subType]}.`);
-            const undefinedCount = group.assets.filter(asset => undefinedAveragePriceAssetIds.has(asset.id)).length;
-            const ignored = group.assets.length - updates.length;
-            const question = `${updates.length} preço(s) médio(s) encontrado(s) para este agrupamento${ignored ? `; ${ignored} ativo(s) sem preço médio correspondente serão mantidos.` : '.'}${undefinedCount ? `\n${undefinedCount} ativo(s) com preço médio indefinido foram destacados em vermelho.` : ''}\n\nDeseja importar?`;
-            if (!confirm(question)) { message('Importação de preços médios cancelada.'); return; }
+            if (!await confirmAveragePriceImport({ owner: group.owner, subtype: subtypes[group.subType], assets: group.assets, updates, filename: file.name, undefinedIds: undefinedAveragePriceAssetIds })) {
+              message('Importação de preços médios cancelada.'); return;
+            }
             importPrices.textContent = `Salvando ${updates.length}…`;
             const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-average-price-batch', items: updates }) });
             if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os preços médios.');
