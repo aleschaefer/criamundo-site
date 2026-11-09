@@ -1,3 +1,4 @@
+// Prévia compartilhada de quantidades e preços médios.
 const formatQuantity = value => new Intl.NumberFormat('pt-BR').format(value);
 
 export function confirmQuantityImport(options) { return confirmImportPreview(options); }
