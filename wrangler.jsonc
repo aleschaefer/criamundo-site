@@ -9,7 +9,8 @@
     "run_worker_first": ["/api/*"]
   },
   "vars": {
-    "AUTH_EMAIL_FROM": "onboarding@resend.dev"
+    "AUTH_EMAIL_FROM": "onboarding@resend.dev",
+    "GOOGLE_CLIENT_ID": "442599886834-2v4s4288idc283v37lva2dklph1ge33l.apps.googleusercontent.com"
   },
   "d1_databases": [
     {
