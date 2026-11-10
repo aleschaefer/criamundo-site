@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="admin.css?v=29" />
+    <link rel="stylesheet" href="admin.css?v=30" />
   </head>
   <body class="admin-page is-locked">
     <main class="auth-shell" id="auth-shell">
@@ -455,7 +455,7 @@
             <label>Nome<input name="name" maxlength="80" required /></label><label>Quantidade<input name="quantity" type="number" min="1" max="9999" step="1" required /></label>
             <label>Categoria<select name="categoryId" required></select></label><label>Valor aproximado (R$)<input name="approximateValue" type="number" min="0" max="99999999.99" step="0.01" required /></label>
           </div><div class="finance-actions"><button class="button button-primary" type="submit">Salvar item</button><button class="button button-secondary" id="market-item-cancel" type="button" hidden>Cancelar edição</button></div>
-          <h3>Itens cadastrados</h3><p id="market-items-empty" class="intro">Nenhum item cadastrado.</p><div class="finance-table-wrap"><table><thead><tr><th>Nome</th><th>Quantidade</th><th>Categoria</th><th>Valor aproximado</th><th>Ações</th></tr></thead><tbody id="market-items-list"></tbody></table></div>
+          <h3>Itens cadastrados</h3><p id="market-items-empty" class="intro">Nenhum item cadastrado.</p><div class="finance-table-wrap"><table><thead><tr><th>Nome</th><th>Quantidade</th><th><div class="market-category-filter"><span>Categoria</span><select id="market-items-category-filter" aria-label="Filtrar itens por categoria"><option value="">Todas</option></select></div></th><th>Valor aproximado</th><th>Ações</th></tr></thead><tbody id="market-items-list"></tbody></table></div>
         </form>
 
         <form id="market-list-form" class="finance-form">
@@ -589,6 +589,6 @@
     <script type="module" src="credit-card.js?v=26"></script>
     <script type="module" src="monthly-expenses.js?v=24"></script>
     <script type="module" src="reminders.js?v=1"></script>
-    <script type="module" src="market.js?v=1"></script>
+    <script type="module" src="market.js?v=2"></script>
   </body>
 </html>

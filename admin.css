@@ -648,3 +648,7 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 }
 
 .finance-price-difference { display: inline; font-size: .75em; font-weight: 400; white-space: nowrap; }
+
+.market-category-filter { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.market-category-filter select { width: auto; max-width: 16rem; padding: .45rem .65rem; font-size: .875rem; }
+#market-item-title { scroll-margin-top: 1.5rem; }
