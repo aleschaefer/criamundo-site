@@ -2,6 +2,8 @@ import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 
 (()=>{
   const $=selector=>document.querySelector(selector),section=$('#market-section'),money=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value)||0);
+  // Separadores invisíveis no texto compartilhado reduzem a detecção automática de moeda.
+  const messageMoney=value=>money(value).replace('R$', 'R\u2060$').replace(/([.,])(?=\d)/g, '$1\u2060');
   const views={category:$('#market-category-form'),item:$('#market-item-form'),list:$('#market-list-form'),categories:$('#market-categories-view'),lists:$('#market-lists-view'),alerts:$('#market-alerts-form')};
   let listCategoryFilter="",categoryFilter="",data=null,busy=false,categoryId=crypto.randomUUID(),itemId=crypto.randomUUID(),listId=crypto.randomUUID(),editingCategory=null,editingItem=null,editingList=null;
   const status=(text,error=false)=>{const node=$('#market-status');node.textContent=text;node.className=`save-status${error?' is-error':''}`;};
@@ -75,8 +77,8 @@ import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
     const lines=[`*Lista de compras — ${formatTransactionDate(list.listDate)}*`];
     [...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(group=>{
       lines.push('',`*${group.name}*`);
-      group.items.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(item=>lines.push(`• ${item.name} (${item.quantity}) — (aprox. ${money(item.quantity*Number(item.approximateValue))})`));
+      group.items.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(item=>lines.push(`• ${item.name} (${item.quantity}) — (${messageMoney(item.quantity*Number(item.approximateValue))})`));
     });
-    lines.push('',`*Total aproximado: ${money(listTotal(list))}*`);window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`,'_blank','noopener,noreferrer');status('Lista preparada. No WhatsApp, selecione o grupo MERCADO 🛒 e ALERTAS 🔔 e confirme o envio.');});
+    lines.push('',`*Total aproximado: ${messageMoney(listTotal(list))}*`);window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`,'_blank','noopener,noreferrer');status('Lista preparada. No WhatsApp, selecione o grupo MERCADO 🛒 e ALERTAS 🔔 e confirme o envio.');});
   $('#logout-admin').addEventListener('click',()=>{data=null;section.hidden=true;status('');});views.list.elements.listDate.value=todayInSaoPaulo(new Date());view('list');controls();
 })();
