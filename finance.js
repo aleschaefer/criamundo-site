@@ -1,4 +1,4 @@
-import { importMarketData } from './finance-market-import.mjs?v=3';
+import { importMarketData } from './finance-market-import.mjs?v=4';
 import { confirmQuantityImport, confirmAveragePriceImport } from './finance-quantity-preview.js?v=3';
 import { priceDifferencePercent, matchesPriceFilter } from './finance-price-comparison.mjs';
 import { readRicoQuantitiesPdf } from './finance-quantity-import.js';

@@ -27,9 +27,9 @@ test('falhas de consulta e gravação não contam como importadas e não impedem
     if (url.includes('/minimum-price?')) throw new Error('Timeout');
     return ok({ value: 1 });
   } });
-  assert.deepEqual(summary.map(s => s.imported), [0, 0, 1]);
-  assert.deepEqual(summary.map(s => s.failed), [1, 1, 0]);
-  assert.equal(summary[1].error, 'Conflito');
+  assert.deepEqual(summary.map(s => s.imported), [0, 1, 1]);
+  assert.deepEqual(summary.map(s => s.failed), [1, 0, 0]);
+  assert.equal(summary[1].error, '');
 });
 
 test('preserva motivo e sigla das consultas bloqueadas', async () => {
@@ -43,10 +43,10 @@ test('preserva motivo e sigla das consultas bloqueadas', async () => {
   }
 });
 
-test('aguarda dois segundos entre consultas, inclusive entre etapas', async () => {
+test('aguarda sete segundos apenas entre etapas', async () => {
   const pauses = [];
   await importMarketData({ assetIds: ['ale'], assetType: 1, subType: 2, onData() {}, onProgress() {}, pause: async ms => pauses.push(ms), request: async url => url === '/api/admin/finance' ? ok({ assets: [asset] }) : ok({ value: 1 }) });
-  assert.deepEqual(pauses, [2000, 2000]);
+  assert.deepEqual(pauses, [7000, 7000]);
 });
 test('não insiste após limitação HTTP 429', async () => {
   let queries = 0;
@@ -56,4 +56,30 @@ test('não insiste após limitação HTTP 429', async () => {
   } });
   assert.equal(queries, 1);
   assert.ok(result.every(step => step.failed === 2 && step.imported === 0));
+});
+
+test('repete somente os registros pendentes após sete segundos, sem duplicar contagens', async () => {
+  let state = { assets: [asset, { ...asset, id: 'other', symbol: 'CPTS11' }] };
+  const queries = new Map(), events = [];
+  const summary = await importMarketData({ assetIds: ['ale', 'other'], assetType: 1, subType: 2, onData() {}, onProgress() {},
+    pause: async ms => events.push(ms), request: async (url, options) => {
+      if (options.method === 'POST') {
+        const { items, type } = JSON.parse(options.body);
+        events.push(type);
+        for (const item of items) {
+          const current = state.assets.find(a => a.id === item.id);
+          assert.equal(item.revision, current.revision);
+          current.revision++;
+        }
+        return ok(state);
+      }
+      if (url === '/api/admin/finance') return ok(state);
+      queries.set(url, (queries.get(url) || 0) + 1);
+      if (url.includes('/income?') && url.includes('CPTS11') && queries.get(url) === 1) throw new Error('Failed to fetch');
+      return ok({ value: 1 });
+    }
+  });
+  assert.deepEqual(events, ['asset-minimum-price-batch', 7000, 'asset-current-price-batch', 7000, 'asset-income-batch', 7000, 'asset-income-batch']);
+  for (const [url, count] of queries) assert.equal(count, url.includes('/income?') && url.includes('CPTS11') ? 2 : 1);
+  assert.deepEqual(summary.map(s => [s.imported, s.failed, s.error, s.failures]), [[2, 0, '', []], [2, 0, '', []], [2, 0, '', []]]);
 });
