@@ -9,6 +9,6 @@
 
 A autorização usa Google Identity Services (token model). O token é usado somente durante a requisição e não é salvo. São lidas a agenda principal, as agendas selecionadas e todas as listas de tarefas. Eventos recorrentes são expandidos; cancelados são ignorados. Tarefas são importadas pela data de vencimento, incluindo concluídas; tarefas sem vencimento ou atrasadas de outro dia não são atribuídas artificialmente ao dia selecionado. O intervalo de eventos utiliza Brasília (UTC−03).
 
-Cada evento/tarefa gera um lembrete, na categoria Google Agenda, responsável Ale ou Ana. Títulos e descrições respeitam os limites de 30 e 200 caracteres. Reimportar a mesma origem/data não sobrescreve lembretes existentes nem os duplica. A lista de resultados mostra apenas os criados na execução atual.
+Cada evento/tarefa gera um lembrete, na categoria Google Agenda, responsável Ale/Ana. Títulos e descrições respeitam os limites de 30 e 200 caracteres. Reimportar a mesma origem/data não sobrescreve lembretes existentes nem os duplica. A lista de resultados mostra apenas os criados na execução atual.
 
 Documentação: https://developers.google.com/identity/oauth2/web/guides/use-token-model

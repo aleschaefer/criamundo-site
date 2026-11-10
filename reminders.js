@@ -1,4 +1,4 @@
-import { loadGoogleIdentity, authorizeGoogle } from './reminders-google-client.mjs';
+import { loadGoogleIdentity, authorizeGoogle } from './reminders-google-client.mjs?v=2';
 import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
 import { normalizeBrazilianWhatsApp } from './reminders-model.mjs?v=1';
 

@@ -26,6 +26,6 @@ export function validateReminderAction(body){
   if(!validTransactionDate(body.resolutionDate))throw new Error('Informe uma data de resolução válida.');
   const title=clean(body.title,30,'Título');
   const responsible=body.responsible;
-  if(!['Ale','Ana','Ale ou Ana'].includes(responsible))throw new Error('Selecione um responsável válido.');
-  return{...result,title,responsible,description:clean(body.description,200,'Descrição'),categoryId:id(body.categoryId),resolutionDate:body.resolutionDate};
+  if(!['Ale','Ana','Ale/Ana'].includes(responsible))throw new Error('Selecione um responsável válido.');
+  return{...result,title,responsible,description:clean(body.description,20000,'Descrição'),categoryId:id(body.categoryId),resolutionDate:body.resolutionDate};
 }

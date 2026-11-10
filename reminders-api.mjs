@@ -46,6 +46,6 @@ export async function handleReminders(request,env){
     if(/UNIQUE constraint/i.test(error.message))return reply({error:'Já existe uma categoria com esse nome.'},409);
     if(/FOREIGN KEY constraint/i.test(error.message))return reply({error:'A categoria possui lembretes e não pode ser excluída.'},409);
     if(/CHECK constraint/i.test(error.message))return reply({error:'Os dados não atendem às regras de Lembretes.'},400);
-    console.error('Reminders database error',error);return reply({error:'Não foi possível acessar Lembretes. Aplique a migração 0035.'},503);
+    console.error('Reminders database error',error);return reply({error:'Não foi possível acessar Lembretes. Aplique a migração 0037.'},503);
   }
 }

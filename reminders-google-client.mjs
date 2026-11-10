@@ -10,8 +10,14 @@ export function loadGoogleIdentity(){
 export function authorizeGoogle(clientId){
   return new Promise((resolve,reject)=>{
     google.accounts.oauth2.initTokenClient({client_id:clientId,scope:'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks.readonly',
-      callback:result=>result.access_token?resolve(result.access_token):reject(new Error('A autorização do Google não foi concluída.')),
+      callback:result=>{
+        if(!result.access_token){reject(new Error('A autorização do Google não foi concluída.'));return;}
+        if(!google.accounts.oauth2.hasGrantedAllScopes(result,'https://www.googleapis.com/auth/calendar.readonly','https://www.googleapis.com/auth/tasks.readonly')){
+          reject(new Error('Permissão incompleta. Clique em Importar novamente e marque as permissões de leitura da Agenda e das Tarefas.'));return;
+        }
+        resolve(result.access_token);
+      },
       error_callback:()=>reject(new Error('A conexão Google foi cancelada ou o pop-up foi bloqueado.'))
-    }).requestAccessToken();
+    }).requestAccessToken({prompt:'consent'});
   });
 }

@@ -8,6 +8,8 @@ import { normalizeBrazilianWhatsApp, validateReminderAction } from '../reminders
 function database(){
   const sql=new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON');sql.exec(readFileSync(new URL('../migrations/0032_reminders.sql',import.meta.url),'utf8'));
   sql.exec(readFileSync(new URL('../migrations/0035_reminder_title_responsible.sql',import.meta.url),'utf8'));
+  sql.exec(readFileSync(new URL('../migrations/0036_reminder_description.sql',import.meta.url),'utf8'));
+  sql.exec(readFileSync(new URL('../migrations/0037_reminder_responsible_label.sql',import.meta.url),'utf8'));
   const prepare=query=>{let args=[];const statement=sql.prepare(query);return{isWrite:/^\s*(INSERT|UPDATE|DELETE)/i.test(query),bind(...values){args=values;return this;},async first(){return statement.get(...args)||null;},async run(){return{meta:{changes:statement.run(...args).changes}};},async all(){return{results:statement.all(...args)};}}};
   return{sql,prepare,async batch(statements){sql.exec('BEGIN');try{const results=[];for(const statement of statements)results.push(statement.isWrite?await statement.run():await statement.all());sql.exec('COMMIT');return results;}catch(error){sql.exec('ROLLBACK');throw error;}}};
 }
@@ -36,9 +38,9 @@ test('cadastra, edita e exclui lembretes e categorias com revisão',async()=>{
 test('API de lembretes exige autenticação',async()=>{assert.equal((await handleReminders(new Request('https://x/api/admin/reminders'),{CONTENT_DB:database()})).status,401);});
 
 test('valida título de até 30 caracteres e opções de responsável',()=>{
- const action={type:'reminder',id:id(),title:'A'.repeat(30),responsible:'Ale ou Ana',description:'Descrição',categoryId:id(),resolutionDate:'2026-11-10'};
+ const action={type:'reminder',id:id(),title:'A'.repeat(30),responsible:'Ale/Ana',description:'Descrição',categoryId:id(),resolutionDate:'2026-11-10'};
  assert.equal(validateReminderAction(action).title.length,30);
- for(const responsible of ['Ale','Ana','Ale ou Ana'])assert.equal(validateReminderAction({...action,responsible}).responsible,responsible);
+ for(const responsible of ['Ale','Ana','Ale/Ana'])assert.equal(validateReminderAction({...action,responsible}).responsible,responsible);
  for(const title of ['', 'A'.repeat(31)])assert.throws(()=>validateReminderAction({...action,title}));
  assert.throws(()=>validateReminderAction({...action,responsible:'Outro'}));
 });
@@ -58,14 +60,25 @@ test('importa eventos e tarefas paginados sem duplicar lembretes',async()=>{
     return {ok:true,json:async()=>result};
   };
   const first=await importGoogleDay(db,'2026-11-10','token',fetcher);
-  assert.equal(first.created.length,3);
+  assert.equal(first.created.length,1);
+  assert.equal(first.created[0].title,'AGENDA - 10/11/2026');
+  assert.match(first.created[0].description,/Consulta/);
+  assert.match(first.created[0].description,/Comprar medicamento/);
+  assert.equal(first.created[0].description.split('\n').length,3);
   const second=await importGoogleDay(db,'2026-11-10','token',fetcher);
-  assert.equal(second.created.length,0);assert.equal(second.existing,3);
-  assert.equal(db.sql.prepare('SELECT COUNT(*) AS n FROM reminders').get().n,3);
+  assert.equal(second.created.length,0);assert.equal(second.existing,1);
+  assert.equal(db.sql.prepare('SELECT COUNT(*) AS n FROM reminders').get().n,1);
 });
 
 test('não grava importação se uma fonte Google falhar',async()=>{
   const { importGoogleDay }=await import('../reminders-google.mjs');const db=database();
   await assert.rejects(()=>importGoogleDay(db,'2026-11-10','token',async()=>({ok:false,status:403})),/403/);
   assert.equal(db.sql.prepare('SELECT COUNT(*) AS n FROM reminders').get().n,0);
+});
+
+test('identifica API desativada e permissão ausente na importação Google',async()=>{
+  const { readGoogleDay }=await import('../reminders-google.mjs');
+  for(const [reason,expected] of [['SERVICE_DISABLED',/Ative a Google Calendar API/],['ACCESS_TOKEN_SCOPE_INSUFFICIENT',/autorize as duas permissões/]]){
+    await assert.rejects(()=>readGoogleDay('2026-11-10','token',async()=>({ok:false,status:403,json:async()=>({error:{details:[{reason}]}})})),expected);
+  }
 });
