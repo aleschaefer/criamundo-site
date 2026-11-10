@@ -14,7 +14,32 @@ import { normalizeBrazilianWhatsApp } from './reminders-model.mjs?v=1';
     const select=views.reminder.elements.categoryId,current=select.value;select.replaceChildren(new Option(data.categories.length?'Selecione uma categoria':'Inclua uma categoria primeiro',''));data.categories.forEach(item=>select.add(new Option(item.name,item.id)));select.value=data.categories.some(item=>item.id===current)?current:'';
     $('#reminder-categories-empty').hidden=Boolean(data.categories.length);const categories=$('#reminder-categories-list');categories.replaceChildren();data.categories.forEach(item=>{const tr=document.createElement('tr'),name=document.createElement('td');name.textContent=item.name;tr.append(name,actionCell('category',item));categories.append(tr);});
     $('#reminders-empty').hidden=Boolean(data.reminders.length);const reminders=$('#reminders-list');reminders.replaceChildren();data.reminders.forEach(item=>{const tr=document.createElement('tr');[item.title,item.description,item.responsible,item.categoryName,formatTransactionDate(item.resolutionDate)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});tr.append(actionCell('reminder',item));reminders.append(tr);});
-    $('#reminder-alerts-empty').hidden=Boolean(data.reminders.length);$('#reminder-alerts-select-all-wrap').hidden=!data.reminders.length;const alerts=$('#reminder-alerts-list');alerts.replaceChildren();data.reminders.forEach(item=>{const tr=document.createElement('tr'),choice=document.createElement('input');choice.type='checkbox';choice.dataset.alertReminder=item.id;choice.setAttribute('aria-label',`Selecionar ${item.description}`);const checkCell=document.createElement('td');checkCell.append(choice);tr.append(checkCell);[item.title,item.description,item.responsible,item.categoryName,formatTransactionDate(item.resolutionDate)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});alerts.append(tr);});
+    $('#reminder-alerts-empty').hidden=Boolean(data.reminders.length);
+    $('#reminder-alerts-select-all-wrap').hidden=!data.reminders.length;
+    const alerts=$('#reminder-alerts-list');alerts.replaceChildren();
+    const isAgenda=item=>item.categoryName?.trim().toLocaleLowerCase('pt-BR')==='google agenda';
+    for(const [label,items] of [
+      ['Lembretes comuns',data.reminders.filter(item=>!isAgenda(item))],
+      ['Lembretes de agenda',data.reminders.filter(isAgenda)]
+    ]){
+      const group=document.createElement('details'),summary=document.createElement('summary');
+      group.className='group-shell';summary.textContent=`${label} (${items.length})`;group.append(summary);
+      if(!items.length){const empty=document.createElement('p');empty.className='intro';empty.textContent='Nenhum lembrete neste grupo.';group.append(empty);}
+      else{
+        const wrap=document.createElement('div'),table=document.createElement('table'),body=document.createElement('tbody');
+        wrap.className='finance-table-wrap';
+        table.innerHTML='<thead><tr><th>Enviar</th><th>Título</th><th>Descrição</th><th>Responsável</th><th>Categoria</th><th>Data de resolução</th></tr></thead>';
+        items.forEach(item=>{
+          const tr=document.createElement('tr'),choice=document.createElement('input');
+          choice.type='checkbox';choice.dataset.alertReminder=item.id;choice.setAttribute('aria-label',`Selecionar ${item.title}`);
+          const checkCell=document.createElement('td');checkCell.append(choice);tr.append(checkCell);
+          [item.title,item.description,item.responsible,item.categoryName,formatTransactionDate(item.resolutionDate)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});
+          body.append(tr);
+        });
+        table.append(body);wrap.append(table);group.append(wrap);
+      }
+      alerts.append(group);
+    }
     $('#reminder-alerts-select-all').checked=false;controls();
   }
   async function request(action){if(busy)return false;busy=true;controls();status(action?'Salvando…':'Carregando…');try{const response=await fetch('/api/admin/reminders',{method:action?'POST':'GET',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},...(action?{body:JSON.stringify(action)}:{})}),result=await response.json();if(!response.ok)throw new Error(result.error);googleClientId=result.googleClientId||googleClientId;data=result;render();status(action?'Salvo com sucesso.':'Dados atualizados.');return true;}catch(error){status(error.message||'Não foi possível acessar Lembretes.',true);return false;}finally{busy=false;controls();}}
