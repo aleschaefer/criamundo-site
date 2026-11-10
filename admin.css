@@ -601,7 +601,7 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 .finance-table-wrap .finance-variable-table th:first-child,
 .finance-table-wrap .finance-variable-table td:first-child:not([colspan]) { width: 1%; min-width: 72px; white-space: nowrap; overflow-wrap: normal; padding-right: 10px; }
 
-.finance-import-controls { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.finance-import-controls { display: flex; flex: 0 0 100%; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; margin: 4px 0 0; }
 .finance-import-controls select { width: auto; min-width: 170px; padding: 7px 10px; }
 .finance-import-controls .button { padding: 7px 14px; min-height: 36px; font-size: .85rem; }
 @media (max-width: 760px) { .finance-import-controls { margin-left: 0; } }
