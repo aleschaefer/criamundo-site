@@ -4,7 +4,7 @@ import { normalizeBrazilianWhatsApp } from './reminders-model.mjs?v=1';
 (()=>{
   const $=selector=>document.querySelector(selector),section=$('#market-section'),money=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value)||0);
   const views={category:$('#market-category-form'),item:$('#market-item-form'),list:$('#market-list-form'),categories:$('#market-categories-view'),lists:$('#market-lists-view'),alerts:$('#market-alerts-form')};
-  let categoryFilter="",data=null,busy=false,categoryId=crypto.randomUUID(),itemId=crypto.randomUUID(),listId=crypto.randomUUID(),editingCategory=null,editingItem=null,editingList=null;
+  let listCategoryFilter="",categoryFilter="",data=null,busy=false,categoryId=crypto.randomUUID(),itemId=crypto.randomUUID(),listId=crypto.randomUUID(),editingCategory=null,editingItem=null,editingList=null;
   const status=(text,error=false)=>{const node=$('#market-status');node.textContent=text;node.className=`save-status${error?' is-error':''}`;};
   const listItems=list=>(list?.itemIds||[]).map(id=>data.items.find(item=>item.id===id)).filter(Boolean);
   const listTotal=list=>listItems(list).reduce((sum,item)=>sum+item.quantity*Number(item.approximateValue),0);
@@ -17,6 +17,15 @@ import { normalizeBrazilianWhatsApp } from './reminders-model.mjs?v=1';
     $('#market-items-empty').hidden=Boolean(items.length);
     $('#market-items-empty').textContent=categoryFilter?'Nenhum item nesta categoria.':'Nenhum item cadastrado.';const itemRows=$('#market-items-list');itemRows.replaceChildren();items.forEach(item=>{const tr=document.createElement('tr');[item.name,item.quantity,item.categoryName,money(item.approximateValue)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});tr.append(actionCell('item',item));itemRows.append(tr);});
   }
+  function filterDraftItems(){
+    let visible=0;
+    $('#market-list-items').querySelectorAll('tr').forEach(row=>{
+      row.hidden=Boolean(listCategoryFilter&&row.dataset.categoryId!==listCategoryFilter);
+      if(!row.hidden)visible++;
+    });
+    $('#market-list-items-empty').hidden=visible>0;
+    $('#market-list-items-empty').textContent=listCategoryFilter?'Nenhum item nesta categoria.':'Inclua itens para montar uma lista.';
+  }
   function render(){
     const categorySelect=views.item.elements.categoryId,currentCategory=categorySelect.value;categorySelect.replaceChildren(new Option(data.categories.length?'Selecione uma categoria':'Inclua uma categoria primeiro',''));data.categories.forEach(item=>categorySelect.add(new Option(item.name,item.id)));categorySelect.value=data.categories.some(item=>item.id===currentCategory)?currentCategory:'';
     $('#market-categories-empty').hidden=Boolean(data.categories.length);const categoryRows=$('#market-categories-list');categoryRows.replaceChildren();data.categories.forEach(item=>{const tr=document.createElement('tr'),td=document.createElement('td');td.textContent=item.name;tr.append(td,actionCell('category',item));categoryRows.append(tr);});
@@ -26,7 +35,13 @@ import { normalizeBrazilianWhatsApp } from './reminders-model.mjs?v=1';
     data.categories.forEach(category=>filter.add(new Option(category.name,category.id)));
     filter.value=categoryFilter;
     renderItems();
-    $('#market-list-items-empty').hidden=Boolean(data.items.length);const draftRows=$('#market-list-items');draftRows.replaceChildren();data.items.forEach(item=>{const tr=document.createElement('tr'),check=document.createElement('input');check.type='checkbox';check.dataset.marketListItem=item.id;check.checked=Boolean(editingList?.itemIds.includes(item.id));check.setAttribute('aria-label',`Selecionar ${item.name}`);check.addEventListener('change',updateDraftTotal);const td=document.createElement('td');td.append(check);tr.append(td);[item.name,item.quantity,item.categoryName,money(item.approximateValue)].forEach(value=>{const cell=document.createElement('td');cell.textContent=value;tr.append(cell);});draftRows.append(tr);});updateDraftTotal();
+    $('#market-list-items-empty').hidden=Boolean(data.items.length);const draftRows=$('#market-list-items');draftRows.replaceChildren();data.items.forEach(item=>{const tr=document.createElement('tr'),check=document.createElement('input');tr.dataset.categoryId=item.categoryId;check.type='checkbox';check.dataset.marketListItem=item.id;check.checked=Boolean(editingList?.itemIds.includes(item.id));check.setAttribute('aria-label',`Selecionar ${item.name}`);check.addEventListener('change',updateDraftTotal);const td=document.createElement('td');td.append(check);tr.append(td);[item.name,item.quantity,item.categoryName,money(item.approximateValue)].forEach(value=>{const cell=document.createElement('td');cell.textContent=value;tr.append(cell);});draftRows.append(tr);});updateDraftTotal();
+    const listFilter=$('#market-list-category-filter');
+    if(!data.categories.some(category=>category.id===listCategoryFilter))listCategoryFilter='';
+    listFilter.replaceChildren(new Option('Todas',''));
+    data.categories.forEach(category=>listFilter.add(new Option(category.name,category.id)));
+    listFilter.value=listCategoryFilter;
+    filterDraftItems();
     $('#market-lists-empty').hidden=Boolean(data.lists.length);const listContainer=$('#market-lists');listContainer.replaceChildren();data.lists.forEach(list=>{const items=listItems(list),details=document.createElement('details');details.className='group-shell';const summary=document.createElement('summary');summary.textContent=`${formatTransactionDate(list.listDate)} · ${items.length} ${items.length===1?'item':'itens'} · ${money(listTotal(list))}`;const wrap=document.createElement('div');wrap.className='finance-table-wrap';const table=document.createElement('table');table.innerHTML='<thead><tr><th>Item</th><th>Quantidade</th><th>Categoria</th><th>Valor unitário</th><th>Subtotal</th></tr></thead>';const body=document.createElement('tbody');items.forEach(item=>{const tr=document.createElement('tr');[item.name,item.quantity,item.categoryName,money(item.approximateValue),money(item.quantity*Number(item.approximateValue))].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});body.append(tr);});table.append(body);wrap.append(table);const actions=document.createElement('div');actions.className='finance-actions';for(const action of ['edit','delete']){const button=document.createElement('button');button.type='button';button.className=`button ${action==='delete'?'button-danger':'button-secondary'}`;button.textContent=action==='edit'?'Editar lista':'Excluir lista';button.dataset.marketAction=action;button.dataset.kind='list';button.dataset.id=list.id;actions.append(button);}details.append(summary,wrap,actions);listContainer.append(details);});
     $('#market-alerts-empty').hidden=Boolean(data.lists.length);const alertRows=$('#market-alerts-list');alertRows.replaceChildren();data.lists.forEach(list=>{const tr=document.createElement('tr'),radio=document.createElement('input');radio.type='radio';radio.name='marketAlertList';radio.value=list.id;radio.setAttribute('aria-label',`Selecionar lista de ${formatTransactionDate(list.listDate)}`);const td=document.createElement('td');td.append(radio);tr.append(td);[formatTransactionDate(list.listDate),list.itemIds.length,money(listTotal(list))].forEach(value=>{const cell=document.createElement('td');cell.textContent=value;tr.append(cell);});alertRows.append(tr);});controls();
   }
@@ -35,6 +50,7 @@ import { normalizeBrazilianWhatsApp } from './reminders-model.mjs?v=1';
   function clearItem(){editingItem=null;itemId=crypto.randomUUID();views.item.reset();$('#market-item-title').textContent='Incluir item';$('#market-item-cancel').hidden=true;views.item.querySelector('[type=submit]').textContent='Salvar item';if(data)render();}
   function clearList(){editingList=null;listId=crypto.randomUUID();views.list.reset();views.list.elements.listDate.value=todayInSaoPaulo(new Date());$('#market-list-title').textContent='Montar lista';$('#market-list-cancel').hidden=true;views.list.querySelector('[type=submit]').textContent='Salvar lista';if(data)render();}
   function area(show){section.hidden=!show;if(show){$('#finance-section').hidden=true;$('#credit-card-section').hidden=true;$('#monthly-expenses-section').hidden=true;$('#reminders-section').hidden=true;$('#admin-form').hidden=true;request();}$('#show-market').setAttribute('aria-pressed',String(show));if(show)for(const selector of ['#show-content','#show-finance','#show-credit-card','#show-monthly-expenses','#show-reminders'])$(selector).setAttribute('aria-pressed','false');}
+  $('#market-list-category-filter').addEventListener('change',event=>{listCategoryFilter=event.target.value;filterDraftItems();});
   $('#market-items-category-filter').addEventListener('change',event=>{categoryFilter=event.target.value;renderItems();controls();});
   $('#show-market').addEventListener('click',()=>area(true));for(const selector of ['#show-content','#show-finance','#show-credit-card','#show-monthly-expenses','#show-reminders'])$(selector).addEventListener('click',()=>area(false));
   document.querySelectorAll('[data-market-view]').forEach(button=>button.addEventListener('click',()=>view(button.dataset.marketView)));$('#market-refresh').addEventListener('click',()=>request());
