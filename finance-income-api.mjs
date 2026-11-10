@@ -59,11 +59,28 @@ async function readStatusInvest(request, env, fetcher, parser, unavailableMessag
   const url = statusInvestUrl(symbol, category);
   if (!url) return reply({ error: 'Categoria do ativo inválida.' }, 400);
   try {
-    const response = await fetcher(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CriamundoFinance/1.0)', Accept: 'text/html' },
-      signal: AbortSignal.timeout(10000)
-    });
-    if (!response.ok) throw new Error(`Status Invest respondeu ${response.status}.`);
+    // As três etapas leem a mesma página. Reutiliza por três minutos somente HTML bem-sucedido.
+    const cache = globalThis.caches?.default;
+    const cacheKey = new Request(new URL(`/__status-invest-cache/${category}/${symbol}`, request.url));
+    let response;
+    try { response = await cache?.match(cacheKey); } catch { /* Cache indisponível: consulta a origem. */ }
+    if (!response) {
+      response = await fetcher(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CriamundoFinance/1.0)', Accept: 'text/html' },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!response.ok) {
+        if (response.status === 403) throw new Error('Status Invest bloqueou a consulta (HTTP 403).');
+        if (response.status === 429) throw new Error('Status Invest limitou as consultas (HTTP 429). Tente novamente mais tarde.');
+        throw new Error(`Status Invest respondeu HTTP ${response.status}.`);
+      }
+      const html = await response.text();
+      // Confere se é uma página de ativo antes de armazenar, evitando páginas de bloqueio com HTTP 200.
+      let cacheable = false;
+      try { parseStatusInvestCurrentPrice(html); cacheable = true; } catch { /* O parser solicitado ainda pode encontrar o indicador. */ }
+      response = new Response(html, { headers: { 'Content-Type': 'text/html', 'Cache-Control': 'public, max-age=180' } });
+      try { if (cacheable) await cache?.put(cacheKey, response.clone()); } catch { /* Falha do cache não impede a importação. */ }
+    }
     return reply({ symbol: symbol.toUpperCase(), category, ...parser(await response.text(), category) });
   } catch (error) {
     return reply({ error: error.message || unavailableMessage }, 502);

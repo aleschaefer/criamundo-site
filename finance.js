@@ -1,4 +1,4 @@
-import { importMarketData } from './finance-market-import.mjs';
+import { importMarketData } from './finance-market-import.mjs?v=3';
 import { confirmQuantityImport, confirmAveragePriceImport } from './finance-quantity-preview.js?v=3';
 import { priceDifferencePercent, matchesPriceFilter } from './finance-price-comparison.mjs';
 import { readRicoQuantitiesPdf } from './finance-quantity-import.js';
@@ -222,7 +222,9 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
             assetGroupToReopen = { owner: group.owner, assetType: group.assetType, subType: group.subType }; render();
             const incomplete = summary.some(step => step.failed || step.error);
             message(incomplete ? 'Importação concluída com pendências. Consulte o resumo.' : 'Importação concluída.', incomplete);
-            alert(`Resumo da importação — ${group.owner} · ${subtypes[group.subType]}\n\n${summary.map(step => `${step.label}: ${step.imported} registro(s) importado(s)${step.failed ? `; ${step.failed} não confirmado(s)` : ''}${step.error ? `\n${step.error}` : ''}`).join('\n')}`);
+            const diagnostics = summary.flatMap(step => step.failures.map(failure => `${step.label} · ${failure.symbol}: ${failure.reason}`));
+            if (diagnostics.length) message(`Importação concluída com pendências. ${diagnostics.join(' | ')}`, true);
+            alert(`Resumo da importação — ${group.owner} · ${subtypes[group.subType]}\n\n${summary.map(step => `${step.label}: ${step.imported} registro(s) importado(s)${step.failed ? `; ${step.failed} não confirmado(s)` : ''}${step.error ? `\n${step.error}` : ''}${step.failures?.length ? `\n${[...new Set(step.failures.map(failure => failure.reason))].join(' ')}` : ''}`).join('\n')}`);
           } catch (error) { message(error.message || 'Não foi possível concluir a importação.', true); }
           finally { busy = false; importMarketButton.textContent = 'Importar mínimos/atuais/ rendimentos'; controls(); }
         });

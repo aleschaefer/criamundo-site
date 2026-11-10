@@ -87,3 +87,22 @@ test('consulta mínimo para BCRI11 e exceção DCRA11, com autenticação e falh
   }
   assert.equal((await handleFinanceMinimumPrice(new Request('https://example.test/api/admin/finance/minimum-price?symbol=BCRI11&category=fii'), env, () => { throw new Error('Não deveria consultar'); })).status, 401);
 });
+
+test('reutiliza a página entre mínimos, atuais e rendimentos e mantém erros 403 explícitos', async () => {
+  const original = globalThis.caches;
+  const entries = new Map();
+  globalThis.caches = { default: { async match(key) { return entries.get(key.url)?.clone(); }, async put(key, response) { entries.set(key.url, response); } } };
+  try {
+    const env = { ADMIN_PASSWORD: 'test-password', ALLOW_LEGACY_ADMIN_AUTH: 'true' };
+    const request = new Request('https://example.test/api/admin/finance/minimum-price?symbol=BCRI11&category=fii', { headers: { 'x-admin-password': 'test-password' } });
+    let calls = 0;
+    const fetcher = async () => { calls++; return new Response('Valor atual R$ 50,00 Min. 52 semanas R$ 45,00 Último rendimento R$ 0,70'); };
+    for (const handler of [handleFinanceMinimumPrice, handleFinanceCurrentPrice, handleFinanceIncome]) assert.equal((await handler(request, env, fetcher)).status, 200);
+    assert.equal(calls, 1);
+    entries.clear();
+    const blocked = await handleFinanceIncome(request, env, async () => new Response('Forbidden', { status: 403 }));
+    assert.equal(blocked.status, 502);
+    assert.match((await blocked.json()).error, /bloqueou.*403/);
+    assert.equal(entries.size, 0);
+  } finally { if (original === undefined) delete globalThis.caches; else globalThis.caches = original; }
+});
