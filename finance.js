@@ -371,7 +371,13 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           const hint = difference === null ? 'Comparação indisponível: preço médio não informado ou igual a zero.'
             : difference === 0 ? 'Preço atual igual ao preço médio (0,00%).'
             : `${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(difference))}% ${difference > 0 ? 'acima' : 'abaixo'} do preço médio.`;
-          cell.title = hint; cell.setAttribute('aria-label', `${cell.textContent}. ${hint}`); cell.tabIndex = 0;
+          cell.setAttribute('aria-label', `${cell.textContent}. ${hint}`);
+          if (difference !== null) {
+            const percentage = document.createElement('small'); percentage.className = 'finance-price-difference';
+            const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'exceptZero' }).format(difference);
+            percentage.textContent = `(${formatted}%)`;
+            cell.append(document.createTextNode(' '), percentage);
+          }
           if (difference !== null && difference !== 0) cell.classList.add(difference > 0 ? 'finance-price-above' : 'finance-price-below');
         }
 

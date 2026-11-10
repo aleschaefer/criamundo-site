@@ -646,3 +646,5 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
   .finance-quantity-preview-scroll th, .finance-quantity-preview-scroll td { padding: 10px; font-size: .8rem; }
   .finance-quantity-preview-actions { flex-wrap: wrap; }
 }
+
+.finance-price-difference { display: inline; font-size: .75em; font-weight: 400; white-space: nowrap; }
