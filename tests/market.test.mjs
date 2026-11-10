@@ -42,3 +42,20 @@ test('cadastra, edita e exclui categorias, itens e listas',async()=>{
 });
 
 test('API de Mercado exige autenticação',async()=>{assert.equal((await handleMarket(new Request('https://x/api/admin/market'),{CONTENT_DB:database()})).status,401);});
+
+test('remove até o último item de uma lista sem excluir o cadastro nem afetar outras listas',async()=>{
+  const e=env(),category={type:'category',id:id(),name:'Mercado'};
+  await handleMarket(request(category),e);
+  const item={type:'item',id:id(),name:'Arroz',quantity:1,categoryId:category.id,approximateValue:8};
+  await handleMarket(request(item),e);
+  const list={type:'list',id:id(),listDate:'2026-11-10',itemIds:[item.id]};
+  await handleMarket(request(list),e);
+  const other={...list,id:id()};await handleMarket(request(other),e);
+  const update={...list,operation:'update',revision:0,itemIds:[]};
+  const response=await handleMarket(request(update),e);assert.equal(response.status,200);
+  const data=await response.json();
+  assert.deepEqual(data.lists.find(l=>l.id===list.id).itemIds,[]);
+  assert.deepEqual(data.lists.find(l=>l.id===other.id).itemIds,[item.id]);
+  assert.equal(data.items[0].id,item.id);
+  assert.equal((await handleMarket(request(update),e)).status,409);
+});

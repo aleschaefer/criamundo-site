@@ -21,7 +21,9 @@ export async function handleMarket(request,env){
       if(action.operation==='update'){
         const exists=await db.prepare('SELECT id FROM market_lists WHERE id=?1 AND revision=?2').bind(action.id,action.revision).first();if(!exists)return reply({error:'Lista alterada ou excluída. Atualize os dados.'},409);
       }
+      if(action.itemIds.length){
       const placeholders=action.itemIds.map((_,index)=>`?${index+1}`).join(','),found=await db.prepare(`SELECT COUNT(*) AS total FROM market_items WHERE id IN (${placeholders})`).bind(...action.itemIds).first();if(Number(found?.total)!==action.itemIds.length)return reply({error:'Um ou mais itens não existem mais. Atualize os dados.'},409);
+      }
       const statements=action.operation==='update'
         ?[db.prepare("UPDATE market_lists SET list_date=?1,revision=revision+1,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?2 AND revision=?3").bind(action.listDate,action.id,action.revision),db.prepare('DELETE FROM market_list_items WHERE list_id=?1').bind(action.id)]
         :[db.prepare('INSERT INTO market_lists(id,list_date) VALUES(?1,?2)').bind(action.id,action.listDate)];

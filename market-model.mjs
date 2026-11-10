@@ -18,7 +18,7 @@ export function validateMarketAction(body){
     return{...result,name:clean(body.name,80,'Nome'),quantity,categoryId:id(body.categoryId),approximateValue};
   }
   if(!validTransactionDate(body.listDate))throw new Error('Informe uma data válida para a lista.');
-  if(!Array.isArray(body.itemIds)||!body.itemIds.length||body.itemIds.length>1000)throw new Error('Selecione entre 1 e 1000 itens.');
+  if(!Array.isArray(body.itemIds)||(operation==='create'&&!body.itemIds.length)||body.itemIds.length>1000)throw new Error('Selecione entre 1 e 1000 itens.');
   const itemIds=[...new Set(body.itemIds.map(id))];if(itemIds.length!==body.itemIds.length)throw new Error('A lista contém itens repetidos.');
   return{...result,listDate:body.listDate,itemIds};
 }
