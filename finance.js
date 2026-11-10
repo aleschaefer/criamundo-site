@@ -1,3 +1,4 @@
+import { importMarketData } from './finance-market-import.mjs';
 import { confirmQuantityImport, confirmAveragePriceImport } from './finance-quantity-preview.js?v=3';
 import { priceDifferencePercent, matchesPriceFilter } from './finance-price-comparison.mjs';
 import { readRicoQuantitiesPdf } from './finance-quantity-import.js';
@@ -51,7 +52,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
     assetForm.elements.subType.disabled = busy || !data || assetForm.elements.assetType.value === '3';
     transactionControls();
     $('#finance-refresh').disabled = busy;
-    section.querySelectorAll('.finance-import-choice, .finance-import-button, [data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-current-price-batch, .finance-minimum-price-batch, .finance-average-price-import, #finance-filter-clear, #finance-print-pdf, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
+    section.querySelectorAll('.finance-market-import, .finance-import-choice, .finance-import-button, [data-record-action], [data-finance-view], [data-filter-type], .finance-income-batch, .finance-current-price-batch, .finance-minimum-price-batch, .finance-average-price-import, #finance-filter-clear, #finance-print-pdf, #finance-assets-delete, #finance-assets-select-all, .finance-asset-select').forEach(control => { control.disabled = busy || control.dataset.locked === 'true'; });
   }
   function view(name) {
     assetForm.hidden = name !== 'asset';
@@ -171,7 +172,7 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
         importControls = document.createElement('span'); importControls.className = 'finance-import-controls';
         const importChoice = document.createElement('select'); importChoice.className = 'finance-import-choice';
         importChoice.setAttribute('aria-label', 'Dados para importar');
-        for (const [value, label] of [['minimum', 'Preços mínimos'], ['current', 'Preços atuais'], ['average', 'Preços médios'], ['income', 'Rendimentos']]) {
+        for (const [value, label] of [['average', 'Preços médios']]) {
           const option = document.createElement('option'); option.value = value; option.textContent = label; importChoice.append(option);
         }
         if (['Ale', 'Ana'].includes(selectedOwner)) {
@@ -206,111 +207,25 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           } catch (error) { message(error.message || 'Não foi possível importar os preços médios.', true); }
           finally { fileInput.value = ''; busy = false; controls(); importPrices.textContent = 'Importar'; }
         });
-        const fetchMinimumPrices = importButton;
-        const fetchMinimumPricesAction = async event => {
+        const importMarketButton = document.createElement('button'); importMarketButton.type = 'button';
+        importMarketButton.className = 'button button-secondary finance-market-import';
+        importMarketButton.textContent = 'Importar mínimos/atuais/ rendimentos';
+        importMarketButton.addEventListener('click', async event => {
           event.preventDefault(); event.stopPropagation();
           if (busy) return;
-          busy = true; controls(); const pricesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const candidates = data.assets.filter(asset => asset.assetType === group.assetType && asset.subType === group.subType); const sources = preferredSimilarAssets(group.assets, candidates);
+          busy = true; controls();
           try {
-            let next = 0, completed = 0; fetchMinimumPrices.textContent = `Consultando preços 0/${sources.length}…`;
-            const worker = async () => {
-              while (next < sources.length) {
-                const asset = sources[next++];
-                try {
-                  const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/minimum-price?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
-                  if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
-                  pricesBySymbol.set(asset.symbol, Number(result.value));
-                } catch { failures.push(asset.symbol || asset.name); }
-                completed++; fetchMinimumPrices.textContent = `Consultando preços ${completed}/${sources.length}…`;
-              }
-            };
-            await Promise.all(Array.from({ length: Math.min(4, sources.length) }, worker));
-            const byAsset = valuesForSimilarAssets(group.assets, pricesBySymbol);
-            const updates = group.assets.filter(asset => byAsset.has(asset.id)).map(asset => ({ id: asset.id, revision: asset.revision, minimumPrice: byAsset.get(asset.id) }));
-            if (updates.length) {
-              fetchMinimumPrices.textContent = `Salvando ${updates.length}…`;
-              const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-minimum-price-batch', items: updates }) });
-              if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os preços mínimos.');
-              data = result; render();
-            }
-            message(`${updates.length} preço(s) mínimo(s) atualizado(s)${failures.length ? `. Não encontrados: ${failures.join(', ')}.` : '.'}`, Boolean(failures.length));
-          } catch (error) { message(error.message || 'Não foi possível atualizar os preços mínimos.', true); }
-          finally {
-            busy = false;
-            if (fetchMinimumPrices.isConnected) fetchMinimumPrices.textContent = 'Importar';
-            controls();
-          }
-        };
-        const fetchCurrentPrices = importButton;
-        const fetchCurrentPricesAction = async event => {
-          event.preventDefault(); event.stopPropagation();
-          if (busy) return;
-          busy = true; controls(); const pricesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const candidates = data.assets.filter(asset => asset.assetType === group.assetType && asset.subType === group.subType); const sources = preferredSimilarAssets(group.assets, candidates);
-          try {
-            let next = 0, completed = 0; fetchCurrentPrices.textContent = `Consultando preços 0/${sources.length}…`;
-            const worker = async () => {
-              while (next < sources.length) {
-                const asset = sources[next++];
-                try {
-                  const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/current-price?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
-                  if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
-                  pricesBySymbol.set(asset.symbol, Number(result.value));
-                } catch { failures.push(asset.symbol || asset.name); }
-                completed++; fetchCurrentPrices.textContent = `Consultando preços ${completed}/${sources.length}…`;
-              }
-            };
-            await Promise.all(Array.from({ length: Math.min(4, sources.length) }, worker));
-            const byAsset = valuesForSimilarAssets(group.assets, pricesBySymbol);
-            const updates = group.assets.filter(asset => byAsset.has(asset.id)).map(asset => ({ id: asset.id, revision: asset.revision, currentPrice: byAsset.get(asset.id) }));
-            if (updates.length) {
-              fetchCurrentPrices.textContent = `Salvando ${updates.length}…`;
-              const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-current-price-batch', items: updates }) });
-              if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os preços atuais.');
-              data = result; render();
-            }
-            message(`${updates.length} preço(s) atual(is) atualizado(s)${failures.length ? `. Não encontrados: ${failures.join(', ')}.` : '.'}`, Boolean(failures.length));
-          } catch (error) { message(error.message || 'Não foi possível atualizar os preços atuais.', true); }
-          finally {
-            busy = false;
-            if (fetchCurrentPrices.isConnected) fetchCurrentPrices.textContent = 'Importar';
-            controls();
-          }
-        };
-        const fetchAll = importButton;
-        const fetchAllAction = async event => {
-          event.preventDefault(); event.stopPropagation();
-          if (busy) return;
-          busy = true; controls(); const incomesBySymbol = new Map(), failures = []; const category = group.subType === 1 ? 'stock' : 'fii'; const candidates = data.assets.filter(asset => asset.assetType === group.assetType && asset.subType === group.subType); const sources = preferredSimilarAssets(group.assets, candidates);
-          try {
-            let next = 0, completed = 0; fetchAll.textContent = `Consultando 0/${sources.length}…`;
-            const worker = async () => {
-              while (next < sources.length) {
-                const asset = sources[next++];
-                try {
-                  const { response, result } = await fetchJsonWithTimeout(`/api/admin/finance/income?symbol=${encodeURIComponent(asset.symbol)}&category=${category}`, { credentials: 'same-origin', cache: 'no-store' });
-                  if (!response.ok) throw new Error(result.error || 'Consulta indisponível.');
-                  incomesBySymbol.set(asset.symbol, Number(result.value));
-                } catch { failures.push(asset.symbol || asset.name); }
-                completed++; fetchAll.textContent = `Consultando ${completed}/${sources.length}…`;
-              }
-            };
-            await Promise.all(Array.from({ length: Math.min(4, sources.length) }, worker));
-            const byAsset = valuesForSimilarAssets(group.assets, incomesBySymbol);
-            const updates = group.assets.filter(asset => byAsset.has(asset.id)).map(asset => ({ id: asset.id, revision: asset.revision, currentIncome: byAsset.get(asset.id) }));
-            if (updates.length) {
-              fetchAll.textContent = `Salvando ${updates.length}…`;
-              const { response, result } = await fetchJsonWithTimeout('/api/admin/finance', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'asset-income-batch', items: updates }) });
-              if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os rendimentos.');
-              data = result; render();
-            }
-            message(`${updates.length} rendimento(s) atualizado(s)${failures.length ? `. Não encontrados: ${failures.join(', ')}.` : '.'}`, Boolean(failures.length));
-          } catch (error) { message(error.message || 'Não foi possível atualizar os rendimentos.', true); }
-          finally {
-            busy = false;
-            if (fetchAll.isConnected) fetchAll.textContent = 'Importar';
-            controls();
-          }
-        };
+            const summary = await importMarketData({ assetIds: group.assets.map(asset => asset.id), assetType: group.assetType, subType: group.subType,
+              onData: result => { data = result; },
+              onProgress: text => { importMarketButton.textContent = text; message(text); }
+            });
+            assetGroupToReopen = { owner: group.owner, assetType: group.assetType, subType: group.subType }; render();
+            const incomplete = summary.some(step => step.failed || step.error);
+            message(incomplete ? 'Importação concluída com pendências. Consulte o resumo.' : 'Importação concluída.', incomplete);
+            alert(`Resumo da importação — ${group.owner} · ${subtypes[group.subType]}\n\n${summary.map(step => `${step.label}: ${step.imported} registro(s) importado(s)${step.failed ? `; ${step.failed} não confirmado(s)` : ''}${step.error ? `\n${step.error}` : ''}`).join('\n')}`);
+          } catch (error) { message(error.message || 'Não foi possível concluir a importação.', true); }
+          finally { busy = false; importMarketButton.textContent = 'Importar mínimos/atuais/ rendimentos'; controls(); }
+        });
         const quantityFileInput = document.createElement('input'); quantityFileInput.type = 'file'; quantityFileInput.accept = '.pdf,application/pdf'; quantityFileInput.hidden = true;
         quantityFileInput.addEventListener('change', async () => {
           const file = quantityFileInput.files?.[0];
@@ -337,9 +252,8 @@ import { preferredSimilarAssets, similarSymbolKey, valuesForSimilarAssets } from
           if (busy) return;
           if (importChoice.value === 'quantity' && ['Ale', 'Ana'].includes(group.owner)) quantityFileInput.click();
           else if (importChoice.value === 'average') fileInput.click();
-          else ({ minimum: fetchMinimumPricesAction, current: fetchCurrentPricesAction, income: fetchAllAction })[importChoice.value](event);
         });
-        importControls.append(importChoice, importButton, fileInput, quantityFileInput);
+        importControls.append(importChoice, importButton, importMarketButton, fileInput, quantityFileInput);
       }
       const wrap = document.createElement('div'); wrap.className = 'finance-table-wrap';
       const table = document.createElement('table');
