@@ -9,7 +9,7 @@ async function overview(db){
     db.prepare(`SELECT r.id,r.title,r.responsible,r.description,r.category_id AS categoryId,c.name AS categoryName,
       r.resolution_date AS resolutionDate,r.no_date_defined AS noDateDefined,r.priority,r.revision
       FROM reminders r JOIN reminder_categories c ON c.id=r.category_id
-      ORDER BY r.resolution_date,r.description COLLATE NOCASE`)
+      ORDER BY r.priority DESC,r.resolution_date DESC,r.description COLLATE NOCASE`)
   ]);
   return{categories:categories.results,reminders:reminders.results};
 }
