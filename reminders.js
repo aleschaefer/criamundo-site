@@ -12,6 +12,18 @@ import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
   views.reminder.elements.noDateDefined.addEventListener('change',syncDateRequired);
   function controls(){syncDateRequired();section.querySelectorAll('button,input,select,textarea').forEach(control=>{control.disabled=busy;});const noCategories=!data?.categories.length;views.reminder.elements.categoryId.disabled=busy||noCategories;views.reminder.querySelector('[type=submit]').disabled=busy||noCategories;views.alerts.querySelector('[type=submit]').disabled=busy||!data?.reminders.length;}
   function actionCell(kind,item){const td=document.createElement('td'),wrap=document.createElement('div');wrap.className='finance-row-actions';for(const action of ['edit','delete']){const button=document.createElement('button');button.type='button';button.className=`button ${action==='delete'?'button-danger':'button-secondary'}`;button.textContent=action==='edit'?'Editar':'Excluir';button.dataset.reminderAction=action;button.dataset.kind=kind;button.dataset.id=item.id;wrap.append(button);}td.append(wrap);return td;}
+  const normalizeTitle=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
+  function filterReminderTitles(){
+    const query=normalizeTitle($('#reminder-title-search').value.trim());
+    let visible=0;
+    for(const row of $('#reminders-list').rows){
+      row.hidden=!normalizeTitle(row.cells[0].textContent).includes(query);
+      if(!row.hidden)visible++;
+    }
+    const empty=$('#reminders-empty');empty.hidden=visible>0;
+    empty.textContent=data?.reminders.length?'Nenhum lembrete encontrado para este título.':'Nenhum lembrete cadastrado.';
+  }
+  $('#reminder-title-search').addEventListener('input',filterReminderTitles);
   function render(){
     const select=views.reminder.elements.categoryId,current=select.value;select.replaceChildren(new Option(data.categories.length?'Selecione uma categoria':'Inclua uma categoria primeiro',''));data.categories.forEach(item=>select.add(new Option(item.name,item.id)));select.value=data.categories.some(item=>item.id===current)?current:'';
     $('#reminder-categories-empty').hidden=Boolean(data.categories.length);const categories=$('#reminder-categories-list');categories.replaceChildren();data.categories.forEach(item=>{const tr=document.createElement('tr'),name=document.createElement('td');name.textContent=item.name;tr.append(name,actionCell('category',item));categories.append(tr);});
@@ -42,6 +54,7 @@ import { todayInSaoPaulo, formatTransactionDate } from './finance-date.mjs';
       }
       tr.append(actionCell('reminder',item));reminders.append(tr);
     });
+    filterReminderTitles();
     $('#reminder-alerts-empty').hidden=Boolean(data.reminders.length);
     $('#reminder-alerts-select-all-wrap').hidden=!data.reminders.length;
     const alerts=$('#reminder-alerts-list');alerts.replaceChildren();

@@ -663,3 +663,5 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 #reminders-list td:nth-child(2) { white-space: nowrap; }
 #reminders-list td[title] { cursor: help; }
 #reminders-list small { display: block; font-size: .75rem; margin-top: 4px; }
+
+#reminder-title-search { display: block; width: 100%; min-width: 140px; max-width: 240px; margin-top: 8px; padding: 8px 9px; font-size: .9rem; }
