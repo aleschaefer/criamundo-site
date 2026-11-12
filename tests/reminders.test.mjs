@@ -96,7 +96,7 @@ test('identifica API desativada e permissão ausente na importação Google',asy
  data=await response.json();assert.equal(data.reminders[0].resolutionDate,'2026-11-12');assert.equal(data.reminders[0].priority,0);assert.equal(data.reminders[0].noDateDefined,0);
  });
 
- test('ordena por prioridade e depois data decrescente, sem data ao final do grupo',async()=>{
+ test('ordena prioritárias por data decrescente e demais por crescente, sem data ao final do grupo',async()=>{
  const e=env(),category={type:'category',id:id(),name:'Ordem'};
  await handleReminders(request(category),e);
  const entries=[['Normal recente',false,'2026-12-01'],['Prioridade sem data',true,''],['Prioridade antiga',true,'2026-11-01'],['Normal sem data',false,''],['Prioridade recente',true,'2026-11-12'],['Normal antiga',false,'2026-10-01']];
@@ -105,5 +105,5 @@ test('identifica API desativada e permissão ausente na importação Google',asy
  assert.equal(response.status,200);
  }
  const data=await(await handleReminders(request(),e)).json();
- assert.deepEqual(data.reminders.map(item=>item.title),['Prioridade recente','Prioridade antiga','Prioridade sem data','Normal recente','Normal antiga','Normal sem data']);
+ assert.deepEqual(data.reminders.map(item=>item.title),['Prioridade recente','Prioridade antiga','Prioridade sem data','Normal antiga','Normal recente','Normal sem data']);
  });
