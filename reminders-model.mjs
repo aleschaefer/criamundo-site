@@ -23,9 +23,11 @@ export function validateReminderAction(body){
   }
   if(operation==='delete')return result;
   if(body.type==='category')return{...result,name:clean(body.name,40,'Categoria')};
-  if(!validTransactionDate(body.resolutionDate))throw new Error('Informe uma data de resolução válida.');
+  const noDateDefined=body.noDateDefined===true, priority=body.priority===true;
+  const resolutionDate=body.resolutionDate||null;
+  if((!noDateDefined||resolutionDate)&&!validTransactionDate(resolutionDate))throw new Error('Informe uma data de resolução válida.');
   const title=clean(body.title,30,'Título');
   const responsible=body.responsible;
   if(!['Ale','Ana','Ale/Ana'].includes(responsible))throw new Error('Selecione um responsável válido.');
-  return{...result,title,responsible,description:clean(body.description,20000,'Descrição'),categoryId:id(body.categoryId),resolutionDate:body.resolutionDate};
+  return{...result,title,responsible,description:clean(body.description,20000,'Descrição'),categoryId:id(body.categoryId),resolutionDate,noDateDefined,priority};
 }

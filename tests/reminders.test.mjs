@@ -10,6 +10,7 @@ function database(){
   sql.exec(readFileSync(new URL('../migrations/0035_reminder_title_responsible.sql',import.meta.url),'utf8'));
   sql.exec(readFileSync(new URL('../migrations/0036_reminder_description.sql',import.meta.url),'utf8'));
   sql.exec(readFileSync(new URL('../migrations/0037_reminder_responsible_label.sql',import.meta.url),'utf8'));
+  sql.exec(readFileSync(new URL('../migrations/0038_reminder_flags.sql',import.meta.url),'utf8'));
   const prepare=query=>{let args=[];const statement=sql.prepare(query);return{isWrite:/^\s*(INSERT|UPDATE|DELETE)/i.test(query),bind(...values){args=values;return this;},async first(){return statement.get(...args)||null;},async run(){return{meta:{changes:statement.run(...args).changes}};},async all(){return{results:statement.all(...args)};}}};
   return{sql,prepare,async batch(statements){sql.exec('BEGIN');try{const results=[];for(const statement of statements)results.push(statement.isWrite?await statement.run():await statement.all());sql.exec('COMMIT');return results;}catch(error){sql.exec('ROLLBACK');throw error;}}};
 }
@@ -82,3 +83,15 @@ test('identifica API desativada e permissão ausente na importação Google',asy
     await assert.rejects(()=>readGoogleDay('2026-11-10','token',async()=>({ok:false,status:403,json:async()=>({error:{details:[{reason}]}})})),expected);
   }
 });
+
+ test('salva e edita prioridade e data opcional sem aceitar datas inválidas',async()=>{
+ const e=env(),category={type:'category',id:id(),name:'Pessoal'};
+ await handleReminders(request(category),e);
+ const item={type:'reminder',id:id(),title:'Sem prazo',responsible:'Ale/Ana',description:'Resolver',categoryId:category.id,resolutionDate:'',noDateDefined:true,priority:true};
+ let response=await handleReminders(request(item),e);assert.equal(response.status,200);
+ let data=await response.json();assert.equal(data.reminders[0].resolutionDate,null);assert.equal(data.reminders[0].priority,1);assert.equal(data.reminders[0].noDateDefined,1);
+ assert.equal((await handleReminders(request({...item,operation:'update',revision:0,noDateDefined:false}),e)).status,400);
+ assert.equal((await handleReminders(request({...item,operation:'update',revision:0,resolutionDate:'2026-02-30'}),e)).status,400);
+ response=await handleReminders(request({...item,operation:'update',revision:0,resolutionDate:'2026-11-12',noDateDefined:false,priority:false}),e);
+ data=await response.json();assert.equal(data.reminders[0].resolutionDate,'2026-11-12');assert.equal(data.reminders[0].priority,0);assert.equal(data.reminders[0].noDateDefined,0);
+ });

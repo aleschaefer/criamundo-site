@@ -654,3 +654,12 @@ input[readonly] { color: var(--gold); background: var(--gold-soft); }
 #market-item-title { scroll-margin-top: 1.5rem; }
 
 #reminders-list td:nth-child(2), #reminder-alerts-list td:nth-child(3), #reminder-calendar-results td:nth-child(2) { white-space: pre-wrap; }
+
+#reminders-list [data-inline-reminder] { padding: 8px 9px; font-size: .9rem; }
+#reminders-list select[data-field="responsible"] { min-width: 110px; }
+#reminders-list select[data-field="categoryId"] { min-width: 155px; max-width: 220px; }
+#reminders-list input[type="date"] { min-width: 145px; }
+#reminders-list input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--gold); cursor: pointer; }
+#reminders-list td:nth-child(2) { white-space: nowrap; }
+#reminders-list td[title] { cursor: help; }
+#reminders-list small { display: block; font-size: .75rem; margin-top: 4px; }

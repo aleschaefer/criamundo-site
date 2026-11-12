@@ -7,7 +7,7 @@ async function overview(db){
   const [categories,reminders]=await db.batch([
     db.prepare('SELECT id,name,revision FROM reminder_categories ORDER BY name COLLATE NOCASE'),
     db.prepare(`SELECT r.id,r.title,r.responsible,r.description,r.category_id AS categoryId,c.name AS categoryName,
-      r.resolution_date AS resolutionDate,r.revision
+      r.resolution_date AS resolutionDate,r.no_date_defined AS noDateDefined,r.priority,r.revision
       FROM reminders r JOIN reminder_categories c ON c.id=r.category_id
       ORDER BY r.resolution_date,r.description COLLATE NOCASE`)
   ]);
@@ -33,12 +33,12 @@ export async function handleReminders(request,env){
     }else if(action.operation==='update'){
       const statement=action.type==='category'
         ?db.prepare('UPDATE reminder_categories SET name=?1,revision=revision+1 WHERE id=?2 AND revision=?3').bind(action.name,action.id,action.revision)
-        :db.prepare("UPDATE reminders SET title=?6,responsible=?7,description=?1,category_id=?2,resolution_date=?3,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE id=?4 AND revision=?5").bind(action.description,action.categoryId,action.resolutionDate,action.id,action.revision,action.title,action.responsible);
+        :db.prepare("UPDATE reminders SET title=?6,responsible=?7,no_date_defined=?8,priority=?9,description=?1,category_id=?2,resolution_date=?3,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revision=revision+1 WHERE id=?4 AND revision=?5").bind(action.description,action.categoryId,action.resolutionDate,action.id,action.revision,action.title,action.responsible,Number(action.noDateDefined),Number(action.priority));
       const result=await statement.run();if(!result.meta.changes)return reply({error:'Registro alterado ou excluído. Atualize os dados.'},409);
     }else if(action.type==='category'){
       await db.prepare('INSERT INTO reminder_categories(id,name) VALUES(?1,?2) ON CONFLICT(id) DO NOTHING').bind(action.id,action.name).run();
     }else{
-      const result=await db.prepare('INSERT INTO reminders(id,description,category_id,resolution_date,title,responsible) SELECT ?1,?2,id,?4,?5,?6 FROM reminder_categories WHERE id=?3 ON CONFLICT(id) DO NOTHING').bind(action.id,action.description,action.categoryId,action.resolutionDate,action.title,action.responsible).run();
+      const result=await db.prepare('INSERT INTO reminders(id,description,category_id,resolution_date,title,responsible,no_date_defined,priority) SELECT ?1,?2,id,?4,?5,?6,?7,?8 FROM reminder_categories WHERE id=?3 ON CONFLICT(id) DO NOTHING').bind(action.id,action.description,action.categoryId,action.resolutionDate,action.title,action.responsible,Number(action.noDateDefined),Number(action.priority)).run();
       if(!result.meta.changes)return reply({error:'Categoria não encontrada ou lembrete já cadastrado.'},409);
     }
     return reply(await overview(db));
@@ -46,6 +46,6 @@ export async function handleReminders(request,env){
     if(/UNIQUE constraint/i.test(error.message))return reply({error:'Já existe uma categoria com esse nome.'},409);
     if(/FOREIGN KEY constraint/i.test(error.message))return reply({error:'A categoria possui lembretes e não pode ser excluída.'},409);
     if(/CHECK constraint/i.test(error.message))return reply({error:'Os dados não atendem às regras de Lembretes.'},400);
-    console.error('Reminders database error',error);return reply({error:'Não foi possível acessar Lembretes. Aplique a migração 0037.'},503);
+    console.error('Reminders database error',error);return reply({error:'Não foi possível acessar Lembretes. Aplique a migração 0038.'},503);
   }
 }
