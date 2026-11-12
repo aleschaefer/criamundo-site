@@ -11,8 +11,7 @@ async function overview(db){
       FROM reminders r JOIN reminder_categories c ON c.id=r.category_id
       ORDER BY r.priority DESC,
         (r.resolution_date IS NULL) ASC,
-        CASE WHEN r.priority=1 THEN r.resolution_date END DESC,
-        CASE WHEN r.priority=0 THEN r.resolution_date END ASC,
+        r.resolution_date ASC,
         r.description COLLATE NOCASE`)
   ]);
   return{categories:categories.results,reminders:reminders.results};
